@@ -122,7 +122,7 @@ gym.register(
 from .locomotion_env import AliengoAMPFlatEnvCfg, AliengoAMPRoughVisionEnvCfg, AliengoAMPRoughBlindEnvCfg
 
 gym.register(
-    id="Locomotion-Aliengo-Flat",
+    id="Locomotion-Aliengo-AMP-Flat",
     entry_point="basic_locomotion_dls_isaaclab.tasks.locomotion:LocomotionEnv",
     disable_env_checker=True,
     kwargs={
@@ -132,7 +132,7 @@ gym.register(
 )
 
 gym.register(
-    id="Locomotion-Aliengo-Rough-Blind",
+    id="Locomotion-Aliengo-AMP-Rough-Blind",
     entry_point="basic_locomotion_dls_isaaclab.tasks.locomotion:LocomotionEnv",
     disable_env_checker=True,
     kwargs={
@@ -142,7 +142,7 @@ gym.register(
 )
 
 gym.register(
-    id="Locomotion-Aliengo-Rough-Vision",
+    id="Locomotion-Aliengo-AMP-Rough-Vision",
     entry_point="basic_locomotion_dls_isaaclab.tasks.locomotion:LocomotionEnv",
     disable_env_checker=True,
     kwargs={

@@ -295,7 +295,7 @@ class AliengoAMPFlatEnvCfg(DirectRLEnvCfg):
 import isaaclab.terrains as terrain_gen
 from isaaclab.terrains.terrain_generator_cfg import TerrainGeneratorCfg
 @configclass
-class AliengoAMPRoughBlindEnvCfg(AliengoFlatEnvCfg):
+class AliengoAMPRoughBlindEnvCfg(AliengoAMPFlatEnvCfg):
 
     #curriculum: CurriculumCfg = CurriculumCfg()
 
@@ -385,7 +385,7 @@ class AliengoAMPRoughBlindEnvCfg(AliengoFlatEnvCfg):
 
 
 @configclass
-class AliengoAMPRoughVisionEnvCfg(AliengoFlatEnvCfg):
+class AliengoAMPRoughVisionEnvCfg(AliengoAMPFlatEnvCfg):
     # env
     observation_space = 235
 
