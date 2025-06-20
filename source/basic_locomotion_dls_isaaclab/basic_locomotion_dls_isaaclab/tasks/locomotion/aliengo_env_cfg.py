@@ -14,11 +14,12 @@ from isaaclab.sensors import ImuCfg
 from isaaclab.utils import configclass
 from isaaclab.utils.noise import GaussianNoiseCfg, NoiseModelWithAdditiveBiasCfg
 
-from basic_locomotion_dls_isaaclab.assets.aliengo_asset import ALIENGO_CFG # isort: skip
+from basic_locomotion_dls_isaaclab.assets.aliengo_asset import ALIENGO_CFG  # isort: skip
 from isaaclab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: skip
 
 import basic_locomotion_dls_isaaclab.tasks.custom_events as custom_events
 import basic_locomotion_dls_isaaclab.tasks.custom_curriculums as custom_curriculums
+
 
 @configclass
 class EventCfg:
@@ -49,11 +50,13 @@ class EventCfg:
     scale_all_link_masses = EventTerm(
         func=mdp.randomize_rigid_body_mass,
         mode="startup",
-        params={"asset_cfg": SceneEntityCfg("robot", body_names=".*"), "mass_distribution_params": (0.9, 1.1),
-                "operation": "scale"},
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
+            "mass_distribution_params": (0.9, 1.1),
+            "operation": "scale",
+        },
     )
 
-    
     base_external_force_torque = EventTerm(
         func=mdp.apply_external_force_torque,
         mode="reset",
@@ -63,7 +66,6 @@ class EventCfg:
             "torque_range": (-5.0, 5.0),
         },
     )
-    
 
     """add_all_joint_default_pos = EventTerm(
         func=mdp.randomize_joint_default_pos,
@@ -86,41 +88,50 @@ class EventCfg:
     scale_all_joint_friction_model = EventTerm(
         func=custom_events.randomize_joint_friction_model,
         mode="startup",
-        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]), 
-                "friction_distribution_params": (0.2, 2.0),
-                "operation": "scale"},
+        params={
+            "asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]),
+            "friction_distribution_params": (0.2, 2.0),
+            "operation": "scale",
+        },
     )
-
 
     scale_all_joint_armature_model = EventTerm(
         func=custom_events.randomize_joint_friction_model,
         mode="startup",
-        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]), 
-                "armature_distribution_params": (0.0, 1.0),
-                "operation": "scale"},
+        params={
+            "asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]),
+            "armature_distribution_params": (0.0, 1.0),
+            "operation": "scale",
+        },
     )
-    
-
 
     actuator_gains = EventTerm(
-    func=mdp.randomize_actuator_gains,
-    mode="reset",
-    params={
-        "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
-        "stiffness_distribution_params": (-5.0, 5.0),
-        "damping_distribution_params": (-1.0, 1.0),
-        "operation": "add",
-        "distribution": "uniform",
-    },
+        func=mdp.randomize_actuator_gains,
+        mode="reset",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
+            "stiffness_distribution_params": (-5.0, 5.0),
+            "damping_distribution_params": (-1.0, 1.0),
+            "operation": "add",
+            "distribution": "uniform",
+        },
     )
-    
+
     # interval
     push_robot = EventTerm(
         func=mdp.push_by_setting_velocity,
         mode="interval",
         interval_range_s=(10.0, 15.0),
-        params={"velocity_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "z": (-0.5, 0.5),
-                                   "roll": (-0.5, 0.5), "pitch": (-0.5, 0.5), "yaw": (-0.5, 0.5)}},
+        params={
+            "velocity_range": {
+                "x": (-0.5, 0.5),
+                "y": (-0.5, 0.5),
+                "z": (-0.5, 0.5),
+                "roll": (-0.5, 0.5),
+                "pitch": (-0.5, 0.5),
+                "yaw": (-0.5, 0.5),
+            }
+        },
     )
 
 
@@ -129,24 +140,21 @@ class CurriculumCfg:
     """Curriculum terms for the MDP."""
 
     terrain_levels = CurrTerm(func=custom_curriculums.terrain_levels_vel)
-    
+
     # push force follows curriculum
-    #push_force_levels = CurrTerm(func=mdp.modify_push_force,
+    # push_force_levels = CurrTerm(func=mdp.modify_push_force,
     #                             params={"term_name": "push_robot", "max_velocity": [3.0, 3.0], "interval": 200 * 24,
     #                                     "starting_step": 1500 * 24})
     # command vel follows curriculum
-    #command_vel = CurrTerm(func=mdp.modify_command_velocity,
+    # command_vel = CurrTerm(func=mdp.modify_command_velocity,
     #                       params={"term_name": "track_lin_vel_xy_exp", "max_velocity": [-1.5, 3.0],
     #                               "interval": 200 * 24, "starting_step": 5000 * 24})
 
 
-
-
 @configclass
 class AliengoFlatEnvCfg(DirectRLEnvCfg):
-
     # Viewer
-    #viewer = ViewerCfg(eye=(1.5, 1.5, 0.3), origin_type="world", env_index=0, asset_name="robot")
+    # viewer = ViewerCfg(eye=(1.5, 1.5, 0.3), origin_type="world", env_index=0, asset_name="robot")
 
     # env
     episode_length_s = 20.0
@@ -157,40 +165,38 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     state_space = 0
 
     use_clock_signal = True
-    if(use_clock_signal):
+    if use_clock_signal:
         observation_space += 4
 
     # observation history
     use_observation_history = True
     history_length = 5
-    if(use_observation_history):
+    if use_observation_history:
         observation_space *= history_length
 
     use_filter_actions = True
 
-    
     # asymmetric ppo
     use_asymmetric_ppo = False
-    if(use_asymmetric_ppo):
+    if use_asymmetric_ppo:
         state_space = observation_space
-        state_space += 12 # P gain
-        state_space += 12 # D gain
-        #state_space += 1*17 # mass*num_bodies
-        #state_space += 1*17 # inertia*num_bodies
-        #state_space += 1 # wrench
-        state_space += 12 # friction static
-        state_space += 12 # friction dynamic
-        state_space += 12 # armature
-        #state_space += 1 # restitution
+        state_space += 12  # P gain
+        state_space += 12  # D gain
+        # state_space += 1*17 # mass*num_bodies
+        # state_space += 1*17 # inertia*num_bodies
+        # state_space += 1 # wrench
+        state_space += 12  # friction static
+        state_space += 12  # friction dynamic
+        state_space += 12  # armature
+        # state_space += 1 # restitution
 
     use_amp = False
-
 
     # simulation
     sim: SimulationCfg = SimulationCfg(
         dt=1 / 200,
         render_interval=decimation,
-        #disable_contact_processing=True,
+        # disable_contact_processing=True,
         physics_material=sim_utils.RigidBodyMaterialCfg(
             friction_combine_mode="multiply",
             restitution_combine_mode="multiply",
@@ -226,13 +232,11 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     # an imu sensor in case we don't want any state estimator
     imu = ImuCfg(prim_path="/World/envs/env_.*/Robot/base", debug_vis=True)
 
-
     # scene
     scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=4096, env_spacing=4.0, replicate_physics=True)
 
     # events
     events: EventCfg = EventCfg()
-
 
     # at every time-step add gaussian noise + bias. The bias is a gaussian sampled at reset
     action_noise_model: NoiseModelWithAdditiveBiasCfg = NoiseModelWithAdditiveBiasCfg(
@@ -257,7 +261,7 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
 
     # Desired clip actions
     desired_clip_actions = 3.0
-    
+
     # Tracking reward scale
     lin_vel_reward_scale = 2.0
     yaw_rate_reward_scale = 0.5
@@ -265,39 +269,38 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     ang_vel_reward_scale = -0.25
     orientation_reward_scale = -5.0
     height_reward_scale = 1.0
-    
+
     # Joint reward scale
-    joints_torque_reward_scale = -2.5e-6 
+    joints_torque_reward_scale = -2.5e-6
     joints_accel_reward_scale = -2.5e-7
-    joints_energy_reward_scale = -1e-4 
+    joints_energy_reward_scale = -1e-4
     joints_hip_position_reward_scale = -0.1
     joints_thigh_position_reward_scale = -0.1
     joints_calf_position_reward_scale = -0.001
-   
-    
+
     # Undesired contacts reward scale
     undersired_contact_reward_scale = -1.0
     action_rate_reward_scale = -0.01
-    action_smoothness_reward_scale = -0.001 
+    action_smoothness_reward_scale = -0.001
 
     # Feet reward scale
     feet_air_time_reward_scale = 0.5 * 0.0
     feet_height_clearance_reward_scale = 0.25
     feet_height_clearance_mujoco_reward_scale = 0.25 * 0.0
     feet_slide_reward_scale = -0.25 * 0.0
-    feet_contact_suggestion_reward_scale =  0.25
+    feet_contact_suggestion_reward_scale = 0.25
     feet_to_base_distance_reward_scale = 0.25 * 0.0
     feet_to_hip_distance_reward_scale = 1.5
     feet_vertical_surface_contacts_reward_scale = -0.25 * 0.0
 
 
-
 import isaaclab.terrains as terrain_gen
 from isaaclab.terrains.terrain_generator_cfg import TerrainGeneratorCfg
+
+
 @configclass
 class AliengoRoughBlindEnvCfg(AliengoFlatEnvCfg):
-
-    #curriculum: CurriculumCfg = CurriculumCfg()
+    # curriculum: CurriculumCfg = CurriculumCfg()
 
     maximum_height = 0.10
     ROUGH_TERRAINS_CFG = TerrainGeneratorCfg(
@@ -311,11 +314,9 @@ class AliengoRoughBlindEnvCfg(AliengoFlatEnvCfg):
         slope_threshold=0.75,
         use_cache=False,
         sub_terrains={
-            
             "flat": terrain_gen.MeshPlaneTerrainCfg(
                 proportion=0.2,
             ),
-            
             "pyramid_stairs": terrain_gen.MeshPyramidStairsTerrainCfg(
                 proportion=0.1,
                 step_height_range=(0.05, maximum_height),
@@ -332,7 +333,6 @@ class AliengoRoughBlindEnvCfg(AliengoFlatEnvCfg):
                 border_width=1.0,
                 holes=False,
             ),
-
             "pyramid_stairs": terrain_gen.MeshPyramidStairsTerrainCfg(
                 proportion=0.1,
                 step_height_range=(0.05, maximum_height),
@@ -341,22 +341,18 @@ class AliengoRoughBlindEnvCfg(AliengoFlatEnvCfg):
                 border_width=1.0,
                 holes=False,
             ),
-            
             "boxes": terrain_gen.MeshRandomGridTerrainCfg(
                 proportion=0.1, grid_width=0.45, grid_height_range=(0.05, maximum_height), platform_width=2.0
             ),
-            
             "random_rough": terrain_gen.HfRandomUniformTerrainCfg(
                 proportion=0.1, noise_range=(0.02, 0.06), noise_step=0.02, border_width=0.25
             ),
-            
             "hf_pyramid_slope": terrain_gen.HfPyramidSlopedTerrainCfg(
                 proportion=0.1, slope_range=(0.2, 0.4), platform_width=2.0, border_width=0.25
             ),
             "hf_pyramid_slope_inv": terrain_gen.HfInvertedPyramidSlopedTerrainCfg(
                 proportion=0.1, slope_range=(0.2, 0.4), platform_width=2.0, border_width=0.25
             ),
-
         },
     )
 
@@ -381,15 +377,12 @@ class AliengoRoughBlindEnvCfg(AliengoFlatEnvCfg):
     )
 
 
-
-
-
 @configclass
 class AliengoRoughVisionEnvCfg(AliengoFlatEnvCfg):
     # env
     observation_space = 235
 
-    #curriculum: CurriculumCfg = CurriculumCfg()
+    # curriculum: CurriculumCfg = CurriculumCfg()
 
     maximum_height = 0.20
     ROUGH_TERRAINS_CFG = TerrainGeneratorCfg(
@@ -406,7 +399,6 @@ class AliengoRoughVisionEnvCfg(AliengoFlatEnvCfg):
             "flat": terrain_gen.MeshPlaneTerrainCfg(
                 proportion=0.2,
             ),
-            
             "pyramid_stairs": terrain_gen.MeshPyramidStairsTerrainCfg(
                 proportion=0.2,
                 step_height_range=(0.05, maximum_height),
@@ -423,22 +415,18 @@ class AliengoRoughVisionEnvCfg(AliengoFlatEnvCfg):
                 border_width=1.0,
                 holes=False,
             ),
-            
             "boxes": terrain_gen.MeshRandomGridTerrainCfg(
                 proportion=0.2, grid_width=0.45, grid_height_range=(0.05, maximum_height), platform_width=2.0
             ),
-            
             "random_rough": terrain_gen.HfRandomUniformTerrainCfg(
                 proportion=0.2, noise_range=(0.02, 0.06), noise_step=0.02, border_width=0.25
             ),
-            
             "hf_pyramid_slope": terrain_gen.HfPyramidSlopedTerrainCfg(
                 proportion=0.1, slope_range=(0.2, 0.4), platform_width=2.0, border_width=0.25
             ),
             "hf_pyramid_slope_inv": terrain_gen.HfInvertedPyramidSlopedTerrainCfg(
                 proportion=0.1, slope_range=(0.2, 0.4), platform_width=2.0, border_width=0.25
             ),
-
         },
     )
 

@@ -58,8 +58,8 @@ ALIENGO_CALF_ACTUATOR_CFG = IdentifiedActuatorCfg(
 )
 
 
-
 ALIENGO_CFG = ArticulationCfg(
+    prim_path=None,
     spawn=sim_utils.UsdFileCfg(
         usd_path=f"{ISAAC_ASSET_DIR}/aliengo_asset/from_xml/aliengo.usd",
         activate_contact_sensors=True,
@@ -79,15 +79,14 @@ ALIENGO_CFG = ArticulationCfg(
     init_state=ArticulationCfg.InitialStateCfg(
         pos=(0.0, 0.0, 0.4),
         joint_pos={
-            ".*L_hip_joint": 0.,
-            ".*R_hip_joint": 0.,
+            ".*L_hip_joint": 0.0,
+            ".*R_hip_joint": 0.0,
             ".*_thigh_joint": 0.9,
             ".*_calf_joint": -1.8,
         },
         joint_vel={".*": 0.0},
     ),
-
-    #actuators={
+    # actuators={
     #    "base_legs": DCMotorCfg(
     #        joint_names_expr=[".*_hip_joint", ".*_thigh_joint", ".*_calf_joint"],
     #        effort_limit=44.4,
@@ -97,9 +96,7 @@ ALIENGO_CFG = ArticulationCfg(
     #        damping=2,
     #        friction=0.0,
     #    ),
-    #},
-    
-    actuators={"hip": ALIENGO_HIP_ACTUATOR_CFG, "thigh": ALIENGO_THIGH_ACTUATOR_CFG,
-               "calf": ALIENGO_CALF_ACTUATOR_CFG},
+    # },
+    actuators={"hip": ALIENGO_HIP_ACTUATOR_CFG, "thigh": ALIENGO_THIGH_ACTUATOR_CFG, "calf": ALIENGO_CALF_ACTUATOR_CFG},
     soft_joint_pos_limit_factor=0.95,
 )
