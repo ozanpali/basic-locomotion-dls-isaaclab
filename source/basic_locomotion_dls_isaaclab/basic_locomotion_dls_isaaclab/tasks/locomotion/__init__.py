@@ -26,10 +26,7 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": AliengoFlatEnvCfg,
-        "rl_games_cfg_entry_point": f"{agents.__name__}.aliengo_agent:rl_games_flat_ppo_cfg.yaml",
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.aliengo_agent.rsl_rl_ppo_cfg:AliengoFlatPPORunnerCfg",
-        "skrl_cfg_entry_point": f"{agents.__name__}.aliengo_agent:skrl_flat_ppo_cfg.yaml",
-        "sb3_cfg_entry_point": f"{agents.__name__}.aliengo_agent:sb3_ppo_cfg.yaml",
     },
 )
 
@@ -39,10 +36,7 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": AliengoRoughBlindEnvCfg,
-        "rl_games_cfg_entry_point": f"{agents.__name__}.aliengo_agent:rl_games_rough_ppo_cfg.yaml",
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.aliengo_agent.rsl_rl_ppo_cfg:AliengoRoughPPORunnerCfg",
-        "skrl_cfg_entry_point": f"{agents.__name__}.aliengo_agent:skrl_rough_ppo_cfg.yaml",
-        "sb3_cfg_entry_point": f"{agents.__name__}.aliengo_agent:sb3_ppo_cfg.yaml",
     },
 )
 
@@ -52,9 +46,7 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": AliengoRoughVisionEnvCfg,
-        "rl_games_cfg_entry_point": f"{agents.__name__}.aliengo_agent:rl_games_rough_ppo_cfg.yaml",
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.aliengo_agent.rsl_rl_ppo_cfg:AliengoRoughPPORunnerCfg",
-        "skrl_cfg_entry_point": f"{agents.__name__}.aliengo_agent:skrl_rough_ppo_cfg.yaml",
     },
 )
 
@@ -121,5 +113,40 @@ gym.register(
     kwargs={
         "env_cfg_entry_point": HyQRealRoughVisionEnvCfg,
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.hyqreal_agent.rsl_rl_ppo_cfg:HyQRealRoughPPORunnerCfg",
+    },
+)
+
+
+
+# Aliengo AMP environments
+from .locomotion_env import AliengoAMPFlatEnvCfg, AliengoAMPRoughVisionEnvCfg, AliengoAMPRoughBlindEnvCfg
+
+gym.register(
+    id="Locomotion-Aliengo-Flat",
+    entry_point="basic_locomotion_dls_isaaclab.tasks.locomotion:LocomotionEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": AliengoAMPFlatEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.aliengo_agent.rsl_rl_ppo_cfg:AliengoFlatPPORunnerCfg",
+    },
+)
+
+gym.register(
+    id="Locomotion-Aliengo-Rough-Blind",
+    entry_point="basic_locomotion_dls_isaaclab.tasks.locomotion:LocomotionEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": AliengoAMPRoughBlindEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.aliengo_agent.rsl_rl_ppo_cfg:AliengoRoughPPORunnerCfg",
+    },
+)
+
+gym.register(
+    id="Locomotion-Aliengo-Rough-Vision",
+    entry_point="basic_locomotion_dls_isaaclab.tasks.locomotion:LocomotionEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": AliengoAMPRoughVisionEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.aliengo_agent.rsl_rl_ppo_cfg:AliengoRoughPPORunnerCfg",
     },
 )

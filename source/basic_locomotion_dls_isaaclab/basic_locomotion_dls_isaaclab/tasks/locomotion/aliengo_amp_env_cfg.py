@@ -143,7 +143,7 @@ class CurriculumCfg:
 
 
 @configclass
-class AliengoFlatEnvCfg(DirectRLEnvCfg):
+class AliengoAMPFlatEnvCfg(DirectRLEnvCfg):
 
     # Viewer
     #viewer = ViewerCfg(eye=(1.5, 1.5, 0.3), origin_type="world", env_index=0, asset_name="robot")
@@ -156,7 +156,7 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     observation_space = 48
     state_space = 0
 
-    use_clock_signal = True
+    use_clock_signal = False
     if(use_clock_signal):
         observation_space += 4
 
@@ -183,7 +183,7 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
         state_space += 12 # armature
         #state_space += 1 # restitution
 
-    use_amp = False
+    use_amp = True
 
 
     # simulation
@@ -278,16 +278,16 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     # Undesired contacts reward scale
     undersired_contact_reward_scale = -1.0
     action_rate_reward_scale = -0.01
-    action_smoothness_reward_scale = -0.001 
+    action_smoothness_reward_scale = -0.001
 
     # Feet reward scale
-    feet_air_time_reward_scale = 0.5 * 0.0
-    feet_height_clearance_reward_scale = 0.25
+    feet_air_time_reward_scale = 0.5 * 0.0 
+    feet_height_clearance_reward_scale = 0.25 * 0.0
     feet_height_clearance_mujoco_reward_scale = 0.25 * 0.0
     feet_slide_reward_scale = -0.25 * 0.0
-    feet_contact_suggestion_reward_scale =  0.25
+    feet_contact_suggestion_reward_scale =  0.25 * 0.0
     feet_to_base_distance_reward_scale = 0.25 * 0.0
-    feet_to_hip_distance_reward_scale = 1.5
+    feet_to_hip_distance_reward_scale = 1.5 * 0.0
     feet_vertical_surface_contacts_reward_scale = -0.25 * 0.0
 
 
@@ -295,7 +295,7 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
 import isaaclab.terrains as terrain_gen
 from isaaclab.terrains.terrain_generator_cfg import TerrainGeneratorCfg
 @configclass
-class AliengoRoughBlindEnvCfg(AliengoFlatEnvCfg):
+class AliengoAMPRoughBlindEnvCfg(AliengoFlatEnvCfg):
 
     #curriculum: CurriculumCfg = CurriculumCfg()
 
@@ -385,7 +385,7 @@ class AliengoRoughBlindEnvCfg(AliengoFlatEnvCfg):
 
 
 @configclass
-class AliengoRoughVisionEnvCfg(AliengoFlatEnvCfg):
+class AliengoAMPRoughVisionEnvCfg(AliengoFlatEnvCfg):
     # env
     observation_space = 235
 
