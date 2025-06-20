@@ -1,0 +1,715 @@
+# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+from __future__ import annotations
+
+import gymnasium as gym
+import torch
+
+import isaaclab.envs.mdp as mdp
+import isaaclab.sim as sim_utils
+import isaaclab.utils.math as math_utils
+from isaaclab.assets import Articulation, ArticulationCfg
+from isaaclab.envs import DirectRLEnv, DirectRLEnvCfg
+from isaaclab.managers import EventTermCfg as EventTerm
+from isaaclab.managers import SceneEntityCfg
+from isaaclab.scene import InteractiveSceneCfg
+from isaaclab.sensors import ContactSensor, ContactSensorCfg, RayCaster, RayCasterCfg, patterns, Imu
+from isaaclab.sim import SimulationCfg
+from isaaclab.terrains import TerrainImporterCfg
+from isaaclab.utils import configclass
+
+
+from .aliengo_env_cfg import AliengoFlatEnvCfg, AliengoRoughBlindEnvCfg, AliengoRoughVisionEnvCfg
+from .go2_env_cfg import Go2FlatEnvCfg, Go2RoughVisionEnvCfg, Go2RoughBlindEnvCfg
+from .hyqreal_env_cfg import HyQRealFlatEnvCfg, HyQRealRoughVisionEnvCfg, HyQRealRoughBlindEnvCfg
+
+
+
+class LocomotionEnv(DirectRLEnv):
+    cfg: AliengoFlatEnvCfg | AliengoRoughBlindEnvCfg | AliengoRoughVisionEnvCfg | Go2FlatEnvCfg | Go2RoughVisionEnvCfg | Go2RoughBlindEnvCfg | HyQRealFlatEnvCfg | HyQRealRoughVisionEnvCfg | HyQRealRoughBlindEnvCfg
+
+    def __init__(self, cfg: AliengoFlatEnvCfg | AliengoRoughBlindEnvCfg | AliengoRoughVisionEnvCfg | Go2FlatEnvCfg | Go2RoughVisionEnvCfg | Go2RoughBlindEnvCfg | HyQRealFlatEnvCfg | HyQRealRoughVisionEnvCfg | HyQRealRoughBlindEnvCfg, render_mode: str | None = None, **kwargs):
+        super().__init__(cfg, render_mode, **kwargs)
+
+        # Joint position command (deviation from default joint positions)
+        self._actions = torch.zeros(self.num_envs, gym.spaces.flatdim(self.single_action_space), device=self.device)
+        self._previous_actions = torch.zeros(
+            self.num_envs, gym.spaces.flatdim(self.single_action_space), device=self.device
+        )
+        self._previous_previous_actions = torch.zeros(
+            self.num_envs, gym.spaces.flatdim(self.single_action_space), device=self.device
+        )
+
+        # X/Y linear velocity and yaw angular velocity commands
+        self._commands = torch.zeros(self.num_envs, 3, device=self.device)
+
+        # Swing peak
+        self._swing_peak = torch.tensor([0.0, 0.0, 0.0, 0.0], device=self.device).repeat(self.num_envs,1)
+        
+        # Periodic gait
+        self._phase_signal = torch.tensor([0.5, 1.0, 1.0, 0.5], device=self.device).repeat(self.num_envs,1)
+        self._step_freq = 1.4
+        self._duty_factor = 0.65
+
+        # Proprio Terrain estimator
+        self._proprio_terrain_estimator = torch.tensor([0.0, 0.0], device=self.device).repeat(self.num_envs,1)
+
+        # Observation history
+        single_observation_space = int(cfg.observation_space/cfg.history_length)
+        self._observation_history = torch.zeros(self.num_envs, cfg.history_length, single_observation_space, device=self.device)
+
+        # Logging
+        self._episode_sums = {
+            key: torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
+            for key in [
+                "track_height_exp",
+                "track_lin_vel_xy_exp",
+                "track_lin_vel_z_l2",
+                "track_orientation_l2",
+                "track_ang_vel_xy_l2",
+                "track_ang_vel_z_exp",
+
+                "undesired_contacts",
+                "action_rate_l2",
+                "action_smoothness_l2",
+                
+                "joints_hip_pos_l2",
+                "joints_thigh_pos_l2",
+                "joints_calf_pos_l2",
+                "joints_acc_l2",
+                "joints_torques_l2",
+                "joints_energy_l1",
+                
+                "feet_air_time",
+                "feet_height_clearance",
+                #"feet_height_clearance_mujoco",
+                "feet_slide",
+                "feet_contact_suggestion",
+                "feet_to_base_distance_l2",
+                "feet_to_hip_distance_l2",
+                "feet_vertical_surface_contacts",
+            ]
+        }
+        # Get specific body indices
+        self._base_id, _ = self._contact_sensor.find_bodies("base")
+        self._feet_ids, _ = self._contact_sensor.find_bodies(".*foot")
+        self._undesired_contact_body_ids, _ = self._contact_sensor.find_bodies(".*thigh")
+        self._hip_ids, _ = self._contact_sensor.find_bodies(".*hip")
+
+        
+        self._feet_ids_robot, _ = self._robot .find_bodies(".*foot")
+        self._hip_ids_robot, _ = self._robot.find_bodies(".*hip")
+
+
+    def _setup_scene(self):
+        self._robot = Articulation(self.cfg.robot)
+        self.scene.articulations["robot"] = self._robot
+        self._contact_sensor = ContactSensor(self.cfg.contact_sensor)
+        self.scene.sensors["contact_sensor"] = self._contact_sensor
+
+        
+        #if isinstance(self.cfg, AliengoRoughVisionEnvCfg) or isinstance(self.cfg, AliengoRoughBlindEnvCfg):
+        # we add a height scanner for perceptive locomotion
+        self._height_scanner = RayCaster(self.cfg.height_scanner)
+        self.scene.sensors["height_scanner"] = self._height_scanner
+
+        # we add an imu
+        self._imu = Imu(self.cfg.imu)
+        self.scene.sensors["imu"] = self._imu
+
+        self.cfg.terrain.num_envs = self.scene.cfg.num_envs
+        self.cfg.terrain.env_spacing = self.scene.cfg.env_spacing
+        self._terrain = self.cfg.terrain.class_type(self.cfg.terrain)
+        # clone, filter, and replicate
+        self.scene.clone_environments(copy_from_source=False)
+        self.scene.filter_collisions(global_prim_paths=[self.cfg.terrain.prim_path])
+        # add lights
+        light_cfg = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
+        light_cfg.func("/World/Light", light_cfg)
+
+
+    def _pre_physics_step(self, actions: torch.Tensor):
+        self._previous_previous_actions = self._previous_actions.clone()
+        self._previous_actions = self._actions.clone()
+        self._actions = actions.clone()
+        
+        # Clip the action
+        self._actions = torch.clamp(self._actions, -self.cfg.desired_clip_actions, self.cfg.desired_clip_actions)
+
+        # Filter the action
+        if(self.cfg.use_filter_actions):
+            alpha = 0.8
+            temp = alpha * self._actions + (1 - alpha) * self._previous_actions
+            self._processed_actions = self.cfg.action_scale * temp + self._robot.data.default_joint_pos
+        else:
+            self._processed_actions = self.cfg.action_scale * self._actions + self._robot.data.default_joint_pos
+
+
+    def _apply_action(self):
+        self._robot.set_joint_position_target(self._processed_actions)
+
+
+
+    def _get_observations(self) -> dict:
+        
+        height_data = None
+        if isinstance(self.cfg, AliengoRoughVisionEnvCfg) or isinstance(self.cfg, Go2RoughVisionEnvCfg):
+            height_data = (
+                self._height_scanner.data.pos_w[:, 2].unsqueeze(1) - self._height_scanner.data.ray_hits_w[..., 2] - 0.5
+            ).clip(-1.0, 1.0)
+        
+        clock_data = None
+        if(self.cfg.use_clock_signal):
+            clock_data = torch.vstack([self._phase_signal[:,0], self._phase_signal[:,1], self._phase_signal[:,2], self._phase_signal[:,3]]).T
+            #clock_data = torch.vstack([torch.sin(self._phase_signal[:,0]*3.1415*2), torch.cos(self._phase_signal[:,0]*3.1415*2)]).T
+
+            # for the first 20 envs, we put -1
+            num_fixed_envs = 100
+            clock_data[:num_fixed_envs, :] = -1.0
+
+            # all the envs that are not moving, we put -1
+            should_move = torch.norm(self._commands[:, :3], dim=1) > 0.01
+            clock_data[:, :] = clock_data[:, :]*should_move.unsqueeze(1).expand(-1, 4) + -1.0* ~should_move.unsqueeze(1).expand(-1, 4)
+            
+
+        #noise_lin_vel = torch.clamp(torch.randn(self.num_envs, 3, device=self.device) * 0.0001, min=-0.1, max=0.1)
+        #noise_ang_vel = torch.clamp(torch.randn(self.num_envs, 3, device=self.device) * 0.0001, min=-0.1, max=0.1)
+        #noise_joints_vel = torch.clamp(torch.randn(self.num_envs, 12, device=self.device) * 0.0001, min=-0.1, max=0.1)
+
+
+        obs = torch.cat(
+            [
+                tensor
+                for tensor in (
+                    self._robot.data.root_lin_vel_b,
+                    self._robot.data.root_ang_vel_b,
+                    self._robot.data.projected_gravity_b,
+                    self._commands,
+                    self._robot.data.joint_pos - self._robot.data.default_joint_pos,
+                    self._robot.data.joint_vel,
+                    height_data,
+                    self._actions,
+                    clock_data,
+                )
+                if tensor is not None
+            ],
+            dim=-1,
+        )
+
+
+        if(self.cfg.use_observation_history):
+            #the bottom element is the newest observation!!
+            self._observation_history = torch.cat((self._observation_history[:,1:,:], obs.unsqueeze(1)), dim=1)
+            obs = torch.flatten(self._observation_history, start_dim=1)
+
+        # If you want to use IMU, comment above and uncomment below
+        """obs = torch.cat(
+            [
+                tensor
+                for tensor in (
+                    self._imu.data.lin_acc_b,
+                    self._imu.data.ang_vel_b,
+                    self._robot.data.projected_gravity_b,
+                    self._commands,
+                    self._robot.data.joint_pos - self._robot.data.default_joint_pos,
+                    self._robot.data.joint_vel,
+                    height_data,
+                    self._actions,
+                    clock_data,
+                )
+                if tensor is not None
+            ],
+            dim=-1,
+        )"""
+
+        observations = {"policy": obs}
+
+
+        # Nan and Inf check
+        """root_lin_vel_b_isnan = torch.isnan(self._robot.data.root_lin_vel_b).sum()
+        root_ang_vel_b_isnan = torch.isnan(self._robot.data.root_ang_vel_b).sum()
+        projected_gravity_b_isnan = torch.isnan(self._robot.data.projected_gravity_b).sum()
+        commands_isnan = torch.isnan(self._commands).sum()
+        joint_pos_isnan = torch.isnan(self._robot.data.joint_pos).sum()
+        joint_vel_isnan = torch.isnan(self._robot.data.joint_vel).sum()
+        #height_data_isnan = torch.isnan(height_data).sum()
+        actions_isnan = torch.isnan(self._actions).sum()
+        #clock_data_isnan = torch.isnan(clock_data).sum()
+        #imu_data_isnan = torch.isnan(imu_data).sum()
+        sum_nan = root_lin_vel_b_isnan + root_ang_vel_b_isnan + projected_gravity_b_isnan \
+                + commands_isnan + joint_pos_isnan + joint_vel_isnan + actions_isnan
+        
+        
+        root_lin_vel_b_isinf = torch.isinf(self._robot.data.root_lin_vel_b).sum()
+        root_ang_vel_b_isinf = torch.isinf(self._robot.data.root_ang_vel_b).sum()
+        projected_gravity_b_isinf = torch.isinf(self._robot.data.projected_gravity_b).sum()
+        commands_isinf = torch.isinf(self._commands).sum()
+        joint_pos_isinf = torch.isinf(self._robot.data.joint_pos).sum()
+        joint_vel_isinf = torch.isinf(self._robot.data.joint_vel).sum()
+        #height_data_isinf = torch.isinf(height_data).sum()
+        actions_isinf = torch.isinf(self._actions).sum()
+        #clock_data_isinf = torch.isinf(clock_data).sum()
+        #imu_data_isinf = torch.isinf(imu_data).sum()
+        sum_inf = root_lin_vel_b_isinf + root_ang_vel_b_isinf + projected_gravity_b_isinf \
+                + commands_isinf + joint_pos_isinf + joint_vel_isinf + actions_isinf
+        
+        if(sum_nan > 0):
+            print("Nan in observation computation")
+            breakpoint()
+
+        if(sum_inf > 0):
+            print("Inf in observation computation")
+            breakpoint()"""
+        
+            
+        
+
+        if(self.cfg.use_asymmetric_ppo):
+            asset_cfg = SceneEntityCfg("robot", joint_names=[".*"])
+            asset: Articulation = self.scene[asset_cfg.name]
+            hip_static_friction = asset.actuators["hip"].friction_static
+            thigh_static_friction = asset.actuators["thigh"].friction_static
+            calf_static_friction = asset.actuators["calf"].friction_static
+            
+            hip_dynamic_friction = asset.actuators["hip"].friction_dynamic
+            thigh_dynamic_friction = asset.actuators["thigh"].friction_dynamic
+            calf_dynamic_friction = asset.actuators["calf"].friction_dynamic
+
+            hip_armature = asset.actuators["hip"].armature
+            thigh_armature = asset.actuators["thigh"].armature
+            calf_armature = asset.actuators["calf"].armature
+
+            hip_stiffness = asset.actuators["hip"].stiffness
+            thigh_stiffness = asset.actuators["thigh"].stiffness
+            calf_stiffness = asset.actuators["calf"].stiffness
+
+            hip_damping = asset.actuators["hip"].damping
+            thigh_damping = asset.actuators["thigh"].damping
+            calf_damping = asset.actuators["calf"].damping
+
+            #asset_cfg_base = SceneEntityCfg("robot", body_names="base")
+            #asset_base = self.scene[asset_cfg_base.name]
+            #masses = asset_base.root_physx_view.get_masses()
+            #inertias = asset_base.root_physx_view.get_inertias()
+
+            obs_critic = torch.cat((obs, 
+                               hip_stiffness, thigh_stiffness, calf_stiffness, #P gain
+                               hip_damping, thigh_damping, calf_damping, #D gain
+                               #masses, inertias,
+                               hip_static_friction, thigh_static_friction, calf_static_friction,  
+                               hip_dynamic_friction, thigh_dynamic_friction, calf_dynamic_friction, 
+                               hip_armature, thigh_armature, calf_armature), dim=-1)
+            observations["critic"] = obs_critic
+
+
+        if(self.cfg.use_amp):
+            obs_amp = torch.cat(
+                [
+                    tensor
+                    for tensor in (
+                        #self._robot.data.root_quat_w,
+                        self._robot.data.joint_pos,
+                        self._robot.data.joint_vel,
+                        self._robot.data.root_lin_vel_b,
+                        self._robot.data.root_ang_vel_b,
+                    )
+                    if tensor is not None
+                ],
+                dim=-1,
+            )
+            #self.extras["observations"] = {"amp": obs_amp}
+            observations["amp"] = obs_amp
+        return observations
+
+
+    def _get_rewards(self) -> torch.Tensor:
+
+        # track_height
+        height_data_scanner = self._height_scanner.data.ray_hits_w[..., 2]
+        height_data_scanner = torch.clip(height_data_scanner, min=-5, max=5) # Handle inf values
+        mean_height_ray = torch.mean(height_data_scanner, dim=1)
+
+        height_error = torch.square(self.cfg.desired_base_height + mean_height_ray - self._robot.data.root_state_w[:, 2])
+        height_error_mapped = torch.exp(-height_error / 0.01)
+
+
+        # linear velocity tracking
+        lin_vel_error = torch.sum(torch.square(self._commands[:, :2] - self._robot.data.root_lin_vel_b[:, :2]), dim=1)
+        lin_vel_error_mapped = torch.exp(-lin_vel_error / 0.25)
+        
+
+        # z velocity tracking
+        z_vel_error = torch.square(self._robot.data.root_lin_vel_b[:, 2])
+
+
+        # flat orientation
+        #base_orientation = torch.sum(torch.square(self._robot.data.projected_gravity_b[:, :2]), dim=1)
+
+
+        # terrain orientation
+        #selected_height_data_back = torch.cat([height_data_scanner[:, i:i+5] for i in range(0, height_data_scanner.shape[1], 10)], dim=1)
+        #selected_height_data_front = torch.cat([height_data_scanner[:, i:i+5] for i in range(5, height_data_scanner.shape[1], 10)], dim=1)
+        cols_back = torch.arange(0, height_data_scanner.shape[1], 10).unsqueeze(1) + torch.arange(5)
+        cols_back = cols_back.flatten().to(height_data_scanner.device)
+        selected_height_data_back = height_data_scanner[:, cols_back]
+
+        cols_front = torch.arange(5, height_data_scanner.shape[1], 10).unsqueeze(1) + torch.arange(5)
+        cols_front = cols_front.flatten().to(height_data_scanner.device)
+        selected_height_data_front = height_data_scanner[:, cols_front]
+
+        mean_height_ray_front = torch.mean(selected_height_data_front, dim=1)
+        mean_height_ray_back = torch.mean(selected_height_data_back, dim=1)
+        delta_z = mean_height_ray_front - mean_height_ray_back
+        delta_s = 0.4 - (-0.4)
+        terrain_pitch = -torch.atan(delta_z / delta_s)
+        terrain_pitch = torch.atan2(torch.sin(terrain_pitch), torch.cos(terrain_pitch))
+        
+        root_roll_w, root_pitch_w, _ = math_utils.euler_xyz_from_quat(self._robot.data.root_quat_w)
+        root_roll_w = torch.atan2(torch.sin(root_roll_w), torch.cos(root_roll_w))
+        root_pitch_w = torch.atan2(torch.sin(root_pitch_w), torch.cos(root_pitch_w))
+
+        #print("terrain_pitch", terrain_pitch)
+        #print("root_pitch_w", root_pitch_w)
+       
+        base_orientation =  torch.square(terrain_pitch - root_pitch_w)# + torch.square(0 - root_roll_w)
+        #base_orientation = -torch.exp(-(torch.square(terrain_pitch - root_pitch_w) + torch.square(0 - root_roll_w)) / 0.01) / 5.
+
+        # proprio terrain orientation
+        first_contact = self._contact_sensor.compute_first_contact(self.step_dt)[:, self._feet_ids]
+        base_orientation_proprio_FL = torch.square(self.cfg.desired_base_height - (self._robot.data.body_pos_w[:, self._hip_ids_robot, :3][:,0,2] - self._robot.data.body_pos_w[:, self._feet_ids_robot, :3][:,0,2])) * first_contact[:,0] #contact_periodic_on[:,0]
+        base_orientation_proprio_FR = torch.square(self.cfg.desired_base_height - (self._robot.data.body_pos_w[:, self._hip_ids_robot, :3][:,1,2] - self._robot.data.body_pos_w[:, self._feet_ids_robot, :3][:,1,2])) * first_contact[:,1] #contact_periodic_on[:,1]
+        base_orientation_proprio_RL = torch.square(self.cfg.desired_base_height - (self._robot.data.body_pos_w[:, self._hip_ids_robot, :3][:,2,2] - self._robot.data.body_pos_w[:, self._feet_ids_robot, :3][:,2,2])) * first_contact[:,2] #contact_periodic_on[:,2]
+        base_orientation_proprio_RR = torch.square(self.cfg.desired_base_height - (self._robot.data.body_pos_w[:, self._hip_ids_robot, :3][:,3,2] - self._robot.data.body_pos_w[:, self._feet_ids_robot, :3][:,3,2])) * first_contact[:,3] #contact_periodic_on[:,3]
+        #base_orientation = base_orientation_proprio_FL + base_orientation_proprio_FR + base_orientation_proprio_RL + base_orientation_proprio_RR 
+
+
+        # angular velocity x/y tracking
+        ang_vel_error = torch.sum(torch.square(self._robot.data.root_ang_vel_b[:, :2]), dim=1)
+
+
+        # yaw rate tracking
+        yaw_rate_error = torch.square(self._commands[:, 2] - self._robot.data.root_ang_vel_b[:, 2])
+        yaw_rate_error_mapped = torch.exp(-yaw_rate_error / 0.25)
+        
+        
+        # action rate
+        action_rate = torch.sum(torch.square(self._actions - self._previous_actions), dim=1)
+        action_smoothness = torch.sum(torch.square(self._actions - 2*self._previous_actions + self._previous_previous_actions), dim=1)
+        
+        
+        # undersired contacts
+        net_contact_forces = self._contact_sensor.data.net_forces_w_history
+        is_contact = (
+            torch.max(torch.norm(net_contact_forces[:, :, self._undesired_contact_body_ids], dim=-1), dim=1)[0] > 1.0
+        )
+        contacts = torch.sum(is_contact, dim=1)
+        
+
+        # joint acceleration
+        joints_accel = torch.sum(torch.square(self._robot.data.joint_acc), dim=1)
+
+
+        # joint torques
+        joints_torques = torch.sum(torch.square(self._robot.data.applied_torque), dim=1)
+
+
+        # energy = torque * velocity
+        joints_energy = torch.sum(torch.abs(self._robot.data.applied_torque * self._robot.data.joint_vel), dim=1)
+
+        
+        # hip position
+        hip_joints_position = self._robot.data.joint_pos[:,0:4]
+        hip_joints_position_error = torch.square(hip_joints_position - self._robot.data.default_joint_pos[:,0:4])
+        hip_joints_position_reward = torch.sum(hip_joints_position_error,dim=1)
+
+
+        # thigh position
+        thigh_joints_position = self._robot.data.joint_pos[:,4:8]
+        thigh_joints_position_error = torch.square(thigh_joints_position - self._robot.data.default_joint_pos[:,4:8])
+        thigh_joints_position_reward = torch.sum(thigh_joints_position_error,dim=1)
+
+
+        # calf position
+        calf_joints_position = self._robot.data.joint_pos[:,8:12]
+        calf_joints_position_error = torch.square(calf_joints_position - self._robot.data.default_joint_pos[:,8:12])
+        calf_joints_position_reward = torch.sum(calf_joints_position_error,dim=1)
+
+
+        # feet airtime
+        first_contact = self._contact_sensor.compute_first_contact(self.step_dt)[:, self._feet_ids]
+        last_air_time = self._contact_sensor.data.last_air_time[:, self._feet_ids]
+        feet_air_time = torch.sum((last_air_time - 0.5) * first_contact, dim=1) * (
+            torch.norm(self._commands[:, :2], dim=1) > 0.1
+        )
+
+
+        # feet slide
+        contacts_foot = self._contact_sensor.data.net_forces_w_history[:, :, self._feet_ids, :].norm(dim=-1).max(dim=1)[0] > 1.0
+        body_vel = self._robot.data.body_lin_vel_w[:, self._feet_ids_robot, :2]
+        feet_slide = torch.sum(body_vel.norm(dim=-1) * contacts_foot, dim=1)
+        feet_slide = torch.exp(-feet_slide / 0.1)
+
+
+        # feet periodical contacts suggestion
+        should_move = torch.norm(self._commands[:, :3], dim=1) > 0.01
+        #offset_step_freq = torch.norm(self._commands[:, :2], dim=1) + 1
+        #offset_step_freq_cap = torch.clamp(offset_step_freq, 1, 1.2)
+        self._phase_signal += self.step_dt * self._step_freq #* offset_step_freq_cap.unsqueeze(1).expand(-1, 4)
+        self._phase_signal = self._phase_signal % 1.0
+        contact_periodic_on = self._phase_signal < self._duty_factor
+        feet_contact_suggestion = (torch.sum(contact_periodic_on*contacts_foot, dim=1) + \
+                                   torch.sum(~contact_periodic_on*~contacts_foot, dim=1))*should_move/4.0
+        feet_contact_suggestion += (torch.sum(contacts_foot, dim=1)*~should_move/4.0)
+        
+
+        
+        # feet height clearance
+        #feet_z_target_error = torch.square(self.cfg.desired_feet_height + mean_height_ray.unsqueeze(1).expand(-1, 4) - self._robot.data.body_pos_w[:, self._feet_ids_robot, 2])        
+        feet_z_target_error = self.cfg.desired_feet_height + torch.cat((mean_height_ray_front.unsqueeze(1).expand(-1, 2), mean_height_ray_back.unsqueeze(1).expand(-1, 2)), dim=1) - self._robot.data.body_pos_w[:, self._feet_ids_robot, 2]
+        #feet_z_target_error = self.cfg.desired_feet_height + mean_height_ray.unsqueeze(1).expand(-1, 4) - self._robot.data.body_pos_w[:, self._feet_ids_robot, 2]
+        #feet_z_target_error = torch.square(torch.clamp(feet_z_target_error, min=.0, max=self.cfg.desired_feet_height))
+        feet_z_target_error = torch.clamp(feet_z_target_error, min=.0, max=self.cfg.desired_feet_height)
+        #feet_z_target_error = torch.clamp(feet_z_target_error*torch.sign(feet_z_target_error), min=.0, max=self.cfg.desired_feet_height)
+        
+        
+        #foot_velocity_tanh = torch.tanh(2.0 * torch.norm(self._robot.data.body_lin_vel_w[:, self._feet_ids_robot, :2], dim=2))
+        #feet_height_clearance = torch.exp(-torch.sum(feet_z_target_error * foot_velocity_tanh, dim=1)/ 0.01) * should_move
+        #not_contacts_foot = self._contact_sensor.data.net_forces_w_history[:, :, self._feet_ids_robot, :].norm(dim=-1).max(dim=1)[0] < 1.0
+        #feet_height_clearance = torch.exp(-torch.sum(feet_z_target_error * ~contacts_foot, dim=1) / 0.01) * should_move
+        #feet_height_clearance = torch.exp(-torch.sum(feet_z_target_error * ~contact_periodic_on, dim=1) / 0.01) * should_move
+
+        #feet_height_clearance_FL = torch.exp(-feet_z_target_error[:,0]/ 0.01) * should_move * ~contacts_foot[:,0]
+        #feet_height_clearance_FR = torch.exp(-feet_z_target_error[:,1]/ 0.01) * should_move * ~contacts_foot[:,1]
+        #feet_height_clearance_RL = torch.exp(-feet_z_target_error[:,2]/ 0.01) * should_move * ~contacts_foot[:,2]
+        #feet_height_clearance_RR = torch.exp(-feet_z_target_error[:,3]/ 0.01) * should_move * ~contacts_foot[:,3]
+
+        feet_height_clearance_FL = torch.exp(-feet_z_target_error[:,0]/ 0.01) * should_move * ~contact_periodic_on[:,0]
+        feet_height_clearance_FR = torch.exp(-feet_z_target_error[:,1]/ 0.01) * should_move * ~contact_periodic_on[:,1]
+        feet_height_clearance_RL = torch.exp(-feet_z_target_error[:,2]/ 0.01) * should_move * ~contact_periodic_on[:,2]
+        feet_height_clearance_RR = torch.exp(-feet_z_target_error[:,3]/ 0.01) * should_move * ~contact_periodic_on[:,3]
+        feet_height_clearance = feet_height_clearance_FL + feet_height_clearance_FR + feet_height_clearance_RL + feet_height_clearance_RR
+
+
+        # feet height clearance mujoco
+        first_contact = self._contact_sensor.compute_first_contact(self.step_dt)[:, self._feet_ids]
+        net_contact_forces = self._contact_sensor.data.net_forces_w_history
+        is_contact = (
+            torch.max(torch.norm(net_contact_forces[:, :, self._undesired_contact_body_ids], dim=-1), dim=1)[0] > 1.0
+        )
+        self._swing_peak = torch.max(self._swing_peak, self._robot.data.body_pos_w[:, self._feet_ids_robot, 2].clone()) 
+        target_height = self.cfg.desired_feet_height + mean_height_ray.unsqueeze(1).expand(-1, 4)
+        feet_height_clearance_mujoco = torch.sum(torch.square(self._swing_peak / target_height - 1.0) *  first_contact, dim=-1)
+        self._swing_peak *= ~is_contact # reset if the foot is in contact
+
+
+        # feet to com distance
+        feet_to_base_distance_x = torch.square(torch.mean(self._robot.data.body_pos_w[:, self._feet_ids_robot, 0], dim=1) - self._robot.data.root_state_w[:, 0])
+        feet_to_base_distance_y = torch.square(torch.mean(self._robot.data.body_pos_w[:, self._feet_ids_robot, 1], dim=1) - self._robot.data.root_state_w[:, 1])
+        feet_to_base_distance = -torch.sqrt(feet_to_base_distance_x + feet_to_base_distance_y)
+        #feet_to_base_distance = -(feet_to_base_distance_x + feet_to_base_distance_y)
+        #feet_to_base_distance = torch.exp(-(feet_to_base_distance_x + feet_to_base_distance_y) / 0.05)
+
+
+        # feet to hip distance
+        ROT_W2H = math_utils.matrix_from_quat(math_utils.yaw_quat(self._robot.data.root_quat_w))
+        feet_to_base_w = self._robot.data.body_pos_w[:, self._feet_ids_robot, :3] - self._robot.data.root_state_w[:, :3].unsqueeze(1)
+        feet_to_base_h = torch.matmul(ROT_W2H.transpose(1,2), feet_to_base_w.transpose(1, 2))
+        
+        hip_to_base_w = self._robot.data.body_pos_w[:, self._hip_ids_robot, :3] - self._robot.data.root_state_w[:, :3].unsqueeze(1)
+        hip_to_base_h = torch.matmul(ROT_W2H.transpose(1,2), hip_to_base_w.transpose(1, 2))
+        
+        hip_offset = torch.tensor([-0.1, +0.1, -0.1, +0.1], device=self.device)
+        feet_to_hip_distance_x = torch.square(feet_to_base_h[:, 0] - hip_to_base_h[:, 0])
+        feet_to_hip_distance_y = torch.square(feet_to_base_h[:, 1] + hip_offset.unsqueeze(0) - hip_to_base_h[:, 1])
+        feet_to_hip_distance = -torch.mean(torch.sqrt(feet_to_hip_distance_x + feet_to_hip_distance_y), dim=1)
+
+
+        # Penalize feet hitting vertical surfaces  
+        forces_z = torch.abs(self._contact_sensor.data.net_forces_w[:, self._feet_ids, 2])
+        forces_xy = torch.linalg.norm(self._contact_sensor.data.net_forces_w[:, self._feet_ids, :2], dim=2)
+        feet_vertical_surface_contacts = torch.any(forces_xy > 4 * forces_z, dim=1).float()
+        #feet_vertical_surface_contacts *= torch.clamp(-self._robot.data.projected_gravity_b[:, 2], 0, 0.7) / 0.7
+
+        # Nan and Inf check
+        """total_nans_track_height_exp = torch.isnan(height_error_mapped * self.cfg.height_reward_scale * self.step_dt).sum()
+        total_nans_track_lin_vel_xy_exp = torch.isnan(lin_vel_error_mapped * self.cfg.lin_vel_reward_scale * self.step_dt).sum()
+        total_nans_track_lin_vel_z_l2 = torch.isnan(z_vel_error * self.cfg.z_vel_reward_scale * self.step_dt).sum()
+        total_nans_track_orientation_l2 = torch.isnan(flat_orientation * self.cfg.orientation_reward_scale * self.step_dt).sum()
+        total_nans_track_ang_vel_xy_l2 = torch.isnan(ang_vel_error * self.cfg.ang_vel_reward_scale * self.step_dt).sum()
+        total_nans_track_ang_vel_z_exp = torch.isnan(yaw_rate_error_mapped * self.cfg.yaw_rate_reward_scale * self.step_dt).sum()
+        total_nans_undesired_contacts = torch.isnan(contacts * self.cfg.undersired_contact_reward_scale * self.step_dt).sum()
+        total_nans_action_rate_l2 = torch.isnan(action_rate * self.cfg.action_rate_reward_scale * self.step_dt).sum()
+        total_nans_joints_hip_pos_l2 = torch.isnan(hip_joints_position_reward * self.cfg.joints_hip_position_reward_scale * self.step_dt).sum()
+        total_nans_joints_thigh_pos_l2 = torch.isnan(thigh_joints_position_reward * self.cfg.joints_thigh_position_reward_scale * self.step_dt).sum()
+        total_nans_joints_calf_pos_l2 = torch.isnan(calf_joints_position_reward * self.cfg.joints_calf_position_reward_scale * self.step_dt).sum()
+        total_nans_joints_acc_l2 = torch.isnan(joints_accel * self.cfg.joints_accel_reward_scale * self.step_dt).sum()
+        total_nans_joints_torques_l2 = torch.isnan(joints_torques * self.cfg.joints_torque_reward_scale * self.step_dt).sum()
+        total_nans_joints_energy_l1 = torch.isnan(joints_energy * self.cfg.joints_energy_reward_scale * self.step_dt).sum()
+        total_nans_feet_air_time = torch.isnan(feet_air_time * self.cfg.feet_air_time_reward_scale * self.step_dt).sum()
+        total_nans_feet_height_clearance = torch.isnan(feet_height_clearance * self.cfg.feet_height_clearance_reward_scale * self.step_dt).sum()
+        total_nans_feet_slide = torch.isnan(feet_slide * self.cfg.feet_slide_reward_scale * self.step_dt).sum()
+        total_nans_feet_contact_suggestion = torch.isnan(feet_contact_suggestion * self.cfg.feet_contact_suggestion_reward_scale * self.step_dt).sum()
+        total_nans_feet_to_base_distance_l2 = torch.isnan(feet_to_base_distance * self.cfg.feet_to_base_distance_reward_scale * self.step_dt).sum()
+        #total_nans_feet_vertical_surface_contacts = torch.isnan(feet_vertical_surface_contacts * self.cfg.feet_vertical_surface_contacts_reward_scale * self.step_dt).sum()
+        total_nan = total_nans_track_height_exp + total_nans_track_lin_vel_xy_exp + total_nans_track_lin_vel_z_l2 + total_nans_track_orientation_l2 + \
+                total_nans_track_ang_vel_xy_l2 + total_nans_track_ang_vel_z_exp + total_nans_undesired_contacts + total_nans_action_rate_l2 + total_nans_joints_hip_pos_l2 + \
+                total_nans_joints_thigh_pos_l2 + total_nans_joints_calf_pos_l2 +nans total_nans_joints_acc_l2 + total_nans_joints_torques_l2 + total_nans_joints_energy_l1 + \
+                total_nans_feet_air_time + total_nans_feet_height_clearance + total_nans_feet_slide + total_nans_feet_contact_suggestion + total_nans_feet_to_base_distance_l2# + \
+                #total_nans_feet_vertical_surface_contacts
+        
+        total_infs_track_height_exp = torch.isinf(height_error_mapped * self.cfg.height_reward_scale * self.step_dt).sum()
+        total_infs_track_lin_vel_xy_exp = torch.isinf(lin_vel_error_mapped * self.cfg.lin_vel_reward_scale * self.step_dt).sum()
+        total_infs_track_lin_vel_z_l2 = torch.isinf(z_vel_error * self.cfg.z_vel_reward_scale * self.step_dt).sum()
+        total_infs_track_orientation_l2 = torch.isinf(flat_orientation * self.cfg.orientation_reward_scale * self.step_dt).sum()
+        total_infs_track_ang_vel_xy_l2 = torch.isinf(ang_vel_error * self.cfg.ang_vel_reward_scale * self.step_dt).sum()
+        total_infs_track_ang_vel_z_exp = torch.isinf(yaw_rate_error_mapped * self.cfg.yaw_rate_reward_scale * self.step_dt).sum()
+        total_infs_undesired_contacts = torch.isinf(contacts * self.cfg.undersired_contact_reward_scale * self.step_dt).sum()
+        total_infs_action_rate_l2 = torch.isinf(action_rate * self.cfg.action_rate_reward_scale * self.step_dt).sum()
+        total_infs_joints_hip_pos_l2 = torch.isinf(hip_joints_position_reward * self.cfg.joints_hip_position_reward_scale * self.step_dt).sum()
+        total_infs_joints_thigh_pos_l2 = torch.isinf(thigh_joints_position_reward * self.cfg.joints_thigh_position_reward_scale * self.step_dt).sum()
+        total_infs_joints_calf_pos_l2 = torch.isinf(calf_joints_position_reward * self.cfg.joints_calf_position_reward_scale * self.step_dt).sum()
+        total_infs_joints_acc_l2 = torch.isinf(joints_accel * self.cfg.joints_accel_reward_scale * self.step_dt).sum()
+        total_infs_joints_torques_l2 = torch.isinf(joints_torques * self.cfg.joints_torque_reward_scale * self.step_dt).sum()
+        total_infs_joints_energy_l1 = torch.isinf(joints_energy * self.cfg.joints_energy_reward_scale * self.step_dt).sum()
+        total_infs_feet_air_time = torch.isinf(feet_air_time * self.cfg.feet_air_time_reward_scale * self.step_dt).sum()
+        total_infs_feet_height_clearance = torch.isinf(feet_height_clearance * self.cfg.feet_height_clearance_reward_scale * self.step_dt).sum()
+        total_infs_feet_slide = torch.isinf(feet_slide * self.cfg.feet_slide_reward_scale * self.step_dt).sum()
+        total_infs_feet_contact_suggestion = torch.isinf(feet_contact_suggestion * self.cfg.feet_contact_suggestion_reward_scale * self.step_dt).sum()
+        total_infs_feet_to_base_distance_l2 = torch.isinf(feet_to_base_distance * self.cfg.feet_to_base_distance_reward_scale * self.step_dt).sum()
+        #total_infs_feet_vertical_surface_contacts = torch.isinf(feet_vertical_surface_contacts * self.cfg.feet_vertical_surface_contacts_reward_scale * self.step_dt).sum()
+        total_inf = total_infs_track_height_exp + total_infs_track_lin_vel_xy_exp + total_infs_track_lin_vel_z_l2 + total_infs_track_orientation_l2 + \
+                total_infs_track_ang_vel_xy_l2 + total_infs_track_ang_vel_z_exp + total_infs_undesired_contacts + total_infs_action_rate_l2 + total_infs_joints_hip_pos_l2 + \
+                total_infs_joints_thigh_pos_l2 + total_infs_joints_calf_pos_l2 + total_infs_joints_acc_l2 + total_infs_joints_torques_l2 + total_infs_joints_energy_l1 + \
+                total_infs_feet_air_time + total_infs_feet_height_clearance + total_infs_feet_slide + total_infs_feet_contact_suggestion + total_infs_feet_to_base_distance_l2# + \
+                #total_infs_feet_vertical_surface_contacts
+        
+        if total_nan > 0:
+            print("Nans in reward computation")
+            breakpoint()
+
+        
+        if total_inf > 0:
+            print("Infs in reward computation")
+            breakpoint()"""
+
+        rewards = {
+            "track_height_exp": height_error_mapped * self.cfg.height_reward_scale * self.step_dt,
+            "track_lin_vel_xy_exp": lin_vel_error_mapped * self.cfg.lin_vel_reward_scale * self.step_dt,
+            "track_lin_vel_z_l2": z_vel_error * self.cfg.z_vel_reward_scale * self.step_dt,
+            "track_orientation_l2": base_orientation * self.cfg.orientation_reward_scale * self.step_dt,
+            "track_ang_vel_xy_l2": ang_vel_error * self.cfg.ang_vel_reward_scale * self.step_dt,
+            "track_ang_vel_z_exp": yaw_rate_error_mapped * self.cfg.yaw_rate_reward_scale * self.step_dt,
+
+            "undesired_contacts": contacts * self.cfg.undersired_contact_reward_scale * self.step_dt,
+            "action_rate_l2": action_rate * self.cfg.action_rate_reward_scale * self.step_dt,
+            "action_smoothness_l2": action_smoothness * self.cfg.action_smoothness_reward_scale * self.step_dt,
+
+            "joints_hip_pos_l2": hip_joints_position_reward * self.cfg.joints_hip_position_reward_scale * self.step_dt,
+            "joints_thigh_pos_l2": thigh_joints_position_reward * self.cfg.joints_thigh_position_reward_scale * self.step_dt,
+            "joints_calf_pos_l2": calf_joints_position_reward * self.cfg.joints_calf_position_reward_scale * self.step_dt,
+            "joints_acc_l2": joints_accel * self.cfg.joints_accel_reward_scale * self.step_dt,
+            "joints_torques_l2": joints_torques * self.cfg.joints_torque_reward_scale * self.step_dt,
+            "joints_energy_l1": joints_energy * self.cfg.joints_energy_reward_scale * self.step_dt,
+
+            "feet_air_time": feet_air_time * self.cfg.feet_air_time_reward_scale * self.step_dt,
+            "feet_height_clearance": feet_height_clearance * self.cfg.feet_height_clearance_reward_scale * self.step_dt,
+            #"feet_height_clearance_mujoco": feet_height_clearance_mujoco * self.cfg.feet_height_clearance_mujoco_reward_scale * self.step_dt,
+            "feet_slide": feet_slide * self.cfg.feet_slide_reward_scale * self.step_dt,
+            "feet_contact_suggestion": feet_contact_suggestion * self.cfg.feet_contact_suggestion_reward_scale * self.step_dt,
+            "feet_to_base_distance_l2": feet_to_base_distance * self.cfg.feet_to_base_distance_reward_scale * self.step_dt,
+            "feet_to_hip_distance_l2": feet_to_hip_distance * self.cfg.feet_to_hip_distance_reward_scale * self.step_dt,
+            "feet_vertical_surface_contacts": feet_vertical_surface_contacts * self.cfg.feet_vertical_surface_contacts_reward_scale * self.step_dt,
+        }
+        reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
+        
+        # Logging
+        for key, value in rewards.items():
+            self._episode_sums[key] += value
+        return reward
+
+
+    def _get_dones(self) -> tuple[torch.Tensor, torch.Tensor]:
+        time_out = self.episode_length_buf >= self.max_episode_length - 1
+        net_contact_forces = self._contact_sensor.data.net_forces_w_history
+        died = torch.any(torch.max(torch.norm(net_contact_forces[:, :, self._base_id], dim=-1), dim=1)[0] > 1.0, dim=1)
+        return died, time_out
+
+
+    def _reset_idx(self, env_ids: torch.Tensor | None):
+        if env_ids is None or len(env_ids) == self.num_envs:
+            env_ids = self._robot._ALL_INDICES
+
+        if(self._terrain.cfg.terrain_generator is not None and self._terrain.cfg.terrain_generator.curriculum == True):
+            # Curriculum based on the distance the robot walked
+            distance = torch.norm(self._robot.data.root_state_w[env_ids, :2] - self._terrain.env_origins[env_ids, :2], dim=1)
+            # robots that walked far enough progress to harder terrains
+            move_up = distance > self._terrain.cfg.terrain_generator.size[0] / 2
+            # robots that walked less than half of their required distance go to simpler terrains
+            move_down = distance < torch.norm(self._commands[env_ids, :2], dim=1) * self.max_episode_length_s * 0.5
+            move_down *= ~move_up
+            # update terrain levels
+            self._terrain.update_env_origins(env_ids, move_up, move_down)
+
+        self._robot.reset(env_ids)
+        super()._reset_idx(env_ids)
+        if len(env_ids) == self.num_envs: 
+            # Spread out the resets to avoid spikes in training when many environments reset at a similar time
+            self.episode_length_buf[:] = torch.randint_like(self.episode_length_buf, high=int(self.max_episode_length))
+        self._actions[env_ids] = 0.0
+        self._previous_actions[env_ids] = 0.0
+        self._previous_previous_actions[env_ids] = 0.0
+        
+        # Sample new commands
+        self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-1.0, 1.0)
+        self._commands[env_ids, 0] *= 0.5 
+        self._commands[env_ids, 1] *= 0.25 
+        self._commands[env_ids, 2] *= 0.3 
+
+        # Took some envs, and put to zero the vel
+        if self.num_envs > 100:
+            num_fixed_envs = 100
+            fixed_env_ids = torch.arange(num_fixed_envs, device=self.device)
+            self._commands[fixed_env_ids, 0] = 0.0
+            self._commands[fixed_env_ids, 1] = 0.0
+            self._commands[fixed_env_ids, 2] = 0.0
+
+        # Reset swing peak
+        self._swing_peak[env_ids] = torch.tensor([0.0, 0.0, 0.0, 0.0], device=self.device)
+        
+        # Reset contact periodic
+        self._phase_signal[env_ids] = torch.tensor([0.5, 1.0, 1.0, 0.5], device=self.device)
+
+        # Reset proprio terrain estimator
+        self._proprio_terrain_estimator[env_ids] = torch.tensor([0.0, 0.0], device=self.device)
+
+        # Reset robot state
+        joint_pos = self._robot.data.default_joint_pos[env_ids]
+        joint_vel = self._robot.data.default_joint_vel[env_ids]
+        default_root_state = self._robot.data.default_root_state[env_ids]
+        default_root_state[:, :3] += self._terrain.env_origins[env_ids]
+        default_root_state[:, 3:7] = math_utils.random_yaw_orientation(env_ids.shape[0], device=self.device)
+        self._robot.write_root_pose_to_sim(default_root_state[:, :7], env_ids)
+        self._robot.write_root_velocity_to_sim(default_root_state[:, 7:], env_ids)
+        self._robot.write_joint_state_to_sim(joint_pos, joint_vel, None, env_ids)
+        
+        # Logging
+        extras = dict()
+        for key in self._episode_sums.keys():
+            episodic_sum_avg = torch.mean(self._episode_sums[key][env_ids])
+            extras["Episode_Reward/" + key] = episodic_sum_avg / self.max_episode_length_s
+            self._episode_sums[key][env_ids] = 0.0
+        self.extras["log"] = dict()
+        self.extras["log"].update(extras)
+        extras = dict()
+        extras["Episode_Termination/base_contact"] = torch.count_nonzero(self.reset_terminated[env_ids]).item()
+        extras["Episode_Termination/time_out"] = torch.count_nonzero(self.reset_time_outs[env_ids]).item()
+        
+        if(self._terrain.cfg.terrain_generator is not None and self._terrain.cfg.terrain_generator.curriculum == True):
+            extras["Episode_Curriculum/terrain_levels"] = torch.mean(self._terrain.terrain_levels.float())
+        
+        self.extras["log"].update(extras)
+        #self.extras["observations"] = dict()
+        #self.extras["observations"]["amp"] = torch.zeros_like(self._robot.data.joint_pos[env_ids])
