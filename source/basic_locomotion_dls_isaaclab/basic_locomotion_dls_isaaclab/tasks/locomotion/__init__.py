@@ -14,15 +14,15 @@ from . import agents
 ##
 # Register Gym environments.
 ##
-from .locomotion_env import LocomotionEnv
+from .quadruped_locomotion_env import QuadrupedLocomotionEnv
 
 
 # Aliengo environments
-from .locomotion_env import AliengoFlatEnvCfg, AliengoRoughVisionEnvCfg, AliengoRoughBlindEnvCfg
+from .quadruped_locomotion_env import AliengoFlatEnvCfg, AliengoRoughVisionEnvCfg, AliengoRoughBlindEnvCfg
 
 gym.register(
     id="Locomotion-Aliengo-Flat",
-    entry_point="basic_locomotion_dls_isaaclab.tasks.locomotion:LocomotionEnv",
+    entry_point=QuadrupedLocomotionEnv,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": AliengoFlatEnvCfg,
@@ -32,7 +32,7 @@ gym.register(
 
 gym.register(
     id="Locomotion-Aliengo-Rough-Blind",
-    entry_point="basic_locomotion_dls_isaaclab.tasks.locomotion:LocomotionEnv",
+    entry_point=QuadrupedLocomotionEnv,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": AliengoRoughBlindEnvCfg,
@@ -42,7 +42,7 @@ gym.register(
 
 gym.register(
     id="Locomotion-Aliengo-Rough-Vision",
-    entry_point="basic_locomotion_dls_isaaclab.tasks.locomotion:LocomotionEnv",
+    entry_point=QuadrupedLocomotionEnv,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": AliengoRoughVisionEnvCfg,
@@ -51,11 +51,11 @@ gym.register(
 )
 
 # Go2 environments
-from .locomotion_env import Go2FlatEnvCfg, Go2RoughVisionEnvCfg, Go2RoughBlindEnvCfg
+from .quadruped_locomotion_env import Go2FlatEnvCfg, Go2RoughVisionEnvCfg, Go2RoughBlindEnvCfg
 
 gym.register(
     id="Locomotion-Go2-Flat",
-    entry_point="basic_locomotion_dls_isaaclab.tasks.locomotion:LocomotionEnv",
+    entry_point=QuadrupedLocomotionEnv,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": Go2FlatEnvCfg,
@@ -65,7 +65,7 @@ gym.register(
 
 gym.register(
     id="Locomotion-Go2-Rough-Blind",
-    entry_point="basic_locomotion_dls_isaaclab.tasks.locomotion:LocomotionEnv",
+    entry_point=QuadrupedLocomotionEnv,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": Go2RoughBlindEnvCfg,
@@ -75,7 +75,7 @@ gym.register(
 
 gym.register(
     id="Locomotion-Go2-Rough-Vision",
-    entry_point="basic_locomotion_dls_isaaclab.tasks.locomotion:LocomotionEnv",
+    entry_point=QuadrupedLocomotionEnv,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": Go2RoughVisionEnvCfg,
@@ -84,11 +84,11 @@ gym.register(
 )
 
 # HyQReal environments
-from .locomotion_env import HyQRealFlatEnvCfg, HyQRealRoughVisionEnvCfg, HyQRealRoughBlindEnvCfg
+from .quadruped_locomotion_env import HyQRealFlatEnvCfg, HyQRealRoughVisionEnvCfg, HyQRealRoughBlindEnvCfg
 
 gym.register(
     id="Locomotion-HyQReal-Flat",
-    entry_point="basic_locomotion_dls_isaaclab.tasks.locomotion:LocomotionEnv",
+    entry_point=QuadrupedLocomotionEnv,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": HyQRealFlatEnvCfg,
@@ -98,7 +98,7 @@ gym.register(
 
 gym.register(
     id="Locomotion-HyQReal-Rough-Blind",
-    entry_point="basic_locomotion_dls_isaaclab.tasks.locomotion:LocomotionEnv",
+    entry_point=QuadrupedLocomotionEnv,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": HyQRealRoughBlindEnvCfg,
@@ -108,7 +108,7 @@ gym.register(
 
 gym.register(
     id="Locomotion-HyQReal-Rough-Vision",
-    entry_point="basic_locomotion_dls_isaaclab.tasks.locomotion:LocomotionEnv",
+    entry_point=QuadrupedLocomotionEnv,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": HyQRealRoughVisionEnvCfg,
@@ -119,11 +119,11 @@ gym.register(
 
 
 # Aliengo AMP environments
-from .locomotion_env import AliengoAMPFlatEnvCfg, AliengoAMPRoughVisionEnvCfg, AliengoAMPRoughBlindEnvCfg
+from .quadruped_locomotion_env import AliengoAMPFlatEnvCfg, AliengoAMPRoughVisionEnvCfg, AliengoAMPRoughBlindEnvCfg
 
 gym.register(
     id="Locomotion-Aliengo-AMP-Flat",
-    entry_point="basic_locomotion_dls_isaaclab.tasks.locomotion:LocomotionEnv",
+    entry_point=QuadrupedLocomotionEnv,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": AliengoAMPFlatEnvCfg,
@@ -133,7 +133,7 @@ gym.register(
 
 gym.register(
     id="Locomotion-Aliengo-AMP-Rough-Blind",
-    entry_point="basic_locomotion_dls_isaaclab.tasks.locomotion:LocomotionEnv",
+    entry_point=QuadrupedLocomotionEnv,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": AliengoAMPRoughBlindEnvCfg,
@@ -143,7 +143,7 @@ gym.register(
 
 gym.register(
     id="Locomotion-Aliengo-AMP-Rough-Vision",
-    entry_point="basic_locomotion_dls_isaaclab.tasks.locomotion:LocomotionEnv",
+    entry_point=QuadrupedLocomotionEnv,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": AliengoAMPRoughVisionEnvCfg,
