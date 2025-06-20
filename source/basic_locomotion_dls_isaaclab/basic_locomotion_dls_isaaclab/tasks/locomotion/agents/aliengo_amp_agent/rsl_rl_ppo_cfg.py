@@ -10,23 +10,18 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 from pathlib import Path
 from dataclasses import MISSING
 
-
 @configclass
-class MorphologycalSymmetriesCfg:
+class DiscriminatorCfg:
     """Configuration for the discriminator network."""
 
-    class_name: str = "MorphologycalSymmetries"
+    class_name: str = "Discriminator"
     """The discriminator class name. Default is Discriminator."""
 
-    obs_space_names =  None
+    hidden_dims: list[int] = MISSING
+    """The hidden dimensions of the discriminator network."""
 
-    action_space_names = None
-
-    joints_order = None
-
-    history_length = None
-
-    robot_name = None
+    reward_scale: float = MISSING
+    """The reward coefficient."""
 
 
 @configclass
@@ -37,14 +32,14 @@ class AliengoFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     experiment_name = "aliengo_flat_direct"
     empirical_normalization = False
     policy = RslRlPpoActorCriticCfg(
-        class_name="ActorCritic", #ActorCritic, ActorCriticRecurrent, ActorCriticSymmEquivariantNN
+        class_name="ActorCritic",
         init_noise_std=1.0,
         actor_hidden_dims=[128, 128, 128],
         critic_hidden_dims=[128, 128, 128],
         activation="elu",
     )
     algorithm = RslRlPpoAlgorithmCfg(
-        class_name="PPOSymmDataAugmented", #PPO, PPOSymmDataAugmented
+        class_name="AMP_PPO", 
         value_loss_coef=1.0,
         use_clipped_value_loss=True,
         clip_param=0.2,
@@ -59,31 +54,18 @@ class AliengoFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         max_grad_norm=1.0,
     )
 
-    # Symmetry Related Stuff
-    morphologycal_symmetries_cfg = MorphologycalSymmetriesCfg(
-        obs_space_names = [
-            "base_lin_vel:base",
-            "base_ang_vel:base",
-            "gravity:base",
-            "ctrl_commands",
-            "default_qpos_js_error",
-            "qvel_js",
-            "actions",
-            "clock_data",
-        ],
-        
-        action_space_names = ["actions"],
-        
-        joints_order = [
-            "FL_hip_joint", "FR_hip_joint", "RL_hip_joint", "RR_hip_joint", 
-            "FL_thigh_joint", "FR_thigh_joint", "RL_thigh_joint", "RR_thigh_joint",
-            "FL_calf_joint", "FR_calf_joint", "RL_calf_joint", "RR_calf_joint"
-        ],
-        
-        history_length = 5,
-        
-        robot_name = "a1",
+    #AMP Related Stuff
+    amp_data_path = "/home/alienware/isaaclab_ws_home/basic_locomotion_dls_isaaclab/dataset"
+    dataset_names = [
+        "flat",
+    ]
+    dataset_weights = [1.0]
+    slow_down_factor = 1.0
+    discriminator = DiscriminatorCfg(
+        hidden_dims=[128, 128],
+        reward_scale=0.1,
     )
+
 
 
 @configclass
@@ -94,7 +76,7 @@ class AliengoRoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     experiment_name = "aliengo_rough_direct"
     empirical_normalization = False
     policy = RslRlPpoActorCriticCfg(
-        class_name="ActorCritic", #ActorCritic, ActorCriticRecurrent, ActorCriticSymmEquivariantNN
+        class_name="ActorCritic",
         init_noise_std=1.0,
         #actor_hidden_dims=[512, 256, 128],
         #critic_hidden_dims=[512, 256, 128],
@@ -103,7 +85,7 @@ class AliengoRoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         activation="elu",
     )
     algorithm = RslRlPpoAlgorithmCfg(
-        class_name="AMP_PPO", #PPO, PPOSymmDataAugmented
+        class_name="AMP_PPO",
         value_loss_coef=1.0,
         use_clipped_value_loss=True,
         clip_param=0.2,
@@ -118,28 +100,16 @@ class AliengoRoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         max_grad_norm=1.0,
     )
 
-    # Symmetry Related Stuff
-    morphologycal_symmetries_cfg = MorphologycalSymmetriesCfg(
-        obs_space_names = [
-            "base_lin_vel:base",
-            "base_ang_vel:base",
-            "gravity:base",
-            "ctrl_commands",
-            "default_qpos_js_error",
-            "qvel_js",
-            "actions",
-            "clock_data",
-        ],
-        
-        action_space_names = ["actions"],
-        
-        joints_order = [
-            "FL_hip_joint", "FR_hip_joint", "RL_hip_joint", "RR_hip_joint", 
-            "FL_thigh_joint", "FR_thigh_joint", "RL_thigh_joint", "RR_thigh_joint",
-            "FL_calf_joint", "FR_calf_joint", "RL_calf_joint", "RR_calf_joint"
-        ],
-        
-        history_length = 5,
-        
-        robot_name = "a1",
+    #AMP Related Stuff
+    amp_data_path = "/home/alienware/isaaclab_ws_home/basic_locomotion_dls_isaaclab/dataset"
+    dataset_names = [
+        "flat",
+        "boxes",
+        "stairs",
+    ]
+    dataset_weights = [1.0, 1.0, 1.0]
+    slow_down_factor = 1.0
+    discriminator = DiscriminatorCfg(
+        hidden_dims=[128, 128],
+        reward_scale=0.1,
     )

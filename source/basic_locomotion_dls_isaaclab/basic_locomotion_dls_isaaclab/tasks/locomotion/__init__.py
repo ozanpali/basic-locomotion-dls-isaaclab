@@ -127,7 +127,7 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": AliengoAMPFlatEnvCfg,
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.aliengo_agent.rsl_rl_ppo_cfg:AliengoFlatPPORunnerCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.aliengo_amp_agent.rsl_rl_ppo_cfg:AliengoFlatPPORunnerCfg",
     },
 )
 
@@ -137,7 +137,7 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": AliengoAMPRoughBlindEnvCfg,
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.aliengo_agent.rsl_rl_ppo_cfg:AliengoRoughPPORunnerCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.aliengo_amp_agent.rsl_rl_ppo_cfg:AliengoRoughPPORunnerCfg",
     },
 )
 
@@ -147,6 +147,6 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": AliengoAMPRoughVisionEnvCfg,
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.aliengo_agent.rsl_rl_ppo_cfg:AliengoRoughPPORunnerCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.aliengo_amp_agent.rsl_rl_ppo_cfg:AliengoRoughPPORunnerCfg",
     },
 )
