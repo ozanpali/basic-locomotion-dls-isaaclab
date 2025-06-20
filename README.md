@@ -1,7 +1,7 @@
 # Overview
 
 
-This repository is about basic locomotion task with DLS robots.
+This repository is about basic locomotion tasks with DLS robots. Here you can play with standard PPO, Morphologycal Symmetries, and Adversarial Motion Priors. Scripts for sim-to-sim (mujoco) and sim-to-real are provided. 
 
 
 ## Installation
