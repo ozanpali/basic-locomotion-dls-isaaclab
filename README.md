@@ -1,7 +1,7 @@
-# Quadruped RL Collection
+# Overview
 
 
-This repository is about Aliengo collecting stuff on the ground.
+This repository is about basic locomotion task with DLS robots.
 
 
 ## Installation
