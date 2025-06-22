@@ -52,9 +52,6 @@ class QuadrupedLocomotionEnv(DirectRLEnv):
         self._step_freq = 1.4
         self._duty_factor = 0.65
 
-        # Proprio Terrain estimator
-        self._proprio_terrain_estimator = torch.tensor([0.0, 0.0], device=self.device).repeat(self.num_envs, 1)
-
         # Observation history
         single_observation_space = int(cfg.observation_space / cfg.history_length)
         self._observation_history = torch.zeros(
@@ -372,55 +369,9 @@ class QuadrupedLocomotionEnv(DirectRLEnv):
         terrain_pitch = torch.atan2(torch.sin(terrain_pitch), torch.cos(terrain_pitch))
 
         root_roll_w, root_pitch_w, _ = math_utils.euler_xyz_from_quat(self._robot.data.root_quat_w)
-        # root_roll_w = torch.atan2(torch.sin(root_roll_w), torch.cos(root_roll_w))
+        root_roll_w = torch.atan2(torch.sin(root_roll_w), torch.cos(root_roll_w))
         root_pitch_w = torch.atan2(torch.sin(root_pitch_w), torch.cos(root_pitch_w))
-
         base_orientation = torch.square(terrain_pitch - root_pitch_w)  # + torch.square(0 - root_roll_w)
-        # base_orientation = -torch.exp(-(torch.square(terrain_pitch - root_pitch_w) + torch.square(0 - root_roll_w)) / 0.01) / 5.
-
-        # proprio terrain orientation
-        first_contact = self._contact_sensor.compute_first_contact(self.step_dt)[:, self._feet_ids]
-        base_orientation_proprio_FL = (
-            torch.square(
-                self.cfg.desired_base_height
-                - (
-                    self._robot.data.body_pos_w[:, self._hip_ids_robot, :3][:, 0, 2]
-                    - self._robot.data.body_pos_w[:, self._feet_ids_robot, :3][:, 0, 2]
-                )
-            )
-            * first_contact[:, 0]
-        )  # contact_periodic_on[:,0]
-        base_orientation_proprio_FR = (
-            torch.square(
-                self.cfg.desired_base_height
-                - (
-                    self._robot.data.body_pos_w[:, self._hip_ids_robot, :3][:, 1, 2]
-                    - self._robot.data.body_pos_w[:, self._feet_ids_robot, :3][:, 1, 2]
-                )
-            )
-            * first_contact[:, 1]
-        )  # contact_periodic_on[:,1]
-        base_orientation_proprio_RL = (
-            torch.square(
-                self.cfg.desired_base_height
-                - (
-                    self._robot.data.body_pos_w[:, self._hip_ids_robot, :3][:, 2, 2]
-                    - self._robot.data.body_pos_w[:, self._feet_ids_robot, :3][:, 2, 2]
-                )
-            )
-            * first_contact[:, 2]
-        )  # contact_periodic_on[:,2]
-        base_orientation_proprio_RR = (
-            torch.square(
-                self.cfg.desired_base_height
-                - (
-                    self._robot.data.body_pos_w[:, self._hip_ids_robot, :3][:, 3, 2]
-                    - self._robot.data.body_pos_w[:, self._feet_ids_robot, :3][:, 3, 2]
-                )
-            )
-            * first_contact[:, 3]
-        )  # contact_periodic_on[:,3]
-        # base_orientation = base_orientation_proprio_FL + base_orientation_proprio_FR + base_orientation_proprio_RL + base_orientation_proprio_RR
 
         # angular velocity x/y tracking
         ang_vel_error = torch.sum(torch.square(self._robot.data.root_ang_vel_b[:, :2]), dim=1)
@@ -483,9 +434,7 @@ class QuadrupedLocomotionEnv(DirectRLEnv):
 
         # feet periodical contacts suggestion
         should_move = torch.norm(self._commands[:, :3], dim=1) > 0.01
-        # offset_step_freq = torch.norm(self._commands[:, :2], dim=1) + 1
-        # offset_step_freq_cap = torch.clamp(offset_step_freq, 1, 1.2)
-        self._phase_signal += self.step_dt * self._step_freq  # * offset_step_freq_cap.unsqueeze(1).expand(-1, 4)
+        self._phase_signal += self.step_dt * self._step_freq
         self._phase_signal = self._phase_signal % 1.0
         contact_periodic_on = self._phase_signal < self._duty_factor
         feet_contact_suggestion = (
@@ -563,8 +512,7 @@ class QuadrupedLocomotionEnv(DirectRLEnv):
             - self._robot.data.root_state_w[:, 1]
         )
         feet_to_base_distance = -torch.sqrt(feet_to_base_distance_x + feet_to_base_distance_y)
-        # feet_to_base_distance = -(feet_to_base_distance_x + feet_to_base_distance_y)
-        # feet_to_base_distance = torch.exp(-(feet_to_base_distance_x + feet_to_base_distance_y) / 0.05)
+
 
         # feet to hip distance
         ROT_W2H = math_utils.matrix_from_quat(math_utils.yaw_quat(self._robot.data.root_quat_w))
@@ -744,9 +692,6 @@ class QuadrupedLocomotionEnv(DirectRLEnv):
 
         # Reset contact periodic
         self._phase_signal[env_ids] = torch.tensor([0.5, 1.0, 1.0, 0.5], device=self.device)
-
-        # Reset proprio terrain estimator
-        self._proprio_terrain_estimator[env_ids] = torch.tensor([0.0, 0.0], device=self.device)
 
         # Reset robot state
         joint_pos = self._robot.data.default_joint_pos[env_ids]
