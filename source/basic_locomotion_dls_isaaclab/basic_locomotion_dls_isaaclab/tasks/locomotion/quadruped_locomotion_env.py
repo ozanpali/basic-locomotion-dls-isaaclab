@@ -21,32 +21,15 @@ from isaaclab.sim import SimulationCfg
 from isaaclab.terrains import TerrainImporterCfg
 from isaaclab.utils import configclass
 
-
-from .aliengo_env_cfg import AliengoFlatEnvCfg, AliengoRoughBlindEnvCfg, AliengoRoughVisionEnvCfg
-from .go2_env_cfg import Go2FlatEnvCfg, Go2RoughVisionEnvCfg, Go2RoughBlindEnvCfg
-from .hyqreal_env_cfg import HyQRealFlatEnvCfg, HyQRealRoughVisionEnvCfg, HyQRealRoughBlindEnvCfg
-from .aliengo_amp_env_cfg import AliengoAMPFlatEnvCfg, AliengoAMPRoughBlindEnvCfg, AliengoAMPRoughVisionEnvCfg
-
-QuadCfg = (
-    AliengoFlatEnvCfg
-    | AliengoRoughBlindEnvCfg
-    | AliengoRoughVisionEnvCfg
-    | Go2FlatEnvCfg
-    | Go2RoughVisionEnvCfg
-    | Go2RoughBlindEnvCfg
-    | HyQRealFlatEnvCfg
-    | HyQRealRoughVisionEnvCfg
-    | HyQRealRoughBlindEnvCfg
-    # | AliengoAmpFlatEnvCfg | AliengoAmpRoughBlindEnvCfg | AliengoAmpRoughVisionEnvCfg
-)
+from .quadruped_env_cfg import BaseQuadrupedEnvCfg, BaseQuadrupedRoughBlindEnvCfg, BaseQuadrupedRoughVisionEnvCfg
 
 
 class QuadrupedLocomotionEnv(DirectRLEnv):
     """Quadruped locomotion environment for training RL agents."""
 
-    cfg: QuadCfg
+    cfg: BaseQuadrupedEnvCfg
 
-    def __init__(self, cfg: QuadCfg, render_mode: str | None = None, **kwargs):
+    def __init__(self, cfg: BaseQuadrupedEnvCfg, render_mode: str | None = None, **kwargs):
         super().__init__(cfg, render_mode, **kwargs)
 
         # Joint position command (deviation from default joint positions)
@@ -122,8 +105,8 @@ class QuadrupedLocomotionEnv(DirectRLEnv):
         self._contact_sensor = ContactSensor(self.cfg.contact_sensor)
         self.scene.sensors["contact_sensor"] = self._contact_sensor
 
-        # if isinstance(self.cfg, AliengoRoughVisionEnvCfg) or isinstance(self.cfg, AliengoRoughBlindEnvCfg):
-        # we add a height scanner for perceptive locomotion
+        # TODO: This should be instanciated only if:
+        # if isinstance(self.cfg, BaseQuadrupedRoughVisionEnvCfg):
         self._height_scanner = RayCaster(self.cfg.height_scanner)
         self.scene.sensors["height_scanner"] = self._height_scanner
 
@@ -162,8 +145,10 @@ class QuadrupedLocomotionEnv(DirectRLEnv):
 
     def _get_observations(self) -> dict:
         height_data = None
-        if isinstance(self.cfg, AliengoRoughVisionEnvCfg) or isinstance(self.cfg, Go2RoughVisionEnvCfg):
+        if isinstance(self.cfg, BaseQuadrupedRoughVisionEnvCfg):
+            # Compute height data relative to the robot base. Pos_w is the current base position in world frame.
             height_data = (
+                # TODO: Dont hardcode 0.5 here.
                 self._height_scanner.data.pos_w[:, 2].unsqueeze(1) - self._height_scanner.data.ray_hits_w[..., 2] - 0.5
             ).clip(-1.0, 1.0)
 
@@ -345,10 +330,10 @@ class QuadrupedLocomotionEnv(DirectRLEnv):
         # track_height
         height_data_scanner = self._height_scanner.data.ray_hits_w[..., 2]
         height_data_scanner = torch.clip(height_data_scanner, min=-5, max=5)  # Handle inf values
-        mean_height_ray = torch.mean(height_data_scanner, dim=1)
+        mean_height_ray_w = torch.mean(height_data_scanner, dim=1)
 
         height_error = torch.square(
-            self.cfg.desired_base_height + mean_height_ray - self._robot.data.root_state_w[:, 2]
+            self.cfg.desired_base_height + mean_height_ray_w - self._robot.data.root_state_w[:, 2]
         )
         height_error_mapped = torch.exp(-height_error / 0.01)
 
@@ -356,36 +341,39 @@ class QuadrupedLocomotionEnv(DirectRLEnv):
         lin_vel_error = torch.sum(torch.square(self._commands[:, :2] - self._robot.data.root_lin_vel_b[:, :2]), dim=1)
         lin_vel_error_mapped = torch.exp(-lin_vel_error / 0.25)
 
-        # z velocity tracking
+        # z velocity tracking __________________________________________________________________________________________
         z_vel_error = torch.square(self._robot.data.root_lin_vel_b[:, 2])
 
         # flat orientation
         # base_orientation = torch.sum(torch.square(self._robot.data.projected_gravity_b[:, :2]), dim=1)
 
-        # terrain orientation
-        # selected_height_data_back = torch.cat([height_data_scanner[:, i:i+5] for i in range(0, height_data_scanner.shape[1], 10)], dim=1)
-        # selected_height_data_front = torch.cat([height_data_scanner[:, i:i+5] for i in range(5, height_data_scanner.shape[1], 10)], dim=1)
-        cols_back = torch.arange(0, height_data_scanner.shape[1], 10).unsqueeze(1) + torch.arange(5)
-        cols_back = cols_back.flatten().to(height_data_scanner.device)
-        selected_height_data_back = height_data_scanner[:, cols_back]
-
-        cols_front = torch.arange(5, height_data_scanner.shape[1], 10).unsqueeze(1) + torch.arange(5)
-        cols_front = cols_front.flatten().to(height_data_scanner.device)
-        selected_height_data_front = height_data_scanner[:, cols_front]
-
-        mean_height_ray_front = torch.mean(selected_height_data_front, dim=1)
-        mean_height_ray_back = torch.mean(selected_height_data_back, dim=1)
+        # Terrain orientation _________________________________________________________________________________________
+        # We estimate the terrain pitch w.r.t to the robot heading orientation. Use this to regularize the robot
+        # to stay close to that orientation, such that if the robot is going uphill, it will pitch forward, and if it
+        # is going downhill, it will pitch backward.
+        height_map_resolution = self._height_scanner.cfg.pattern_cfg.resolution
+        height_map_x_points = int(round(self._height_scanner.cfg.pattern_cfg.size[0] / height_map_resolution)) + 1
+        height_map_y_points = int(round(self._height_scanner.cfg.pattern_cfg.size[1] / height_map_resolution)) + 1
+        assert height_map_x_points * height_map_y_points == self._height_scanner.num_rays
+        if self._height_scanner.cfg.pattern_cfg.ordering == "xy":
+            # Rays are stored by x rows from back to front:
+            # self._height_scanner.data.ray_starts: [(-x_max, -y_max, z), ... , (x_max, -y_max, z), ... (x_max, y_max, z)]
+            rays_front = self._height_scanner.data.ray_hits_w[:, -height_map_x_points:, :]  # (b, n_points, 3)
+            rays_back = self._height_scanner.data.ray_hits_w[:, :height_map_x_points, :]  # (b, n_points, 3)
+        else:
+            # Rays are stored by y rows from left to right:
+            # self._height_scanner.data.ray_starts: [(-x_max, -y_max, z), ... , (-x_max, y_max, z), ... (x_max, y_max, z)]
+            rays_front = self._height_scanner.data.ray_hits_w[:, ::height_map_x_points, :]
+            rays_back = self._height_scanner.data.ray_hits_w[:, 1::height_map_x_points, :]
+        mean_height_ray_front = torch.mean(rays_front, dim=1)[:, 2]
+        mean_height_ray_back = torch.mean(rays_back, dim=1)[:, 2]
         delta_z = mean_height_ray_front - mean_height_ray_back
-        delta_s = 0.4 - (-0.4)
-        terrain_pitch = -torch.atan(delta_z / delta_s)
+        terrain_pitch = -torch.atan(delta_z / self._height_scanner.cfg.pattern_cfg.size[1])
         terrain_pitch = torch.atan2(torch.sin(terrain_pitch), torch.cos(terrain_pitch))
 
         root_roll_w, root_pitch_w, _ = math_utils.euler_xyz_from_quat(self._robot.data.root_quat_w)
-        root_roll_w = torch.atan2(torch.sin(root_roll_w), torch.cos(root_roll_w))
+        # root_roll_w = torch.atan2(torch.sin(root_roll_w), torch.cos(root_roll_w))
         root_pitch_w = torch.atan2(torch.sin(root_pitch_w), torch.cos(root_pitch_w))
-
-        # print("terrain_pitch", terrain_pitch)
-        # print("root_pitch_w", root_pitch_w)
 
         base_orientation = torch.square(terrain_pitch - root_pitch_w)  # + torch.square(0 - root_roll_w)
         # base_orientation = -torch.exp(-(torch.square(terrain_pitch - root_pitch_w) + torch.square(0 - root_roll_w)) / 0.01) / 5.
@@ -559,7 +547,7 @@ class QuadrupedLocomotionEnv(DirectRLEnv):
             torch.max(torch.norm(net_contact_forces[:, :, self._undesired_contact_body_ids], dim=-1), dim=1)[0] > 1.0
         )
         self._swing_peak = torch.max(self._swing_peak, self._robot.data.body_pos_w[:, self._feet_ids_robot, 2].clone())
-        target_height = self.cfg.desired_feet_height + mean_height_ray.unsqueeze(1).expand(-1, 4)
+        target_height = self.cfg.desired_feet_height + mean_height_ray_w.unsqueeze(1).expand(-1, 4)
         feet_height_clearance_mujoco = torch.sum(
             torch.square(self._swing_peak / target_height - 1.0) * first_contact, dim=-1
         )
