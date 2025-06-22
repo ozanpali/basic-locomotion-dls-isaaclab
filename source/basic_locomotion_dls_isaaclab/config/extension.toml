@@ -1,17 +1,17 @@
 [package]
 
 # Semantic Versioning is used: https://semver.org/
-version = "0.1.0"
+version = "0.1.1"
 
 # Description
 category = "isaaclab"
 readme  = "README.md"
 
-title = "Extension Template"
-author = "Isaac Lab Project Developers"
-maintainer = "Isaac Lab Project Developers"
-description="Extension Template for Isaac Lab"
-repository = "https://github.com/isaac-sim/IsaacLabExtensionTemplate.git"
+title = "DLS Locomotion Isaac Lab Extension"
+author = "DLS team"
+maintainer = "DLS slaves"
+description="Isaac Lab extension from the Dynamic Legged Systems (DLS) team at Italian Institute of Technology (IIT)"
+repository = "https://github.com/iit-DLSLab/basic-locomotion-dls-isaaclab/"
 keywords = ["extension", "template", "isaaclab"]
 
 [dependencies]
@@ -21,6 +21,7 @@ keywords = ["extension", "template", "isaaclab"]
 "isaaclab_rl" = {}
 "isaaclab_tasks" = {}
 # NOTE: Add additional dependencies here
+# TODO: We need to define our isaaclab dependencies here
 
 [[python.module]]
 name = "basic_locomotion_dls_isaaclab"
