@@ -44,18 +44,19 @@ class QuadrupedLocomotionEnv(DirectRLEnv):
         # X/Y linear velocity and yaw angular velocity commands
         self._commands = torch.zeros(self.num_envs, 3, device=self.device)
 
-        # Swing peak
+        # Swing peak TODO: What is this variable?
         self._swing_peak = torch.tensor([0.0, 0.0, 0.0, 0.0], device=self.device).repeat(self.num_envs, 1)
-
         # Periodic gait
+        # TODO: Should'nt this be randomized for each environment?
         self._phase_signal = torch.tensor([0.5, 1.0, 1.0, 0.5], device=self.device).repeat(self.num_envs, 1)
+        # TODO: Should these be configurable?
         self._step_freq = 1.4
         self._duty_factor = 0.65
 
         # Observation history
-        single_observation_space = int(cfg.observation_space / cfg.history_length)
+        single_frame_obs_space_dim = int(cfg.observation_space / cfg.history_length)
         self._observation_history = torch.zeros(
-            self.num_envs, cfg.history_length, single_observation_space, device=self.device
+            self.num_envs, cfg.history_length, single_frame_obs_space_dim, device=self.device
         )
 
         # Logging
@@ -145,7 +146,8 @@ class QuadrupedLocomotionEnv(DirectRLEnv):
         if isinstance(self.cfg, BaseQuadrupedRoughVisionEnvCfg):
             # Compute height data relative to the robot base. Pos_w is the current base position in world frame.
             height_data = (
-                # TODO: Dont hardcode 0.5 here.
+                # TODO: Dont hardcode 0.5 here. Seems to depend on the robot's hip height. Since we have multiple
+                # quadrupeds this should be configurable.
                 self._height_scanner.data.pos_w[:, 2].unsqueeze(1) - self._height_scanner.data.ray_hits_w[..., 2] - 0.5
             ).clip(-1.0, 1.0)
 
@@ -170,6 +172,7 @@ class QuadrupedLocomotionEnv(DirectRLEnv):
         # noise_ang_vel = torch.clamp(torch.randn(self.num_envs, 3, device=self.device) * 0.0001, min=-0.1, max=0.1)
         # noise_joints_vel = torch.clamp(torch.randn(self.num_envs, 12, device=self.device) * 0.0001, min=-0.1, max=0.1)
 
+        # TODO: This should be configurable depending on the requested observations names and order?
         obs = torch.cat(
             [
                 tensor
@@ -252,6 +255,9 @@ class QuadrupedLocomotionEnv(DirectRLEnv):
             print("Inf in observation computation")
             breakpoint()"""
 
+        # TODO: It seems to me that this logic should not be within this class rather in the algorithm class
+        # If any custom observation is needed it should be passed as part of the standard method to configure
+        # the environment's observation space.
         if self.cfg.use_asymmetric_ppo:
             asset_cfg = SceneEntityCfg("robot", joint_names=[".*"])
             asset: Articulation = self.scene[asset_cfg.name]
@@ -362,32 +368,36 @@ class QuadrupedLocomotionEnv(DirectRLEnv):
             # self._height_scanner.data.ray_starts: [(-x_max, -y_max, z), ... , (-x_max, y_max, z), ... (x_max, y_max, z)]
             rays_front = self._height_scanner.data.ray_hits_w[:, ::height_map_x_points, :]
             rays_back = self._height_scanner.data.ray_hits_w[:, 1::height_map_x_points, :]
-        mean_height_ray_front = torch.mean(rays_front, dim=1)[:, 2]
-        mean_height_ray_back = torch.mean(rays_back, dim=1)[:, 2]
-        delta_z = mean_height_ray_front - mean_height_ray_back
+            raise NotImplementedError("Haven't tested the code in this case is correct. Please check it.")
+
+        mean_height_ray_front_w = torch.mean(rays_front, dim=1)[:, 2]
+        mean_height_ray_back_w = torch.mean(rays_back, dim=1)[:, 2]
+        delta_z = mean_height_ray_front_w - mean_height_ray_back_w
         terrain_pitch = -torch.atan(delta_z / self._height_scanner.cfg.pattern_cfg.size[1])
         terrain_pitch = torch.atan2(torch.sin(terrain_pitch), torch.cos(terrain_pitch))
 
-        root_roll_w, root_pitch_w, _ = math_utils.euler_xyz_from_quat(self._robot.data.root_quat_w)
-        root_roll_w = torch.atan2(torch.sin(root_roll_w), torch.cos(root_roll_w))
-        root_pitch_w = torch.atan2(torch.sin(root_pitch_w), torch.cos(root_pitch_w))
-        base_orientation = torch.square(terrain_pitch - root_pitch_w)  # + torch.square(0 - root_roll_w)
+        base_roll_w, base_pitch_w, _ = math_utils.euler_xyz_from_quat(self._robot.data.root_quat_w)
+        base_roll_w = torch.atan2(torch.sin(base_roll_w), torch.cos(base_roll_w))
+        base_pitch_w = torch.atan2(torch.sin(base_pitch_w), torch.cos(base_pitch_w))
+        base_orientation = torch.square(terrain_pitch - base_pitch_w)  # + torch.square(0 - root_roll_w)
 
-        # angular velocity x/y tracking
+        # angular velocity x/y tracking_________________________________________________________________________________
         ang_vel_error = torch.sum(torch.square(self._robot.data.root_ang_vel_b[:, :2]), dim=1)
 
-        # yaw rate tracking
+        # yaw rate tracking ____________________________________________________________________________________________
         yaw_rate_error = torch.square(self._commands[:, 2] - self._robot.data.root_ang_vel_b[:, 2])
         yaw_rate_error_mapped = torch.exp(-yaw_rate_error / 0.25)
 
-        # action rate
+        # action rate __________________________________________________________________________________________________
         action_rate = torch.sum(torch.square(self._actions - self._previous_actions), dim=1)
         action_smoothness = torch.sum(
             torch.square(self._actions - 2 * self._previous_actions + self._previous_previous_actions), dim=1
         )
 
-        # undersired contacts
+        # undersired contacts __________________________________________________________________________________________
+        # TODO: Explain code below. What it the strucute of the tensors used.
         net_contact_forces = self._contact_sensor.data.net_forces_w_history
+
         is_contact = (
             torch.max(torch.norm(net_contact_forces[:, :, self._undesired_contact_body_ids], dim=-1), dim=1)[0] > 1.0
         )
@@ -452,7 +462,7 @@ class QuadrupedLocomotionEnv(DirectRLEnv):
         feet_z_target_error = (
             self.cfg.desired_feet_height
             + torch.cat(
-                (mean_height_ray_front.unsqueeze(1).expand(-1, 2), mean_height_ray_back.unsqueeze(1).expand(-1, 2)),
+                (mean_height_ray_front_w.unsqueeze(1).expand(-1, 2), mean_height_ray_back_w.unsqueeze(1).expand(-1, 2)),
                 dim=1,
             )
             - self._robot.data.body_pos_w[:, self._feet_ids_robot, 2]
@@ -512,7 +522,6 @@ class QuadrupedLocomotionEnv(DirectRLEnv):
             - self._robot.data.root_state_w[:, 1]
         )
         feet_to_base_distance = -torch.sqrt(feet_to_base_distance_x + feet_to_base_distance_y)
-
 
         # feet to hip distance
         ROT_W2H = math_utils.matrix_from_quat(math_utils.yaw_quat(self._robot.data.root_quat_w))
@@ -651,7 +660,7 @@ class QuadrupedLocomotionEnv(DirectRLEnv):
         if env_ids is None or len(env_ids) == self.num_envs:
             env_ids = self._robot._ALL_INDICES
 
-        if self._terrain.cfg.terrain_generator is not None and self._terrain.cfg.terrain_generator.curriculum == True:
+        if self._terrain.cfg.terrain_generator is not None and self._terrain.cfg.terrain_generator.curriculum is True:
             # Curriculum based on the distance the robot walked
             distance = torch.norm(
                 self._robot.data.root_state_w[env_ids, :2] - self._terrain.env_origins[env_ids, :2], dim=1
