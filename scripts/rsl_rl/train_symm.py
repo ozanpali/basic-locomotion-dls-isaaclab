@@ -93,7 +93,7 @@ from isaaclab_tasks.utils import get_checkpoint_path
 from isaaclab_tasks.utils.hydra import hydra_task_config
 
 import isaaclab_tasks  # noqa: F401
-import quadruped_rl_collection.tasks  # noqa: F401
+import basic_locomotion_dls_isaaclab.tasks  # noqa: F401
 
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
