@@ -296,14 +296,14 @@ class AliengoEnvCfg(BaseQuadrupedEnvCfg):
 
 
 @configclass
-class AliengoRoughBlindEnvCfg(BaseQuadrupedRoughBlindEnvCfg, AliengoEnvCfg):
+class AliengoRoughBlindEnvCfg(AliengoEnvCfg, BaseQuadrupedRoughBlindEnvCfg):
     """Aliengo configuration for rough terrain environments without vision sensors."""
 
     pass
 
 
 @configclass
-class AliengoRoughVisionEnvCfg(BaseQuadrupedRoughVisionEnvCfg, AliengoEnvCfg):
+class AliengoRoughVisionEnvCfg(AliengoEnvCfg, BaseQuadrupedRoughVisionEnvCfg):
     """Aliengo configuration for rough terrain environments with vision sensors."""
 
     observation_space: int = 235
@@ -331,14 +331,14 @@ class HyQRealEnvCfg(BaseQuadrupedEnvCfg):
 
 
 @configclass
-class HyQRealRoughBlindEnvCfg(BaseQuadrupedRoughBlindEnvCfg, HyQRealEnvCfg):
+class HyQRealRoughBlindEnvCfg(HyQRealEnvCfg, BaseQuadrupedRoughBlindEnvCfg):
     """HyQReal configuration for rough environments without vision sensors."""
 
     pass
 
 
 @configclass
-class HyQRealRoughVisionEnvCfg(BaseQuadrupedRoughVisionEnvCfg, HyQRealEnvCfg):
+class HyQRealRoughVisionEnvCfg(HyQRealEnvCfg, BaseQuadrupedRoughVisionEnvCfg):
     """HyQReal configuration for rough environments with vision sensors."""
 
     observation_space: int = 235
@@ -363,14 +363,14 @@ class Go2EnvCfg(BaseQuadrupedEnvCfg):
 
 
 @configclass
-class Go2RoughBlindEnvCfg(BaseQuadrupedRoughBlindEnvCfg, Go2EnvCfg):
+class Go2RoughBlindEnvCfg(Go2EnvCfg, BaseQuadrupedRoughBlindEnvCfg):
     """Go2 configuration for rough terrain environments without vision sensors."""
 
     pass
 
 
 @configclass
-class Go2RoughVisionEnvCfg(BaseQuadrupedRoughVisionEnvCfg, Go2EnvCfg):
+class Go2RoughVisionEnvCfg(Go2EnvCfg, BaseQuadrupedRoughVisionEnvCfg):
     """Go2 configuration for rough terrain environments with vision sensors."""
 
     observation_space: int = 235
