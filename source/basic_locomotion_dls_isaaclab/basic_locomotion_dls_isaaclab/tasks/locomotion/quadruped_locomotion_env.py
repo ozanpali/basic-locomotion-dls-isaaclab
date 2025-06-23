@@ -44,7 +44,7 @@ class QuadrupedLocomotionEnv(DirectRLEnv):
         # X/Y linear velocity and yaw angular velocity commands
         self._commands = torch.zeros(self.num_envs, 3, device=self.device)
 
-        # Swing peak TODO: What is this variable?
+        # Swing peak holder, used for saving the maximum z swing after a liftoff for the reward "feet_height_clearance_mujoco"
         self._swing_peak = torch.tensor([0.0, 0.0, 0.0, 0.0], device=self.device).repeat(self.num_envs, 1)
         # Periodic gait
         # TODO: Should'nt this be randomized for each environment?
