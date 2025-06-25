@@ -72,7 +72,7 @@ class BaseQuadrupedEnvCfg(DirectRLEnvCfg):
         prim_path="/World/envs/env_.*/Robot/base",
         offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.0)),
         attach_yaw_only=True,
-        pattern_cfg=patterns.GridPatternCfg(resolution=0.2, size=[1.6, 1.0]),
+        pattern_cfg=patterns.GridPatternCfg(resolution=0.2, size=[1.8, 1.0]),
         debug_vis=False,
         mesh_prim_paths=["/World/ground"],
     )
