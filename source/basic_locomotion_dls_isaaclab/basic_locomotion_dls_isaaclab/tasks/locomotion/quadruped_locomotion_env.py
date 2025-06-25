@@ -80,7 +80,7 @@ class QuadrupedLocomotionEnv(DirectRLEnv):
                 "joints_energy_l1",
                 "feet_air_time",
                 "feet_height_clearance",
-                # "feet_height_clearance_mujoco",
+                "feet_height_clearance_mujoco",
                 "feet_slide",
                 "feet_contact_suggestion",
                 "feet_to_base_distance_l2",
@@ -103,8 +103,7 @@ class QuadrupedLocomotionEnv(DirectRLEnv):
         self._contact_sensor = ContactSensor(self.cfg.contact_sensor)
         self.scene.sensors["contact_sensor"] = self._contact_sensor
 
-        # TODO: This should be instanciated only if:
-        # if isinstance(self.cfg, BaseQuadrupedRoughVisionEnvCfg):
+        # we add an height scanner
         self._height_scanner = RayCaster(self.cfg.height_scanner)
         self.scene.sensors["height_scanner"] = self._height_scanner
 
@@ -156,8 +155,7 @@ class QuadrupedLocomotionEnv(DirectRLEnv):
             clock_data = torch.vstack(
                 [self._phase_signal[:, 0], self._phase_signal[:, 1], self._phase_signal[:, 2], self._phase_signal[:, 3]]
             ).T
-            # clock_data = torch.vstack([torch.sin(self._phase_signal[:,0]*3.1415*2), torch.cos(self._phase_signal[:,0]*3.1415*2)]).T
-
+ 
             # for the first 20 envs, we put -1
             num_fixed_envs = 100
             clock_data[:num_fixed_envs, :] = -1.0
@@ -619,29 +617,19 @@ class QuadrupedLocomotionEnv(DirectRLEnv):
             "action_rate_l2": action_rate * self.cfg.action_rate_reward_scale * self.step_dt,
             "action_smoothness_l2": action_smoothness * self.cfg.action_smoothness_reward_scale * self.step_dt,
             "joints_hip_pos_l2": hip_joints_position_reward * self.cfg.joints_hip_position_reward_scale * self.step_dt,
-            "joints_thigh_pos_l2": thigh_joints_position_reward
-            * self.cfg.joints_thigh_position_reward_scale
-            * self.step_dt,
-            "joints_calf_pos_l2": calf_joints_position_reward
-            * self.cfg.joints_calf_position_reward_scale
-            * self.step_dt,
+            "joints_thigh_pos_l2": thigh_joints_position_reward * self.cfg.joints_thigh_position_reward_scale * self.step_dt,
+            "joints_calf_pos_l2": calf_joints_position_reward * self.cfg.joints_calf_position_reward_scale * self.step_dt,
             "joints_acc_l2": joints_accel * self.cfg.joints_accel_reward_scale * self.step_dt,
             "joints_torques_l2": joints_torques * self.cfg.joints_torque_reward_scale * self.step_dt,
             "joints_energy_l1": joints_energy * self.cfg.joints_energy_reward_scale * self.step_dt,
             "feet_air_time": feet_air_time * self.cfg.feet_air_time_reward_scale * self.step_dt,
             "feet_height_clearance": feet_height_clearance * self.cfg.feet_height_clearance_reward_scale * self.step_dt,
-            # "feet_height_clearance_mujoco": feet_height_clearance_mujoco * self.cfg.feet_height_clearance_mujoco_reward_scale * self.step_dt,
+            "feet_height_clearance_mujoco": feet_height_clearance_mujoco * self.cfg.feet_height_clearance_mujoco_reward_scale * self.step_dt,
             "feet_slide": feet_slide * self.cfg.feet_slide_reward_scale * self.step_dt,
-            "feet_contact_suggestion": feet_contact_suggestion
-            * self.cfg.feet_contact_suggestion_reward_scale
-            * self.step_dt,
-            "feet_to_base_distance_l2": feet_to_base_distance
-            * self.cfg.feet_to_base_distance_reward_scale
-            * self.step_dt,
+            "feet_contact_suggestion": feet_contact_suggestion * self.cfg.feet_contact_suggestion_reward_scale * self.step_dt,
+            "feet_to_base_distance_l2": feet_to_base_distance * self.cfg.feet_to_base_distance_reward_scale * self.step_dt,
             "feet_to_hip_distance_l2": feet_to_hip_distance * self.cfg.feet_to_hip_distance_reward_scale * self.step_dt,
-            "feet_vertical_surface_contacts": feet_vertical_surface_contacts
-            * self.cfg.feet_vertical_surface_contacts_reward_scale
-            * self.step_dt,
+            "feet_vertical_surface_contacts": feet_vertical_surface_contacts * self.cfg.feet_vertical_surface_contacts_reward_scale * self.step_dt,
         }
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
 
