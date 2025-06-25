@@ -242,35 +242,11 @@ class BaseQuadrupedRoughVisionEnvCfg(BaseQuadrupedRoughEnvCfg):
 
     # Increase observation space for vision processing.
     observation_space: int = None
-    terrain = TerrainImporterCfg(
-        prim_path="/World/ground",
-        terrain_type="generator",
-        terrain_generator=None,  # Use the rough terrain generator defined in the class
-        max_init_terrain_level=10,
-        collision_group=-1,
-        physics_material=sim_utils.RigidBodyMaterialCfg(
-            friction_combine_mode="multiply",
-            restitution_combine_mode="multiply",
-            static_friction=1.0,
-            dynamic_friction=1.0,
-            restitution=0.0,
-        ),
-        visual_material=sim_utils.MdlFileCfg(
-            mdl_path="{NVIDIA_NUCLEUS_DIR}/Materials/Base/Architecture/Shingles_01.mdl",
-            project_uvw=True,
-        ),
-        debug_vis=False,
-    )
-
-    def __post_init__(self):  # noqa: D105
-        super().__post_init__()
-        self.terrain.terrain_generator = self.rough_terrain_generator
 
 
 # ============================================================================
 # Robot-specific environment configurations
 # ============================================================================
-
 
 # ------------------------------------------------------------------------------
 # ALIENGO configurations
@@ -296,17 +272,43 @@ class AliengoEnvCfg(BaseQuadrupedEnvCfg):
 
 
 @configclass
-class AliengoRoughBlindEnvCfg(AliengoEnvCfg, BaseQuadrupedRoughBlindEnvCfg):
+class AliengoRoughBlindEnvCfg(BaseQuadrupedRoughBlindEnvCfg):
     """Aliengo configuration for rough terrain environments without vision sensors."""
 
-    pass
+    from basic_locomotion_dls_isaaclab.assets.aliengo_asset import ALIENGO_CFG
+
+    # Override observation processing: add clock signal and history
+    use_clock_signal: bool = True
+    history_length: int = 5
+    use_observation_history: bool = True
+    observation_space: int = 48
+
+    # Robot asset for Aliengo
+    robot: ArticulationCfg = ALIENGO_CFG.replace(prim_path="/World/envs/env_.*/Robot")
+    # Desired tracking variables specific to Aliengo
+    desired_base_height: float = 0.35
+    desired_feet_height: float = 0.04
+    desired_clip_actions: float = 3.0
 
 
 @configclass
-class AliengoRoughVisionEnvCfg(AliengoEnvCfg, BaseQuadrupedRoughVisionEnvCfg):
+class AliengoRoughVisionEnvCfg(BaseQuadrupedRoughVisionEnvCfg):
     """Aliengo configuration for rough terrain environments with vision sensors."""
 
+    from basic_locomotion_dls_isaaclab.assets.aliengo_asset import ALIENGO_CFG
+
+    # Override observation processing: add clock signal and history
+    use_clock_signal: bool = True
+    history_length: int = 5
+    use_observation_history: bool = True
     observation_space: int = 235
+
+    # Robot asset for Aliengo
+    robot: ArticulationCfg = ALIENGO_CFG.replace(prim_path="/World/envs/env_.*/Robot")
+    # Desired tracking variables specific to Aliengo
+    desired_base_height: float = 0.35
+    desired_feet_height: float = 0.04
+    desired_clip_actions: float = 3.0
 
 
 # ------------------------------------------------------------------------------
@@ -331,17 +333,39 @@ class HyQRealEnvCfg(BaseQuadrupedEnvCfg):
 
 
 @configclass
-class HyQRealRoughBlindEnvCfg(HyQRealEnvCfg, BaseQuadrupedRoughBlindEnvCfg):
+class HyQRealRoughBlindEnvCfg(BaseQuadrupedRoughBlindEnvCfg):
     """HyQReal configuration for rough environments without vision sensors."""
 
-    pass
+    from basic_locomotion_dls_isaaclab.assets.hyqreal_asset import HYQREAL_CFG
+
+    # You can adjust clock signal and history if needed.
+    use_clock_signal: bool = True
+    history_length: int = 3
+    use_observation_history: bool = True
+    observation_space: int = 48
+
+    robot: ArticulationCfg = HYQREAL_CFG.replace(prim_path="/World/envs/env_.*/Robot")
+    desired_base_height: float = 0.5
+    desired_feet_height: float = 0.04
+    desired_clip_actions: float = 3.0
 
 
 @configclass
-class HyQRealRoughVisionEnvCfg(HyQRealEnvCfg, BaseQuadrupedRoughVisionEnvCfg):
+class HyQRealRoughVisionEnvCfg(BaseQuadrupedRoughVisionEnvCfg):
     """HyQReal configuration for rough environments with vision sensors."""
 
+    from basic_locomotion_dls_isaaclab.assets.hyqreal_asset import HYQREAL_CFG
+
+    # You can adjust clock signal and history if needed.
+    use_clock_signal: bool = True
+    history_length: int = 3
+    use_observation_history: bool = True
     observation_space: int = 235
+
+    robot: ArticulationCfg = HYQREAL_CFG.replace(prim_path="/World/envs/env_.*/Robot")
+    desired_base_height: float = 0.5
+    desired_feet_height: float = 0.04
+    desired_clip_actions: float = 3.0
 
 
 # ------------------------------------------------------------------------------
@@ -358,19 +382,35 @@ class Go2EnvCfg(BaseQuadrupedEnvCfg):
 
     robot: ArticulationCfg = GO2_CFG.replace(prim_path="/World/envs/env_.*/Robot")
     desired_base_height: float = 0.29
-    desired_feet_height: float = 0.15
+    desired_feet_height: float = 0.04
     desired_clip_actions: float = 10.0
 
 
 @configclass
-class Go2RoughBlindEnvCfg(Go2EnvCfg, BaseQuadrupedRoughBlindEnvCfg):
+class Go2RoughBlindEnvCfg(BaseQuadrupedRoughBlindEnvCfg):
     """Go2 configuration for rough terrain environments without vision sensors."""
 
-    pass
+    from basic_locomotion_dls_isaaclab.assets.go2_asset import GO2_CFG
+
+    # Use default flat parameters from BaseQuadrupedEnvCfg as needed.
+    observation_space: int = 48
+
+    robot: ArticulationCfg = GO2_CFG.replace(prim_path="/World/envs/env_.*/Robot")
+    desired_base_height: float = 0.29
+    desired_feet_height: float = 0.04
+    desired_clip_actions: float = 10.0
 
 
 @configclass
-class Go2RoughVisionEnvCfg(Go2EnvCfg, BaseQuadrupedRoughVisionEnvCfg):
+class Go2RoughVisionEnvCfg(BaseQuadrupedRoughVisionEnvCfg):
     """Go2 configuration for rough terrain environments with vision sensors."""
 
+    from basic_locomotion_dls_isaaclab.assets.go2_asset import GO2_CFG
+
+    # Use default flat parameters from BaseQuadrupedEnvCfg as needed.
     observation_space: int = 235
+
+    robot: ArticulationCfg = GO2_CFG.replace(prim_path="/World/envs/env_.*/Robot")
+    desired_base_height: float = 0.29
+    desired_feet_height: float = 0.04
+    desired_clip_actions: float = 10.0
