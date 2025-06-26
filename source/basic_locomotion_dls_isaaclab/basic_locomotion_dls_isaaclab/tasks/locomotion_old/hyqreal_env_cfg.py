@@ -291,13 +291,7 @@ import isaaclab.terrains as terrain_gen
 from isaaclab.terrains.terrain_generator_cfg import TerrainGeneratorCfg
 @configclass
 class HyQRealRoughBlindEnvCfg(HyQRealFlatEnvCfg):
-    # env
-    # observation_space = 48
-
-    #curriculum: CurriculumCfg = CurriculumCfg()
-
-    maximum_height = 0.10
-
+    
     ROUGH_TERRAINS_CFG = TerrainGeneratorCfg(
         curriculum=False,
         size=(8.0, 8.0),
@@ -310,39 +304,28 @@ class HyQRealRoughBlindEnvCfg(HyQRealFlatEnvCfg):
         use_cache=False,
         sub_terrains={
             "flat": terrain_gen.MeshPlaneTerrainCfg(
-                proportion=0.2,
+                proportion=0.2
             ),
-            #"pyramid_stairs": terrain_gen.MeshPyramidStairsTerrainCfg(
-            #    proportion=0.2,
-            #    step_height_range=(0.05, maximum_height),
-            #    step_width=0.3,
-            #    platform_width=3.0,
-            #    border_width=1.0,
-            #    holes=False,
-            #),
-            #"pyramid_stairs_inv": terrain_gen.MeshInvertedPyramidStairsTerrainCfg(
-            #    proportion=0.2,
-            #    step_height_range=(0.05, maximum_height),
-            #    step_width=0.3,
-            #    platform_width=3.0,
-            #    border_width=1.0,
-            #    holes=False,
-            #),
             "boxes": terrain_gen.MeshRandomGridTerrainCfg(
-                proportion=0.2, grid_width=0.45, grid_height_range=(0.05, maximum_height), platform_width=2.0
+                proportion=0.2, grid_width=0.45, grid_height_range=(0.05, 0.10), platform_width=2.0,
             ),
             "random_rough": terrain_gen.HfRandomUniformTerrainCfg(
-                proportion=0.2, noise_range=(0.02, 0.06), noise_step=0.02, border_width=0.25
+                proportion=0.1, noise_range=(0.02, 0.06), noise_step=0.02, border_width=0.25
             ),
-            #"hf_pyramid_slope": terrain_gen.HfPyramidSlopedTerrainCfg(
-            #    proportion=0.1, slope_range=(0.0, 0.2), platform_width=2.0, border_width=0.25
-            #),
-            #"hf_pyramid_slope_inv": terrain_gen.HfInvertedPyramidSlopedTerrainCfg(
-            #    proportion=0.1, slope_range=(0.0, 0.2), platform_width=2.0, border_width=0.25
-            #),
-            "random_bar":terrain_gen.MeshStarTerrainCfg(
-                proportion=0.2, num_bars=10, bar_width_range=(0.10, 0.20), bar_height_range=(0.06, 0.20)
-            )
+            "hf_pyramid_slope": terrain_gen.HfPyramidSlopedTerrainCfg(
+                proportion=0.1, slope_range=(0.2, 0.4), platform_width=2.0, border_width=0.25
+            ),
+            "hf_pyramid_slope_inv": terrain_gen.HfInvertedPyramidSlopedTerrainCfg(
+                proportion=0.1, slope_range=(0.2, 0.4), platform_width=2.0, border_width=0.25
+            ),
+            "pyramid_stairs": terrain_gen.MeshPyramidStairsTerrainCfg(
+                proportion=0.2, step_height_range=(0.05, 0.15), step_width=0.3,
+                platform_width=3.0, border_width=1.0, holes=False,
+            ),
+            "pyramid_stairs_inv": terrain_gen.MeshInvertedPyramidStairsTerrainCfg(
+                proportion=0.1, step_height_range=(0.05, 0.15), step_width=0.3,
+                platform_width=3.0, border_width=1.0, holes=False,
+            ),
         },
     )
 
@@ -374,24 +357,4 @@ class HyQRealRoughBlindEnvCfg(HyQRealFlatEnvCfg):
 class HyQRealRoughVisionEnvCfg(HyQRealFlatEnvCfg):
     # env
     observation_space = 235
-
-    terrain = TerrainImporterCfg(
-        prim_path="/World/ground",
-        terrain_type="generator",
-        terrain_generator=ROUGH_TERRAINS_CFG,
-        max_init_terrain_level=0,
-        collision_group=-1,
-        physics_material=sim_utils.RigidBodyMaterialCfg(
-            friction_combine_mode="multiply",
-            restitution_combine_mode="multiply",
-            static_friction=1.0,
-            dynamic_friction=1.0,
-        ),
-        visual_material=sim_utils.MdlFileCfg(
-            mdl_path="{NVIDIA_NUCLEUS_DIR}/Materials/Base/Architecture/Shingles_01.mdl",
-            project_uvw=True,
-        ),
-        debug_vis=False,
-    )
-
 
