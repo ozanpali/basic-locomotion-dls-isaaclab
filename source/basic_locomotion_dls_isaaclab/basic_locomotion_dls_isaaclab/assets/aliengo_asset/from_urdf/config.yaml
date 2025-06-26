@@ -1,5 +1,5 @@
 asset_path: /home/iit.local/gturrisi/personal_ws_home/Quadruped-PyMPC/quadruped_pympc/gym-quadruped/gym_quadruped/robot_model/aliengo/aliengo.xml
-usd_dir: /home/gturrisi/isaaclab_ws_home/basic_locomotion_dls_isaaclab/exts/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets
+usd_dir: /home/gturrisi/isaaclab_ws_home/quadruped_rl_collection/exts/quadruped_rl_collection/quadruped_rl_collection/assets
 usd_file_name: aliengo.usd
 force_usd_conversion: true
 make_instanceable: true

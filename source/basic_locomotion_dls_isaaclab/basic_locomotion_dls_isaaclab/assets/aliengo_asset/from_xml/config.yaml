@@ -1,4 +1,4 @@
-asset_path: /home/iit.local/gturrisi/isaaclab_ws_home/basic_locomotion_dls_isaaclab/scripts/sim_to_sim_mujoco/gym-quadruped/gym_quadruped/robot_model/aliengo/aliengo.xml
+asset_path: /home/iit.local/gturrisi/isaaclab_ws_home/quadruped_rl_collection/scripts/sim_to_sim_mujoco/gym-quadruped/gym_quadruped/robot_model/aliengo/aliengo.xml
 usd_dir: /home/iit.local/gturrisi/isaaclab_ws_home
 usd_file_name: aliengo.usd
 force_usd_conversion: true
