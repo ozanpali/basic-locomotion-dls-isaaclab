@@ -13,11 +13,11 @@ from isaaclab.sensors import ImuCfg
 from isaaclab.utils import configclass
 from isaaclab.utils.noise import GaussianNoiseCfg, NoiseModelWithAdditiveBiasCfg
 
-from quadruped_rl_collection.assets.hyqreal_asset import HYQREAL_CFG # isort: skip
+from basic_locomotion_dls_isaaclab.assets.hyqreal_asset import HYQREAL_CFG # isort: skip
 from isaaclab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: skip
 
-import quadruped_rl_collection.tasks.custom_events as custom_events
-import quadruped_rl_collection.tasks.custom_curriculums as custom_curriculums
+import basic_locomotion_dls_isaaclab.tasks.custom_events as custom_events
+import basic_locomotion_dls_isaaclab.tasks.custom_curriculums as custom_curriculums
 
 @configclass
 class EventCfg:
