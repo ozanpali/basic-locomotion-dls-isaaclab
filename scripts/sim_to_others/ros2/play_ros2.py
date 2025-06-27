@@ -48,7 +48,7 @@ USE_SMOOTH_VELOCITY = True
 
 class Quadruped_RL_Collection_Node(Node):
     def __init__(self):
-        super().__init__('Quadruped_RL_Collection_Node')
+        super().__init__('Basic_Locomotion_DLS_IsaacLab_Node')
         # Subscribers and Publishers
         self.subscription_base_state = self.create_subscription(BaseStateMsg,"/dls2/base_state", self.get_base_state_callback, 1)
         self.subscription_blind_state = self.create_subscription(BlindStateMsg,"/dls2/blind_state", self.get_blind_state_callback, 1)
@@ -216,7 +216,7 @@ class Quadruped_RL_Collection_Node(Node):
         
         qpos, qvel = env.mjData.qpos, env.mjData.qvel
         base_lin_vel = env.base_lin_vel(frame='base')
-        base_ang_vel = env.base_ang_vel(frame='world')
+        base_ang_vel = env.base_ang_vel(frame='base')
         base_ori_euler_xyz = env.base_ori_euler_xyz
         heading_orientation_SO3 = env.heading_orientation_SO3
         base_quat_wxyz = qpos[3:7]

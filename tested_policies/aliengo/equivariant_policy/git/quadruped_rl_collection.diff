@@ -1,0 +1,130 @@
+--- git status ---
+HEAD detached from a35c440
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+  (commit or discard the untracked or modified content in submodules)
+	modified:   scripts/rsl_rl/play_symm.py
+	modified:   scripts/sim_to_others/gym-quadruped (new commits, untracked content)
+	modified:   scripts/sim_to_others/locomotion_policy_wrapper.py
+	modified:   scripts/sim_to_others/play_mujoco.py
+	modified:   source/quadruped_rl_collection/quadruped_rl_collection/tasks/locomotion/agents/aliengo_agent/rsl_rl_ppo_cfg.py
+	modified:   source/quadruped_rl_collection/quadruped_rl_collection/tasks/locomotion/aliengo_env_cfg.py
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	tested_policies/aliengo/data_augment_1_flat/
+
+no changes added to commit (use "git add" and/or "git commit -a") 
+
+
+--- git diff ---
+diff --git a/scripts/rsl_rl/play_symm.py b/scripts/rsl_rl/play_symm.py
+index 5b9e03c..8e308b4 100644
+--- a/scripts/rsl_rl/play_symm.py
++++ b/scripts/rsl_rl/play_symm.py
+@@ -91,18 +91,21 @@ def main():
+     ppo_runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
+     ppo_runner.load(resume_path)
+ 
+-    # obtain the trained policy for inference
+-    policy = ppo_runner.get_inference_policy(device=env.unwrapped.device)
+-
+     # export policy to onnx/jit
+-    export_model_dir = os.path.join(os.path.dirname(resume_path), "exported")
++    ckpt_path = os.path.join(os.path.dirname(resume_path), "exported")
++
++    # Convert Equivariant modules into standard torch modules.
++    policy = ppo_runner.alg.policy.export()
+     export_policy_as_jit(
+-        ppo_runner.alg.policy, ppo_runner.obs_normalizer, path=export_model_dir, filename="policy.pt"
++        policy, ppo_runner.obs_normalizer, path=ckpt_path, filename="policy.pt"
+     )
+     export_policy_as_onnx(
+-        ppo_runner.alg.policy, normalizer=ppo_runner.obs_normalizer, path=export_model_dir, filename="policy.onnx"
++        policy, normalizer=ppo_runner.obs_normalizer, path=ckpt_path, filename="policy.onnx"
+     )
+ 
++    # obtain the trained policy for inference
++    policy = ppo_runner.get_inference_policy(device=env.unwrapped.device)
++
+     # reset environment
+     obs, _ = env.get_observations()
+     timestep = 0
+diff --git a/scripts/sim_to_others/gym-quadruped b/scripts/sim_to_others/gym-quadruped
+index 27fa4da..fe29c07 160000
+--- a/scripts/sim_to_others/gym-quadruped
++++ b/scripts/sim_to_others/gym-quadruped
+@@ -1 +1 @@
+-Subproject commit 27fa4da0b308c689fd53d51eca2e891253d18a8c
++Subproject commit fe29c0760a43992d9f4ce65af50d5cbd612cba70
+diff --git a/scripts/sim_to_others/locomotion_policy_wrapper.py b/scripts/sim_to_others/locomotion_policy_wrapper.py
+index c7c1d00..7d5d859 100644
+--- a/scripts/sim_to_others/locomotion_policy_wrapper.py
++++ b/scripts/sim_to_others/locomotion_policy_wrapper.py
+@@ -21,7 +21,7 @@ from gym_quadruped.utils.quadruped_utils import LegsAttr
+ 
+ import onnxruntime as ort
+ 
+-policy_path = "/home/iit.local/gturrisi/isaaclab_ws_home/quadruped_rl_collection/logs/rsl_rl/aliengo_rough_direct/2025-06-06_23-54-53"
++policy_path = "/home/alienware/isaaclab_ws_home/quadruped_rl_collection/logs/rsl_rl/aliengo_rough_direct/2025-06-17_15-35-25"
+ #policy_path = dir_path + "/../../tested_policies/aliengo/data_augment"
+ policy_path = policy_path + "/exported/policy.onnx"
+ policy = ort.InferenceSession(policy_path)
+diff --git a/scripts/sim_to_others/play_mujoco.py b/scripts/sim_to_others/play_mujoco.py
+index cfb696d..1a59576 100644
+--- a/scripts/sim_to_others/play_mujoco.py
++++ b/scripts/sim_to_others/play_mujoco.py
+@@ -57,7 +57,7 @@ if __name__ == '__main__':
+         # Get the current state of the robot -----------------------------------------------------
+         qpos, qvel = env.mjData.qpos, env.mjData.qvel
+         base_lin_vel = env.base_lin_vel(frame='base')
+-        base_ang_vel = env.base_ang_vel(frame='world')
++        base_ang_vel = env.base_ang_vel(frame='base')
+         base_ori_euler_xyz = env.base_ori_euler_xyz
+         heading_orientation_SO3 = env.heading_orientation_SO3
+         base_quat_wxyz = qpos[3:7]
+diff --git a/source/quadruped_rl_collection/quadruped_rl_collection/tasks/locomotion/agents/aliengo_agent/rsl_rl_ppo_cfg.py b/source/quadruped_rl_collection/quadruped_rl_collection/tasks/locomotion/agents/aliengo_agent/rsl_rl_ppo_cfg.py
+index 4bb4710..97666f8 100644
+--- a/source/quadruped_rl_collection/quadruped_rl_collection/tasks/locomotion/agents/aliengo_agent/rsl_rl_ppo_cfg.py
++++ b/source/quadruped_rl_collection/quadruped_rl_collection/tasks/locomotion/agents/aliengo_agent/rsl_rl_ppo_cfg.py
+@@ -39,7 +39,7 @@ class AliengoFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
+         activation="elu",
+     )
+     algorithm = RslRlPpoAlgorithmCfg(
+-        class_name="PPOSymmDataAugmented", #PPO, PPOSymmDataAugmented #AMP_PPO
++        class_name="PPO", #PPO, PPOSymmDataAugmented #AMP_PPO
+         value_loss_coef=1.0,
+         use_clipped_value_loss=True,
+         clip_param=0.2,
+@@ -76,7 +76,7 @@ class AliengoRoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
+     experiment_name = "aliengo_rough_direct"
+     empirical_normalization = False
+     policy = RslRlPpoActorCriticCfg(
+-        class_name="ActorCritic", #ActorCritic, ActorCriticRecurrent, ActorCriticSymmEquivariantNN
++        class_name="ActorCriticSymmEquivariantNN", #ActorCritic, ActorCriticRecurrent, ActorCriticSymmEquivariantNN
+         init_noise_std=1.0,
+         #actor_hidden_dims=[512, 256, 128],
+         #critic_hidden_dims=[512, 256, 128],
+@@ -85,7 +85,7 @@ class AliengoRoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
+         activation="elu",
+     )
+     algorithm = RslRlPpoAlgorithmCfg(
+-        class_name="PPOSymmDataAugmented", #PPO, PPOSymmDataAugmented #AMP_PPO
++        class_name="PPO", #PPO, PPOSymmDataAugmented #AMP_PPO
+         value_loss_coef=1.0,
+         use_clipped_value_loss=True,
+         clip_param=0.2,
+diff --git a/source/quadruped_rl_collection/quadruped_rl_collection/tasks/locomotion/aliengo_env_cfg.py b/source/quadruped_rl_collection/quadruped_rl_collection/tasks/locomotion/aliengo_env_cfg.py
+index 270004f..34dbaaa 100644
+--- a/source/quadruped_rl_collection/quadruped_rl_collection/tasks/locomotion/aliengo_env_cfg.py
++++ b/source/quadruped_rl_collection/quadruped_rl_collection/tasks/locomotion/aliengo_env_cfg.py
+@@ -162,7 +162,7 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
+ 
+     # observation history
+     use_observation_history = True
+-    history_length = 3
++    history_length = 5
+     if(use_observation_history):
+         observation_space *= history_length
+ 
