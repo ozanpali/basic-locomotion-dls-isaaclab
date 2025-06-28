@@ -79,3 +79,12 @@ pip install -e .
 ```
 
 Then you can run play_mujoco.py
+
+
+### Run Sim to Real 
+Go in the folder scripts/sim_to_others, and run play_ros2_.py.
+For joystick, run
+
+```bash
+ros2 launch teleop_twist_joy teleop-launch.py joy_config:='xbox'
+```
