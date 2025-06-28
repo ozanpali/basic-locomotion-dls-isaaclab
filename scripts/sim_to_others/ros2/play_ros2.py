@@ -5,6 +5,7 @@
 
 import rclpy 
 from rclpy.node import Node 
+from sensor_msgs.msg import Joy
 from dls2_msgs.msg import BaseStateMsg, BlindStateMsg, ControlSignalMsg, TrajectoryGeneratorMsg
 
 import time
@@ -35,8 +36,8 @@ os.system("renice -n -21 -p " + str(pid))
 os.system("echo -20 > /proc/" + str(pid) + "/autogroup")
 #for real time, launch it with chrt -r 99 python3 run_controller.py
 
-USE_MUJOCO_RENDER = False
-USE_MUJOCO_SIMULATION = False
+USE_MUJOCO_RENDER = True
+USE_MUJOCO_SIMULATION = True
 
 USE_FIXED_LOOP_TIME = False
 USE_SATURATED_LOOP_TIME = False
@@ -52,6 +53,7 @@ class Quadruped_RL_Collection_Node(Node):
         # Subscribers and Publishers
         self.subscription_base_state = self.create_subscription(BaseStateMsg,"/dls2/base_state", self.get_base_state_callback, 1)
         self.subscription_blind_state = self.create_subscription(BlindStateMsg,"/dls2/blind_state", self.get_blind_state_callback, 1)
+        self.subscription_joy = self.create_subscription(Joy,"joy", self.get_joy_callback, 1)
         #self.publisher_control_signal = self.create_publisher(ControlSignalMsg,"dls2/quadruped_rl_torques", 1)
         self.publisher_trajectory_generator = self.create_publisher(TrajectoryGeneratorMsg,"dls2/trajectory_generator", 1)
         if(USE_SCHEDULER):
@@ -79,29 +81,18 @@ class Quadruped_RL_Collection_Node(Node):
 
         # Mujoco env
         robot_name = "aliengo"
-        hip_height = 0.3
-        robot_leg_joints = dict(FL=['FL_hip_joint', 'FL_thigh_joint', 'FL_calf_joint',],  # TODO: Make configs per robot.
-                                FR=['FR_hip_joint', 'FR_thigh_joint', 'FR_calf_joint',],
-                                RL=['RL_hip_joint', 'RL_thigh_joint', 'RL_calf_joint',],
-                                RR=['RR_hip_joint', 'RR_thigh_joint', 'RR_calf_joint',])
-        robot_feet_geom_names = dict(FL='FL', FR='FR', RL='RL', RR='RR')
         scene_name = "flat" #random-boxes
         simulation_dt = 0.002
-        self.env = QuadrupedEnv(robot=robot_name,
-                        hip_height=hip_height,
-                        legs_joint_names=robot_leg_joints,  # Joint names of the legs DoF
-                        feet_geom_name=robot_feet_geom_names,  # Geom/Frame id of feet
-                        scene=scene_name,
-                        sim_dt=simulation_dt,
-                        ref_base_lin_vel=0.0,  # pass a float for a fixed value
-                        ground_friction_coeff=1.5,  # pass a float for a fixed value
-                        base_vel_command_type="human",  # "forward", "random", "forward+rotate", "human"
-                        )
-        self.jac_feet_prev = self.env.feet_jacobians(frame='world', return_rot_jac=False)
-        self.feet_traj_geom_ids, self.feet_GRF_geom_ids = None, LegsAttr(FL=-1, FR=-1, RL=-1, RR=-1)
-        self.legs_order = ["FL", "FR", "RL", "RR"]
+
+
+        # Create the quadruped robot environment -----------------------------------------------------------
+        self.env = QuadrupedEnv(
+            robot=robot_name,
+            scene=scene_name,
+            sim_dt=simulation_dt,
+            base_vel_command_type="human",  # "forward", "random", "forward+rotate", "human"
+        )
         self.env.reset(random=False)
-        self.last_mpc_time = time.time()
 
 
         
@@ -119,7 +110,7 @@ class Quadruped_RL_Collection_Node(Node):
         self.stand_up_and_down_actions.FR = np.array([0.,   1.201, -2.791])
         self.stand_up_and_down_actions.RL = np.array([0.,   1.201, -2.791])
         self.stand_up_and_down_actions.RR = np.array([0.,   1.201, -2.791])
-        self.Kp_stand_up_and_down = 25. #experiment 20
+        self.Kp_stand_up_and_down = 25.
         self.Kd_stand_up_and_down = 2.
 
         # Interactive Command Line ----------------------------
@@ -128,6 +119,17 @@ class Quadruped_RL_Collection_Node(Node):
         thread_console = threading.Thread(target=self.console.interactive_command_line)
         thread_console.daemon = True
         thread_console.start()
+
+    
+    def get_joy_callback(self, msg):
+        """
+        Callback function to handle joystick input. Joystick used is a 
+        Logitech F710 Wireless Gamepad, with D modality and Model Light OFF.
+        """
+        self.env._ref_base_lin_vel_H[0] = msg.axes[1]/2.5  # Forward/Backward
+        self.env._ref_base_lin_vel_H[1] = msg.axes[0]/2.5  # Left/Right
+        self.env._ref_base_ang_yaw_dot = msg.axes[2]  # Yaw
+
 
 
 

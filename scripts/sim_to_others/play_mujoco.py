@@ -26,7 +26,7 @@ if __name__ == '__main__':
 
     robot_name = "aliengo"
     robot_feet_geom_names = dict(FL='FL', FR='FR', RL='RL', RR='RR')
-    scene_name = "random_pyramids" #random_boxes
+    scene_name = "random_boxes" #random_boxes
     simulation_dt = 0.002
 
 

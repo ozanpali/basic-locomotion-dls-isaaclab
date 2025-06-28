@@ -21,10 +21,9 @@ from gym_quadruped.utils.quadruped_utils import LegsAttr
 
 import onnxruntime as ort
 
-policy_path = "/home/alienware/isaaclab_ws_home/quadruped_rl_collection/tested_policies/aliengo/equivariant_policy"
+policy_path = "/home/iit.local/gturrisi/isaaclab_ws_home/basic-locomotion-dls-isaaclab/tested_policies/aliengo/data_aug_policy"
 #policy_path = dir_path + "/../../tested_policies/aliengo/data_augment"
 policy_path = policy_path + "/exported/policy.onnx"
-policy_path = "/home/alienware/isaaclab_ws_home/quadruped_rl_collection/logs/rsl_rl/aliengo_rough_direct/2025-06-19_15-43-18/policy_7999.onnx"
 policy = ort.InferenceSession(policy_path)
 
 import torch
