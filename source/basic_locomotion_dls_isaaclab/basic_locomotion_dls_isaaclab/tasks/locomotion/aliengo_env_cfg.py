@@ -164,7 +164,13 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     use_observation_history = True
     history_length = 5
     if(use_observation_history):
+        single_observation_space = observation_space # Placeholder. Later we may add map, but only from the latest obs
         observation_space *= history_length
+
+    use_rma = False
+    if(use_rma):
+        observation_space += 12 # P gain
+        observation_space += 12 # D gain 
 
     use_filter_actions = True
 

@@ -55,8 +55,7 @@ class LocomotionEnv(DirectRLEnv):
         self._duty_factor = 0.65
 
         # Observation history
-        single_observation_space = int(cfg.observation_space/cfg.history_length)
-        self._observation_history = torch.zeros(self.num_envs, cfg.history_length, single_observation_space, device=self.device)
+        self._observation_history = torch.zeros(self.num_envs, cfg.history_length, cfg.single_observation_space, device=self.device)
 
         # Logging
         self._episode_sums = {
@@ -152,12 +151,6 @@ class LocomotionEnv(DirectRLEnv):
 
     def _get_observations(self) -> dict:
         
-        height_data = None
-        if isinstance(self.cfg, AliengoRoughVisionEnvCfg) or isinstance(self.cfg, Go2RoughVisionEnvCfg):
-            height_data = (
-                self._height_scanner.data.pos_w[:, 2].unsqueeze(1) - self._height_scanner.data.ray_hits_w[..., 2] - 0.5
-            ).clip(-1.0, 1.0)
-        
         clock_data = None
         if(self.cfg.use_clock_signal):
             clock_data = torch.vstack([self._phase_signal[:,0], self._phase_signal[:,1], self._phase_signal[:,2], self._phase_signal[:,3]]).T
@@ -166,10 +159,6 @@ class LocomotionEnv(DirectRLEnv):
             should_move = torch.norm(self._commands[:, :3], dim=1) > 0.01
             clock_data[:, :] = clock_data[:, :]*should_move.unsqueeze(1).expand(-1, 4) + -1.0* ~should_move.unsqueeze(1).expand(-1, 4)
             
-
-        #noise_lin_vel = torch.clamp(torch.randn(self.num_envs, 3, device=self.device) * 0.0001, min=-0.1, max=0.1)
-        #noise_ang_vel = torch.clamp(torch.randn(self.num_envs, 3, device=self.device) * 0.0001, min=-0.1, max=0.1)
-        #noise_joints_vel = torch.clamp(torch.randn(self.num_envs, 12, device=self.device) * 0.0001, min=-0.1, max=0.1)
 
         obs = torch.cat(
             [
@@ -181,7 +170,6 @@ class LocomotionEnv(DirectRLEnv):
                     self._commands,
                     self._robot.data.joint_pos - self._robot.data.default_joint_pos,
                     self._robot.data.joint_vel,
-                    height_data,
                     self._actions,
                     clock_data,
                 )
@@ -189,32 +177,37 @@ class LocomotionEnv(DirectRLEnv):
             ],
             dim=-1,
         )
-
-
+        
+        
         if(self.cfg.use_observation_history):
             #the bottom element is the newest observation!!
             self._observation_history = torch.cat((self._observation_history[:,1:,:], obs.unsqueeze(1)), dim=1)
             obs = torch.flatten(self._observation_history, start_dim=1)
 
-        # If you want to use IMU, comment above and uncomment below
-        """obs = torch.cat(
-            [
-                tensor
-                for tensor in (
-                    self._imu.data.lin_acc_b,
-                    self._imu.data.ang_vel_b,
-                    self._robot.data.projected_gravity_b,
-                    self._commands,
-                    self._robot.data.joint_pos - self._robot.data.default_joint_pos,
-                    self._robot.data.joint_vel,
-                    height_data,
-                    self._actions,
-                    clock_data,
-                )
-                if tensor is not None
-            ],
-            dim=-1,
-        )"""
+
+        if(self.cfg.use_rma):
+            asset_cfg = SceneEntityCfg("robot", joint_names=[".*"])
+            asset: Articulation = self.scene[asset_cfg.name]
+
+            hip_stiffness = asset.actuators["hip"].stiffness
+            thigh_stiffness = asset.actuators["thigh"].stiffness
+            calf_stiffness = asset.actuators["calf"].stiffness
+
+            hip_damping = asset.actuators["hip"].damping
+            thigh_damping = asset.actuators["thigh"].damping
+            calf_damping = asset.actuators["calf"].damping
+
+            obs = torch.cat((obs, 
+                               hip_stiffness/20., thigh_stiffness/20., calf_stiffness/20., #P gain
+                               hip_damping/3., thigh_damping/3., calf_damping/3., #D gain
+                            ), dim=-1)            
+
+
+        if isinstance(self.cfg, AliengoRoughVisionEnvCfg) or isinstance(self.cfg, Go2RoughVisionEnvCfg):
+            height_data = (
+                self._height_scanner.data.pos_w[:, 2].unsqueeze(1) - self._height_scanner.data.ray_hits_w[..., 2] - 0.5
+            ).clip(-1.0, 1.0)
+            obs = torch.cat((obs, height_data), dim=-1)      
 
         observations = {"policy": obs}    
         
