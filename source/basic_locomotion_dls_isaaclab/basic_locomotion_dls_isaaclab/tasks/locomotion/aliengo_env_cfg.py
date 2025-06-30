@@ -171,6 +171,12 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     if(use_rma):
         observation_space += 12 # P gain
         observation_space += 12 # D gain 
+        #state_space += 1*17 # mass*num_bodies
+        #state_space += 1*17 # inertia*num_bodies
+        #state_space += 1 # wrench
+        observation_space += 12 # friction static
+        observation_space += 12 # friction dynamic
+        observation_space += 12 # armature
 
     use_filter_actions = True
 

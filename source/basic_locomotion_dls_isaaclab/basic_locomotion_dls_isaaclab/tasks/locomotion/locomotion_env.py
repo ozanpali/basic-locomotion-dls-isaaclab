@@ -189,6 +189,18 @@ class LocomotionEnv(DirectRLEnv):
             asset_cfg = SceneEntityCfg("robot", joint_names=[".*"])
             asset: Articulation = self.scene[asset_cfg.name]
 
+            hip_static_friction = asset.actuators["hip"].friction_static
+            thigh_static_friction = asset.actuators["thigh"].friction_static
+            calf_static_friction = asset.actuators["calf"].friction_static
+            
+            hip_dynamic_friction = asset.actuators["hip"].friction_dynamic
+            thigh_dynamic_friction = asset.actuators["thigh"].friction_dynamic
+            calf_dynamic_friction = asset.actuators["calf"].friction_dynamic
+
+            hip_armature = asset.actuators["hip"].armature
+            thigh_armature = asset.actuators["thigh"].armature
+            calf_armature = asset.actuators["calf"].armature
+
             hip_stiffness = asset.actuators["hip"].stiffness
             thigh_stiffness = asset.actuators["thigh"].stiffness
             calf_stiffness = asset.actuators["calf"].stiffness
@@ -198,8 +210,11 @@ class LocomotionEnv(DirectRLEnv):
             calf_damping = asset.actuators["calf"].damping
 
             obs = torch.cat((obs, 
-                               hip_stiffness/20., thigh_stiffness/20., calf_stiffness/20., #P gain
-                               hip_damping/3., thigh_damping/3., calf_damping/3., #D gain
+                                hip_stiffness/25., thigh_stiffness/25., calf_stiffness/25., #P gain
+                                hip_damping/3., thigh_damping/3., calf_damping/3., #D gain,
+                                hip_static_friction, thigh_static_friction, calf_static_friction,
+                                hip_dynamic_friction, thigh_dynamic_friction, calf_dynamic_friction,
+                                hip_armature, thigh_armature, calf_armature
                             ), dim=-1)            
 
 
@@ -209,6 +224,7 @@ class LocomotionEnv(DirectRLEnv):
             ).clip(-1.0, 1.0)
             obs = torch.cat((obs, height_data), dim=-1)      
 
+        # Final observations dictionary
         observations = {"policy": obs}    
         
 
@@ -266,6 +282,8 @@ class LocomotionEnv(DirectRLEnv):
                 dim=-1,
             )
             observations["amp"] = obs_amp
+        
+        
         return observations
 
 
