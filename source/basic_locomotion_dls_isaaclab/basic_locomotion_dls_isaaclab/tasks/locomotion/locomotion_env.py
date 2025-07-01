@@ -221,7 +221,9 @@ class LocomotionEnv(DirectRLEnv):
         if isinstance(self.cfg, AliengoRoughVisionEnvCfg) or isinstance(self.cfg, Go2RoughVisionEnvCfg):
             height_data = (
                 self._height_scanner.data.pos_w[:, 2].unsqueeze(1) - self._height_scanner.data.ray_hits_w[..., 2] - 0.5
-            ).clip(-1.0, 1.0)
+            )
+            height_data = torch.nan_to_num(height_data, nan=0.0, posinf=1.0, neginf=-1.0)
+            height_data = height_data.clip(-1.0, 1.0)
             obs = torch.cat((obs, height_data), dim=-1)      
 
         # Final observations dictionary
@@ -291,6 +293,7 @@ class LocomotionEnv(DirectRLEnv):
 
         # track_height
         height_data_scanner = self._height_scanner.data.ray_hits_w[..., 2]
+        height_data_scanner = torch.nan_to_num(height_data_scanner, nan=0.0, posinf=1.0, neginf=-1.0)
         height_data_scanner = torch.clip(height_data_scanner, min=-5, max=5) # Handle inf values
         mean_height_ray = torch.mean(height_data_scanner, dim=1)
 
@@ -505,7 +508,27 @@ class LocomotionEnv(DirectRLEnv):
     def _get_dones(self) -> tuple[torch.Tensor, torch.Tensor]:
         time_out = self.episode_length_buf >= self.max_episode_length - 1
         net_contact_forces = self._contact_sensor.data.net_forces_w_history
-        died = torch.any(torch.max(torch.norm(net_contact_forces[:, :, self._base_id], dim=-1), dim=1)[0] > 1.0, dim=1)
+        died_check_base = torch.any(torch.max(torch.norm(net_contact_forces[:, :, self._base_id], dim=-1), dim=1)[0] > 1.0, dim=1)
+        died_check_hips = torch.any(torch.max(torch.norm(net_contact_forces[:, :, self._hip_ids], dim=-1), dim=1)[0] > 1.0, dim=1) 
+        died = torch.logical_or(died_check_base, died_check_hips)
+        # Check if the robot is out of bounds of the terrain
+        """if(self._terrain.cfg.terrain_generator is not None):
+            # obtain the size of the sub-terrains
+            terrain_gen_cfg = self._terrain.cfg.terrain_generator
+            grid_width, grid_length = terrain_gen_cfg.size
+            n_rows, n_cols = terrain_gen_cfg.num_rows, terrain_gen_cfg.num_cols
+            border_width = terrain_gen_cfg.border_width
+            # compute the size of the map
+            map_width = n_rows * grid_width + 2 * border_width
+            map_height = n_cols * grid_length + 2 * border_width
+
+            # check if the agent is out of bounds
+            distance_buffer = 3.
+            x_out_of_bounds = torch.abs(self._robot.data.root_state_w[:, 0]) > 0.5 * map_width - distance_buffer
+            y_out_of_bounds = torch.abs(self._robot.data.root_state_w[:, 1]) > 0.5 * map_height - distance_buffer
+            out_of_bounds = torch.logical_or(x_out_of_bounds, y_out_of_bounds)
+            time_out = torch.logical_or(time_out, out_of_bounds) #HACK"""
+        
         return died, time_out
 
 
