@@ -16,6 +16,9 @@ sys.path.append(dir_path+"/../scripts/rsl_rl")
 from gym_quadruped.quadruped_env import QuadrupedEnv
 from gym_quadruped.utils.quadruped_utils import LegsAttr
 
+from gym_quadruped.sensors.heightmap import HeightMap
+from gym_quadruped.utils.mujoco.visual import render_sphere
+
 # Locomotion Policy imports
 from locomotion_policy_wrapper import LocomotionPolicyWrapper
 
@@ -26,7 +29,7 @@ if __name__ == '__main__':
 
     robot_name = "aliengo"
     robot_feet_geom_names = dict(FL='FL', FR='FR', RL='RL', RR='RR')
-    scene_name = "random_boxes" #random_boxes
+    scene_name = "stairs" #random_boxes
     simulation_dt = 0.002
 
 
@@ -43,8 +46,17 @@ if __name__ == '__main__':
     env.render()  # Pass in the first render call any mujoco.viewer.KeyCallbackType
 
 
+
     # Initialization of variables used in the main control loop --------------------------------
     locomotion_policy = LocomotionPolicyWrapper(env=env)
+
+    if(locomotion_policy.use_vision):
+        resolution_heightmap = 0.2
+        num_rows_heightmap = int(1.8/resolution_heightmap) + 1
+        num_cols_heightmap = int(1.0/resolution_heightmap) + 1
+        heightmap = HeightMap(
+            num_rows=num_rows_heightmap, num_cols=num_cols_heightmap, dist_x=resolution_heightmap, dist_y=resolution_heightmap, mj_model=env.mjModel, mj_data=env.mjData
+        )     
     
 
     # --------------------------------------------------------------
@@ -75,6 +87,9 @@ if __name__ == '__main__':
         joints_vel.RL = qvel[env.legs_qvel_idx.RL]
         joints_vel.RR = qvel[env.legs_qvel_idx.RR]
         ref_base_lin_vel, ref_base_ang_vel = env.target_base_vel()
+
+        if(locomotion_policy.use_vision):
+            heightmap.update_height_map(env.mjData.qpos[0:3], yaw=env.base_ori_euler_xyz[2])
     
         # RL controller --------------------------------------------------------------
         if env.step_num % round(1 / (locomotion_policy.RL_FREQ * simulation_dt)) == 0:            
@@ -83,7 +98,8 @@ if __name__ == '__main__':
                                                                     base_lin_vel=base_lin_vel, base_ang_vel=base_ang_vel,
                                                                     heading_orientation_SO3=heading_orientation_SO3,
                                                                     joints_pos=joints_pos, joints_vel=joints_vel,
-                                                                    ref_base_lin_vel=ref_base_lin_vel, ref_base_ang_vel=ref_base_ang_vel)
+                                                                    ref_base_lin_vel=ref_base_lin_vel, ref_base_ang_vel=ref_base_ang_vel,
+                                                                    heightmap_data=heightmap.data if locomotion_policy.use_vision else None)
         # PD controller --------------------------------------------------------------
         else:
             desired_joint_pos = locomotion_policy.desired_joint_pos
@@ -130,6 +146,19 @@ if __name__ == '__main__':
         if time.time() - last_render_time > 1.0 / RENDER_FREQ or env.step_num == 1:
             env.render()
             last_render_time = time.time()
+
+            if(locomotion_policy.use_vision):
+                if heightmap.data is not None:
+                    for i in range(heightmap.data.shape[0]):
+                        for j in range(heightmap.data.data.shape[1]):
+                            heightmap.geom_ids[i, j] = render_sphere(
+                                viewer=env.viewer,
+                                position=([heightmap.data[i][j][0][0], heightmap.data[i][j][0][1], heightmap.data[i][j][0][2]]),
+                                diameter=0.02,
+                                color=[0, 1, 0, 0.5],
+                                geom_id=heightmap.geom_ids[i, j],
+                            )
+
 
                 
 

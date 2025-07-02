@@ -21,7 +21,7 @@ from gym_quadruped.utils.quadruped_utils import LegsAttr
 
 import onnxruntime as ort
 
-policy_path = "/home/iit.local/gturrisi/isaaclab_ws_home/basic-locomotion-dls-isaaclab/tested_policies/aliengo/data_aug_policy"
+policy_path = "/home/alienware/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/aliengo_rough_direct/2025-07-01_22-33-22"
 #policy_path = dir_path + "/../../tested_policies/aliengo/data_augment"
 policy_path = policy_path + "/exported/policy.onnx"
 policy = ort.InferenceSession(policy_path)
@@ -60,11 +60,13 @@ class LocomotionPolicyWrapper:
         self.Kp = 25.
         self.Kd = 2.
 
-        observation_space = 48
+        self.observation_space = 48
 
         self.use_clock_signal = True
         if(self.use_clock_signal):
-            observation_space += 4
+            self.observation_space += 4
+
+
         self.step_freq = 1.4
         self.duty_factor = 0.65
         self.phase_signal = np.array([0.5, 1.0, 1.0, 0.5])
@@ -77,15 +79,20 @@ class LocomotionPolicyWrapper:
         self.use_observation_history = True
         self.history_length = 5
         if(self.use_observation_history):
-            observation_space = observation_space * self.history_length
-        single_observation_space = int(observation_space/self.history_length)
+            self.observation_space = self.observation_space * self.history_length
+        single_observation_space = int(self.observation_space/self.history_length)
         self._observation_history = np.zeros((self.history_length, single_observation_space), dtype=np.float32)
+
+        self.use_vision = True
+        if(self.use_vision):
+            self.observation_space = 235
 
 
     def compute_control(self, base_pos, base_ori_euler_xyz, base_quat_wxyz,
                         base_lin_vel, base_ang_vel, heading_orientation_SO3,
                         joints_pos, joints_vel,
-                        ref_base_lin_vel, ref_base_ang_vel):
+                        ref_base_lin_vel, ref_base_ang_vel,
+                        heightmap_data=None):
 
         # Update Observation ----------------------        
         # Get the projected gravity in the base frame
@@ -103,6 +110,7 @@ class LocomotionPolicyWrapper:
         else:
             c = q_vec * torch.einsum("...i,...i->...", q_vec, v).unsqueeze(-1) * 2.0
         base_projected_gravity =  a - b + c
+        base_projected_gravity = base_projected_gravity.numpy().flatten()
         
 
         # Get the reference base velocity in the world frame
@@ -110,11 +118,24 @@ class LocomotionPolicyWrapper:
         
             
         # Fill the observation vector
-        if(self.use_clock_signal):
-            obs = np.zeros((1,52), dtype=np.float32)
-        else:
-            obs = np.zeros((1,48), dtype=np.float32)
-        
+        joints_pos_delta = joints_pos - self.default_joint_pos
+        obs = np.concatenate([
+            base_lin_vel,
+            base_ang_vel,
+            base_projected_gravity,
+            ref_base_lin_vel_h[0:2],
+            [ref_base_ang_vel[2]],
+            [joints_pos_delta.FL[0]], [joints_pos_delta.FR[0]], [joints_pos_delta.RL[0]], [joints_pos_delta.RR[0]],
+            [joints_pos_delta.FL[1]], [joints_pos_delta.FR[1]], [joints_pos_delta.RL[1]], [joints_pos_delta.RR[1]],
+            [joints_pos_delta.FL[2]], [joints_pos_delta.FR[2]], [joints_pos_delta.RL[2]], [joints_pos_delta.RR[2]],
+            [joints_vel.FL[0]], [joints_vel.FR[0]], [joints_vel.RL[0]], [joints_vel.RR[0]],
+            [joints_vel.FL[1]], [joints_vel.FR[1]], [joints_vel.RL[1]], [joints_vel.RR[1]],
+            [joints_vel.FL[2]], [joints_vel.FR[2]], [joints_vel.RL[2]], [joints_vel.RR[2]],
+            self.past_rl_actions.copy(),
+        ])
+
+        """obs = np.zeros((1, self.observation_space), dtype=np.float32)
+
         # Base lin vel
         obs[0,:3] =  base_lin_vel
         # Base ang vel
@@ -160,24 +181,35 @@ class LocomotionPolicyWrapper:
         obs[0,35] = joints_vel.RR[2]
 
         # Previous Action
-        obs[0,36:48] = self.past_rl_actions.copy()
+        obs[0,36:48] = self.past_rl_actions.copy()"""
 
         # Phase Signal
         if(self.use_clock_signal):
             self.phase_signal += self.step_freq * (1 / (self.RL_FREQ))
             self.phase_signal = self.phase_signal % 1.0
-            obs[0, 48:52] = self.phase_signal
-            
+            #obs[0, 48:52] = self.phase_signal
+            obs = np.concatenate((obs, self.phase_signal), axis=0)
+
             commands = np.array([ref_base_lin_vel_h[0], ref_base_lin_vel_h[1], ref_base_ang_vel[2]], dtype=np.float32)
             if(np.linalg.norm(commands) < 0.01):
-                obs[0, 48:52] = -1.0
+                obs[48:52] = -1.0
         
         if(self.use_observation_history):
             #the bottom element is the newest observation!!
             past = self._observation_history[1:,:]
             self._observation_history = np.vstack((past, obs))
-            obs = self._observation_history.flatten().reshape(1,-1)
+            obs = self._observation_history.flatten()
 
+        
+        if(self.use_vision):
+            # TODO, rotate, the first element for Isaac is bottom right, for us bottom up
+            #breakpoint()
+            height_data = (base_pos[2] - heightmap_data[..., 2].flatten() - 0.5)
+            height_data = height_data.clip(-1.0, 1.0)
+            obs = np.concatenate((obs, height_data), axis=0)
+            
+        obs = obs.reshape(1, -1)
+        obs = obs.astype(np.float32)
         rl_action_temp = policy.run(None, {'obs': obs})[0][0]
         rl_action_temp = np.clip(rl_action_temp, -self.desired_clip_actions, self.desired_clip_actions)
         

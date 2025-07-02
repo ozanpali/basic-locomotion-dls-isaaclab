@@ -1,0 +1,134 @@
+--- git status ---
+HEAD detached from 8be4db9
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   scripts/rsl_rl/cli_args.py
+	modified:   scripts/rsl_rl/play.py
+	modified:   source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_urdf/Props/instanceable_meshes.usd
+	modified:   source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_urdf/aliengo.usd
+	modified:   source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_xml/Props/instanceable_meshes.usd
+	modified:   source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_xml/aliengo.usd
+	modified:   source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/agents/aliengo_agent/rsl_rl_ppo_cfg.py
+	modified:   source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/locomotion_env.py
+
+no changes added to commit (use "git add" and/or "git commit -a") 
+
+
+--- git diff ---
+diff --git a/scripts/rsl_rl/cli_args.py b/scripts/rsl_rl/cli_args.py
+index b5f0b10..e842743 100644
+--- a/scripts/rsl_rl/cli_args.py
++++ b/scripts/rsl_rl/cli_args.py
+@@ -26,7 +26,7 @@ def add_rsl_rl_args(parser: argparse.ArgumentParser):
+     arg_group.add_argument("--checkpoint", type=str, default=None, help="Checkpoint file to resume from.")
+     # -- logger arguments
+     arg_group.add_argument(
+-        "--logger", type=str, default=None, choices={"wandb", "tensorboard", "neptune"}, help="Logger module to use."
++        "--logger", type=str, default="wandb", choices={"wandb", "tensorboard", "neptune"}, help="Logger module to use."
+     )
+     arg_group.add_argument(
+         "--log_project_name", type=str, default=None, help="Name of the logging project when using wandb or neptune."
+diff --git a/scripts/rsl_rl/play.py b/scripts/rsl_rl/play.py
+index 71a772a..e0d36c3 100644
+--- a/scripts/rsl_rl/play.py
++++ b/scripts/rsl_rl/play.py
+@@ -95,10 +95,10 @@ def main():
+     # export policy to onnx/jit
+     export_model_dir = os.path.join(os.path.dirname(resume_path), "exported")
+     export_policy_as_jit(
+-        ppo_runner.alg.actor_critic, ppo_runner.obs_normalizer, path=export_model_dir, filename="policy.pt"
++        ppo_runner.alg.policy, ppo_runner.obs_normalizer, path=export_model_dir, filename="policy.pt"
+     )
+     export_policy_as_onnx(
+-        ppo_runner.alg.actor_critic, normalizer=ppo_runner.obs_normalizer, path=export_model_dir, filename="policy.onnx"
++        ppo_runner.alg.policy, normalizer=ppo_runner.obs_normalizer, path=export_model_dir, filename="policy.onnx"
+     )
+ 
+     # reset environment
+diff --git a/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_urdf/Props/instanceable_meshes.usd b/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_urdf/Props/instanceable_meshes.usd
+index c2feec8..546ae96 100644
+Binary files a/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_urdf/Props/instanceable_meshes.usd and b/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_urdf/Props/instanceable_meshes.usd differ
+diff --git a/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_urdf/aliengo.usd b/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_urdf/aliengo.usd
+index 4a7793e..f066d0a 100644
+Binary files a/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_urdf/aliengo.usd and b/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_urdf/aliengo.usd differ
+diff --git a/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_xml/Props/instanceable_meshes.usd b/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_xml/Props/instanceable_meshes.usd
+index f4bcf2a..6d5f4c3 100644
+Binary files a/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_xml/Props/instanceable_meshes.usd and b/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_xml/Props/instanceable_meshes.usd differ
+diff --git a/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_xml/aliengo.usd b/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_xml/aliengo.usd
+index 08ab35c..c18884b 100644
+Binary files a/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_xml/aliengo.usd and b/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_xml/aliengo.usd differ
+diff --git a/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/agents/aliengo_agent/rsl_rl_ppo_cfg.py b/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/agents/aliengo_agent/rsl_rl_ppo_cfg.py
+index b8f51d7..aec2935 100644
+--- a/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/agents/aliengo_agent/rsl_rl_ppo_cfg.py
++++ b/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/agents/aliengo_agent/rsl_rl_ppo_cfg.py
+@@ -45,7 +45,7 @@ class MorphologycalSymmetriesCfg:
+ @configclass
+ class AliengoFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
+     num_steps_per_env = 24
+-    max_iterations = 500
++    max_iterations = 1000
+     save_interval = 50
+     experiment_name = "aliengo_flat_direct"
+     empirical_normalization = False
+@@ -57,7 +57,7 @@ class AliengoFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
+         activation="elu",
+     )
+     algorithm = RslRlPpoAlgorithmCfg(
+-        class_name="PPOSymmDataAugmented", #PPO, PPOSymmDataAugmented #AMP_PPO
++        class_name="PPO", #PPO, PPOSymmDataAugmented #AMP_PPO
+         value_loss_coef=1.0,
+         use_clipped_value_loss=True,
+         clip_param=0.2,
+diff --git a/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/locomotion_env.py b/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/locomotion_env.py
+index 21351c7..f877b85 100644
+--- a/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/locomotion_env.py
++++ b/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/locomotion_env.py
+@@ -221,7 +221,9 @@ class LocomotionEnv(DirectRLEnv):
+         if isinstance(self.cfg, AliengoRoughVisionEnvCfg) or isinstance(self.cfg, Go2RoughVisionEnvCfg):
+             height_data = (
+                 self._height_scanner.data.pos_w[:, 2].unsqueeze(1) - self._height_scanner.data.ray_hits_w[..., 2] - 0.5
+-            ).clip(-1.0, 1.0)
++            )
++            height_data = torch.nan_to_num(height_data, nan=0.0, posinf=1.0, neginf=-1.0)
++            height_data = height_data.clip(-1.0, 1.0)
+             obs = torch.cat((obs, height_data), dim=-1)      
+ 
+         # Final observations dictionary
+@@ -291,6 +293,7 @@ class LocomotionEnv(DirectRLEnv):
+ 
+         # track_height
+         height_data_scanner = self._height_scanner.data.ray_hits_w[..., 2]
++        height_data_scanner = torch.nan_to_num(height_data_scanner, nan=0.0, posinf=1.0, neginf=-1.0)
+         height_data_scanner = torch.clip(height_data_scanner, min=-5, max=5) # Handle inf values
+         mean_height_ray = torch.mean(height_data_scanner, dim=1)
+ 
+@@ -505,7 +508,27 @@ class LocomotionEnv(DirectRLEnv):
+     def _get_dones(self) -> tuple[torch.Tensor, torch.Tensor]:
+         time_out = self.episode_length_buf >= self.max_episode_length - 1
+         net_contact_forces = self._contact_sensor.data.net_forces_w_history
+-        died = torch.any(torch.max(torch.norm(net_contact_forces[:, :, self._base_id], dim=-1), dim=1)[0] > 1.0, dim=1)
++        died_check_base = torch.any(torch.max(torch.norm(net_contact_forces[:, :, self._base_id], dim=-1), dim=1)[0] > 1.0, dim=1)
++        died_check_hips = torch.any(torch.max(torch.norm(net_contact_forces[:, :, self._hip_ids], dim=-1), dim=1)[0] > 1.0, dim=1) 
++        died = torch.logical_or(died_check_base, died_check_hips)
++        # Check if the robot is out of bounds of the terrain
++        """if(self._terrain.cfg.terrain_generator is not None):
++            # obtain the size of the sub-terrains
++            terrain_gen_cfg = self._terrain.cfg.terrain_generator
++            grid_width, grid_length = terrain_gen_cfg.size
++            n_rows, n_cols = terrain_gen_cfg.num_rows, terrain_gen_cfg.num_cols
++            border_width = terrain_gen_cfg.border_width
++            # compute the size of the map
++            map_width = n_rows * grid_width + 2 * border_width
++            map_height = n_cols * grid_length + 2 * border_width
++
++            # check if the agent is out of bounds
++            distance_buffer = 3.
++            x_out_of_bounds = torch.abs(self._robot.data.root_state_w[:, 0]) > 0.5 * map_width - distance_buffer
++            y_out_of_bounds = torch.abs(self._robot.data.root_state_w[:, 1]) > 0.5 * map_height - distance_buffer
++            out_of_bounds = torch.logical_or(x_out_of_bounds, y_out_of_bounds)
++            time_out = torch.logical_or(time_out, out_of_bounds) #HACK"""
++        
+         return died, time_out
+ 
+ 
