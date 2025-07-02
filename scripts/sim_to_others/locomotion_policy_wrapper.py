@@ -202,9 +202,14 @@ class LocomotionPolicyWrapper:
 
         
         if(self.use_vision):
-            # TODO, rotate, the first element for Isaac is bottom right, for us bottom up
-            #breakpoint()
-            height_data = (base_pos[2] - heightmap_data[..., 2].flatten() - 0.5)
+            # Rotate, the first element for Isaac is bottom right, for us bottom up
+            heightmap_data_isaac_convention = np.zeros((heightmap_data[..., 2].shape[0]*heightmap_data[..., 2].shape[1],), dtype=np.float32)
+            for j in range(heightmap_data[..., 2].shape[1]):
+                heightmap_data_isaac_convention[j*heightmap_data[..., 2].shape[0]:(j+1)*heightmap_data[..., 2].shape[0]] = heightmap_data[..., 2][:, j, 0][::-1]
+            
+            #print("heightmap_data[..., 2][:, j, 0]: ", heightmap_data[..., 2][:, 0, 0])
+            #print("heightmap_data: ", heightmap_data_isaac_convention)
+            height_data = (base_pos[2] - heightmap_data_isaac_convention - 0.5)
             height_data = height_data.clip(-1.0, 1.0)
             obs = np.concatenate((obs, height_data), axis=0)
             
