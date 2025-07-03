@@ -124,11 +124,11 @@ class EventCfg:
     )
 
     # zero command velocity
-    zero_command_velocity = EventTerm(
+    """zero_command_velocity = EventTerm(
         func=custom_events.zero_command_velocity,
         mode="interval",
         interval_range_s=(19.0, 19.0),
-    )
+    )"""
 
     """# reset command velocity
     resample_command_velocity = EventTerm(
@@ -279,7 +279,7 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
 
     # Desired tracking variables
     desired_base_height = 0.35
-    desired_feet_height = 0.06
+    desired_feet_height = 0.04
 
     # Desired clip actions
     desired_clip_actions = 3.0
