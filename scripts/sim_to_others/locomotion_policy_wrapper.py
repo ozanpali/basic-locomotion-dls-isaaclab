@@ -21,7 +21,7 @@ from gym_quadruped.utils.quadruped_utils import LegsAttr
 
 import onnxruntime as ort
 
-policy_path = "/home/alienware/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/aliengo_rough_direct/2025-07-01_22-33-22"
+policy_path = "/home/alienware/isaaclab_ws_home/basic-locomotion-dls-isaaclab/tested_policies/aliengo/data_aug_policy"
 #policy_path = dir_path + "/../../tested_policies/aliengo/data_augment"
 policy_path = policy_path + "/exported/policy.onnx"
 policy = ort.InferenceSession(policy_path)
@@ -83,7 +83,7 @@ class LocomotionPolicyWrapper:
         single_observation_space = int(self.observation_space/self.history_length)
         self._observation_history = np.zeros((self.history_length, single_observation_space), dtype=np.float32)
 
-        self.use_vision = True
+        self.use_vision = False
         if(self.use_vision):
             self.observation_space = 235
 
@@ -134,54 +134,6 @@ class LocomotionPolicyWrapper:
             self.past_rl_actions.copy(),
         ])
 
-        """obs = np.zeros((1, self.observation_space), dtype=np.float32)
-
-        # Base lin vel
-        obs[0,:3] =  base_lin_vel
-        # Base ang vel
-        obs[0,3:6] = base_ang_vel
-        # Projected Gravity
-        obs[0,6:9] = base_projected_gravity
-        # Command
-        obs[0,9] = ref_base_lin_vel_h[0]
-        obs[0,10] = ref_base_lin_vel_h[1]
-        obs[0,11] = ref_base_ang_vel[2]
-        
-        # Joint Positions [12:24]
-        joints_pos_delta = joints_pos - self.default_joint_pos
-        obs[0,12] = joints_pos_delta.FL[0]
-        obs[0,13] = joints_pos_delta.FR[0]
-        obs[0,14] = joints_pos_delta.RL[0]
-        obs[0,15] = joints_pos_delta.RR[0]
-
-        obs[0,16] = joints_pos_delta.FL[1]
-        obs[0,17] = joints_pos_delta.FR[1]
-        obs[0,18] = joints_pos_delta.RL[1]
-        obs[0,19] = joints_pos_delta.RR[1]
-        
-        obs[0,20] = joints_pos_delta.FL[2]
-        obs[0,21] = joints_pos_delta.FR[2]
-        obs[0,22] = joints_pos_delta.RL[2]
-        obs[0,23] = joints_pos_delta.RR[2]
-        
-        # Joint Velocities [24:36]
-        obs[0,24] = joints_vel.FL[0]
-        obs[0,25] = joints_vel.FR[0]
-        obs[0,26] = joints_vel.RL[0]
-        obs[0,27] = joints_vel.RR[0]
-
-        obs[0,28] = joints_vel.FL[1]
-        obs[0,29] = joints_vel.FR[1]
-        obs[0,30] = joints_vel.RL[1]
-        obs[0,31] = joints_vel.RR[1]
-        
-        obs[0,32] = joints_vel.FL[2]
-        obs[0,33] = joints_vel.FR[2]
-        obs[0,34] = joints_vel.RL[2]
-        obs[0,35] = joints_vel.RR[2]
-
-        # Previous Action
-        obs[0,36:48] = self.past_rl_actions.copy()"""
 
         # Phase Signal
         if(self.use_clock_signal):

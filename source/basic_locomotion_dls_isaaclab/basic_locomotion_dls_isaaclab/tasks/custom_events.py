@@ -104,3 +104,26 @@ def randomize_joint_friction_model(
                     armature, armature_distribution_params, env_ids, torch.arange(armature.shape[1]), operation=operation, distribution=distribution
                 )[env_ids][:, actuator_joint_ids]
                 actuator.armature[env_ids[:, None], actuator_joint_ids] = armature
+
+
+
+def zero_command_velocity(
+    env: ManagerBasedEnv,
+    env_ids: torch.Tensor,
+):
+   
+    env._commands[env_ids, 0] = 0.0
+    env._commands[env_ids, 1] = 0.0
+    env._commands[env_ids, 2] = 0.0
+
+
+def resample_command_velocity(
+    env: ManagerBasedEnv,
+    env_ids: torch.Tensor,
+):
+   
+    # Sample new commands
+    env._commands[env_ids] = torch.zeros_like(env._commands[env_ids]).uniform_(-1.0, 1.0)
+    env._commands[env_ids, 0] *= 0.5 
+    env._commands[env_ids, 1] *= 0.25 
+    env._commands[env_ids, 2] *= 0.3 

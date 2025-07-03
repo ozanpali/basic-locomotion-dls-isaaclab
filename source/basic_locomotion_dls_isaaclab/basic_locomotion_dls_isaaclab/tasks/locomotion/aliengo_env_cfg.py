@@ -123,6 +123,20 @@ class EventCfg:
                                    "roll": (-0.5, 0.5), "pitch": (-0.5, 0.5), "yaw": (-0.5, 0.5)}},
     )
 
+    # zero command velocity
+    zero_command_velocity = EventTerm(
+        func=custom_events.zero_command_velocity,
+        mode="interval",
+        interval_range_s=(10.0, 11.0),
+    )
+
+    # reset command velocity
+    resample_command_velocity = EventTerm(
+        func=custom_events.resample_command_velocity,
+        mode="interval",
+        interval_range_s=(11.0, 11.0),
+    )
+
 
 @configclass
 class CurriculumCfg:
@@ -265,7 +279,7 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
 
     # Desired tracking variables
     desired_base_height = 0.35
-    desired_feet_height = 0.04
+    desired_feet_height = 0.06
 
     # Desired clip actions
     desired_clip_actions = 3.0
@@ -337,11 +351,11 @@ class AliengoRoughBlindEnvCfg(AliengoFlatEnvCfg):
                 proportion=0.1, slope_range=(0.2, 0.4), platform_width=2.0, border_width=0.25
             ),
             "pyramid_stairs": terrain_gen.MeshPyramidStairsTerrainCfg(
-                proportion=0.2, step_height_range=(0.05, 0.15), step_width=0.3,
+                proportion=0.2, step_height_range=(0.10, 0.16), step_width=0.3,
                 platform_width=3.0, border_width=1.0, holes=False,
             ),
             "pyramid_stairs_inv": terrain_gen.MeshInvertedPyramidStairsTerrainCfg(
-                proportion=0.1, step_height_range=(0.05, 0.15), step_width=0.3,
+                proportion=0.1, step_height_range=(0.10, 0.16), step_width=0.3,
                 platform_width=3.0, border_width=1.0, holes=False,
             ),
         },
