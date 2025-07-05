@@ -92,8 +92,9 @@ class LocomotionEnv(DirectRLEnv):
         # Get specific body indices
         self._base_id, _ = self._contact_sensor.find_bodies("base")
         self._feet_ids, _ = self._contact_sensor.find_bodies(".*foot")
-        self._undesired_contact_body_ids, _ = self._contact_sensor.find_bodies(".*thigh")
         self._hip_ids, _ = self._contact_sensor.find_bodies(".*hip")
+        self._thigh_ids, _ = self._contact_sensor.find_bodies(".*thigh")
+        self._undesired_contact_body_ids = self._base_id + self._hip_ids + self._thigh_ids
 
         
         self._feet_ids_robot, _ = self._robot .find_bodies(".*foot")
@@ -418,7 +419,7 @@ class LocomotionEnv(DirectRLEnv):
         first_contact = self._contact_sensor.compute_first_contact(self.step_dt)[:, self._feet_ids]
         net_contact_forces = self._contact_sensor.data.net_forces_w_history
         is_contact = (
-            torch.max(torch.norm(net_contact_forces[:, :, self._undesired_contact_body_ids], dim=-1), dim=1)[0] > 1.0
+            torch.max(torch.norm(net_contact_forces[:, :, self._feet_ids], dim=-1), dim=1)[0] > 1.0
         )
         self._swing_peak = torch.max(self._swing_peak, self._robot.data.body_pos_w[:, self._feet_ids_robot, 2].clone()) 
         target_height = self.cfg.desired_feet_height + mean_height_ray.unsqueeze(1).expand(-1, 4)

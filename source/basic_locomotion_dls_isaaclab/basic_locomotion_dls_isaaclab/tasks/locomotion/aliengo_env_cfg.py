@@ -176,7 +176,7 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
 
     # observation history
     use_observation_history = True
-    history_length = 5
+    history_length = 10
     if(use_observation_history):
         single_observation_space = observation_space # Placeholder. Later we may add map, but only from the latest obs
         observation_space *= history_length
@@ -279,10 +279,10 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
 
     # Desired tracking variables
     desired_base_height = 0.35
-    desired_feet_height = 0.04
+    desired_feet_height = 0.06
 
     # Desired clip actions
-    desired_clip_actions = 3.0
+    desired_clip_actions = 6.0
     
     # Tracking reward scale
     lin_vel_reward_scale = 2.0
@@ -351,11 +351,11 @@ class AliengoRoughBlindEnvCfg(AliengoFlatEnvCfg):
                 proportion=0.1, slope_range=(0.2, 0.4), platform_width=2.0, border_width=0.25
             ),
             "pyramid_stairs": terrain_gen.MeshPyramidStairsTerrainCfg(
-                proportion=0.2, step_height_range=(0.05, 0.15), step_width=0.3,
+                proportion=0.2, step_height_range=(0.05, 0.18), step_width=0.3,
                 platform_width=3.0, border_width=1.0, holes=False,
             ),
             "pyramid_stairs_inv": terrain_gen.MeshInvertedPyramidStairsTerrainCfg(
-                proportion=0.1, step_height_range=(0.05, 0.15), step_width=0.3,
+                proportion=0.1, step_height_range=(0.05, 0.18), step_width=0.3,
                 platform_width=3.0, border_width=1.0, holes=False,
             ),
         },
