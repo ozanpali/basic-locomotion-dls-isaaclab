@@ -146,7 +146,6 @@ class Console():
                     temp = input("Enter Kd: ")
                     if(temp != ""):
                         self.controller_node.locomotion_policy.Kd = float(temp)
-
                 
                 elif(input_string == "ictp"):
                     print("Interactive Keyboard Control")

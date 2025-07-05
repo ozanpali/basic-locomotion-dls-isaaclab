@@ -107,6 +107,8 @@ class Quadruped_RL_Collection_Node(Node):
         self.Kp_stand_up_and_down = 25.
         self.Kd_stand_up_and_down = 2.
 
+        self.calibration_reference_joint_positions = None
+
         # Interactive Command Line ----------------------------
         from console import Console
         self.console = Console(controller_node=self)
@@ -245,12 +247,31 @@ class Quadruped_RL_Collection_Node(Node):
 
         elif(self.console.isRLActivated):
 
+            if self.calibration_reference_joint_positions is None:
+                print("Generating first a setpoint..")
+                hip_setpoint = np.random.uniform(-0.2, 0.5)
+                thigh_setpoint = np.random.uniform(-1.0, 0.5)
+                calf_setpoint = np.random.uniform(-0., 1.5)
+                self.calibration_reference_joint_positions = LegsAttr(*[np.zeros((1, int(self.env.mjModel.nu/4))) for _ in range(4)])
+                self.calibration_reference_joint_positions.FL = np.array([0.0+hip_setpoint, 1.21+thigh_setpoint, -2.794+calf_setpoint])
+                self.calibration_reference_joint_positions.FR = np.array([0.0+hip_setpoint, 1.21+thigh_setpoint, -2.794+calf_setpoint])
+                self.calibration_reference_joint_positions.RL = np.array([0.0+hip_setpoint, 1.21+thigh_setpoint, -2.794+calf_setpoint])
+                self.calibration_reference_joint_positions.RR = np.array([0.0+hip_setpoint, 1.21+thigh_setpoint, -2.794+calf_setpoint])
+
+
             desired_joint_pos = LegsAttr(*[np.zeros((1, int(env.mjModel.nu/4))) for _ in range(4)])
             
-            desired_joint_pos.FL = np.array([0., 1.801, -2.791])
-            desired_joint_pos.FR = np.array([0., 1.801, -2.791])
-            desired_joint_pos.RL = np.array([0., 1.801, -2.791])
-            desired_joint_pos.RR = np.array([0., 1.801, -2.791])         
+            desired_joint_pos.FL = copy.deepcopy(self.calibration_reference_joint_positions.FL)
+            desired_joint_pos.FR = copy.deepcopy(self.calibration_reference_joint_positions.FR)
+            desired_joint_pos.RL = copy.deepcopy(self.calibration_reference_joint_positions.RL)
+            desired_joint_pos.RR = copy.deepcopy(self.calibration_reference_joint_positions.RR) 
+            
+            # TODO check time motion, and if finished, deactivate the motion 
+
+            # Impedence Loop
+            Kp = self.Kp_stand_up_and_down
+            Kd = self.Kd_stand_up_and_down
+      
 
 
         else:
