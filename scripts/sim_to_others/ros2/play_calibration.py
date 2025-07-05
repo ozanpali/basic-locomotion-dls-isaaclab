@@ -26,8 +26,6 @@ import os
 dir_path = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(dir_path+"/../")
 
-# Locomotion Policy imports
-from locomotion_policy_wrapper import LocomotionPolicyWrapper
 
 # Set the priority of the process
 pid = os.getpid()
@@ -36,8 +34,8 @@ os.system("renice -n -21 -p " + str(pid))
 os.system("echo -20 > /proc/" + str(pid) + "/autogroup")
 #for real time, launch it with chrt -r 99 python3 run_controller.py
 
-USE_MUJOCO_RENDER = False
-USE_MUJOCO_SIMULATION = False
+USE_MUJOCO_RENDER = True
+USE_MUJOCO_SIMULATION = True
 
 USE_FIXED_LOOP_TIME = False
 USE_SATURATED_LOOP_TIME = False
@@ -100,9 +98,6 @@ class Quadruped_RL_Collection_Node(Node):
             self.env.render()
 
         
-        # Initialization of variables used in the main control loop --------------------------------
-        self.locomotion_policy = LocomotionPolicyWrapper(env=self.env)
-
 
         self.stand_up_and_down_actions = LegsAttr(*[np.zeros((1, int(self.env.mjModel.nu/4))) for _ in range(4)])
         self.stand_up_and_down_actions.FL = np.array([0.,   1.201, -2.791])
@@ -207,18 +202,18 @@ class Quadruped_RL_Collection_Node(Node):
             self.env.mjData.qpos[7:] = copy.deepcopy(self.joint_positions)
             self.env.mjData.qvel[6:] = copy.deepcopy(self.joint_velocities)
             self.env.mjModel.opt.timestep = simulation_dt
-            mujoco.mj_forward(self.env.mjModel, self.env.mjData)     
+            mujoco.mj_forward(self.env.mjModel, self.env.mjData)  
+        else:
+            self.env.mjData.qpos[0:3] = np.array([0, 0, 0.4])
+            self.env.mjData.qvel[0:3] = np.array([0, 0, 0.])
+            self.env.mjData.qvel[3:6] = np.array([0, 0, 0.0])
+
 
         env = self.env
-        locomotion_policy = self.locomotion_policy
         
         qpos, qvel = env.mjData.qpos, env.mjData.qvel
         base_lin_vel = env.base_lin_vel(frame='base')
-        base_ang_vel = env.base_ang_vel(frame='base')
-        base_ori_euler_xyz = env.base_ori_euler_xyz
-        heading_orientation_SO3 = env.heading_orientation_SO3
-        base_quat_wxyz = qpos[3:7]
-        base_pos = env.base_pos
+
 
         if(USE_SMOOTH_VELOCITY):
             base_lin_vel = 0.5*base_lin_vel + 0.5*old_base_lin_vel
@@ -234,8 +229,7 @@ class Quadruped_RL_Collection_Node(Node):
         joints_vel.FR = qvel[env.legs_qvel_idx.FR]
         joints_vel.RL = qvel[env.legs_qvel_idx.RL]
         joints_vel.RR = qvel[env.legs_qvel_idx.RR]
-        ref_base_lin_vel, ref_base_ang_vel = env.target_base_vel()
-
+    
 
         if(self.console.isDown):
             desired_joint_pos = LegsAttr(*[np.zeros((1, int(env.mjModel.nu/4))) for _ in range(4)])
@@ -251,16 +245,12 @@ class Quadruped_RL_Collection_Node(Node):
 
         elif(self.console.isRLActivated):
 
-            desired_joint_pos = locomotion_policy.compute_control(base_pos=base_pos, 
-                                                                    base_ori_euler_xyz=base_ori_euler_xyz, base_quat_wxyz=base_quat_wxyz,
-                                                                    base_lin_vel=base_lin_vel, base_ang_vel=base_ang_vel,
-                                                                    heading_orientation_SO3=heading_orientation_SO3,
-                                                                    joints_pos=joints_pos, joints_vel=joints_vel,
-                                                                    ref_base_lin_vel=ref_base_lin_vel, ref_base_ang_vel=ref_base_ang_vel)
+            desired_joint_pos = LegsAttr(*[np.zeros((1, int(env.mjModel.nu/4))) for _ in range(4)])
             
-            # Impedence Loop
-            Kp = locomotion_policy.Kp
-            Kd = locomotion_policy.Kd
+            desired_joint_pos.FL = np.array([0., 1.801, -2.791])
+            desired_joint_pos.FR = np.array([0., 1.801, -2.791])
+            desired_joint_pos.RL = np.array([0., 1.801, -2.791])
+            desired_joint_pos.RR = np.array([0., 1.801, -2.791])         
 
 
         else:
@@ -292,11 +282,7 @@ class Quadruped_RL_Collection_Node(Node):
                 tau.RL = Kp * (error_joints_pos.RL) - Kd * joints_vel.RL
                 tau.RR = Kp * (error_joints_pos.RR) - Kd * joints_vel.RR
 
-                # Limit tau between tau_limits
-                for leg in ["FL", "FR", "RL", "RR"]:
-                    tau_min, tau_max = locomotion_policy.tau_limits[leg][:, 0], locomotion_policy.tau_limits[leg][:, 1]
-                    tau[leg] = np.clip(tau[leg], tau_min, tau_max)
-                
+
                 action = np.zeros(self.env.mjModel.nu)
                 action[self.env.legs_tau_idx.FL] = tau.FL.reshape((3,))
                 action[self.env.legs_tau_idx.FR] = tau.FR.reshape((3,))
