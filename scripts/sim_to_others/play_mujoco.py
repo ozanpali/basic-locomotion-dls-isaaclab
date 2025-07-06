@@ -109,10 +109,10 @@ if __name__ == '__main__':
         Kd = locomotion_policy.Kd
 
         error_joints_pos = LegsAttr(*[np.zeros((1, int(env.mjModel.nu/4))) for _ in range(4)])
-        error_joints_pos.FL = np.clip(desired_joint_pos.FL - joints_pos.FL, -1.5, 1.5)
-        error_joints_pos.FR = np.clip(desired_joint_pos.FR - joints_pos.FR, -1.5, 1.5)
-        error_joints_pos.RL = np.clip(desired_joint_pos.RL - joints_pos.RL, -1.5, 1.5)
-        error_joints_pos.RR = np.clip(desired_joint_pos.RR - joints_pos.RR, -1.5, 1.5)
+        error_joints_pos.FL = desired_joint_pos.FL - joints_pos.FL
+        error_joints_pos.FR = desired_joint_pos.FR - joints_pos.FR
+        error_joints_pos.RL = desired_joint_pos.RL - joints_pos.RL
+        error_joints_pos.RR = desired_joint_pos.RR - joints_pos.RR
         
         tau = LegsAttr(*[np.zeros((1, int(env.mjModel.nu/4))) for _ in range(4)])
         tau.FL = Kp * (error_joints_pos.FL) - Kd * joints_vel.FL
