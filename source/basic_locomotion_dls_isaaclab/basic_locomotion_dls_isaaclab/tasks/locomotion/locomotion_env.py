@@ -315,18 +315,26 @@ class LocomotionEnv(DirectRLEnv):
         #base_orientation = torch.sum(torch.square(self._robot.data.projected_gravity_b[:, :2]), dim=1)
 
         # terrain orientation #TODO make general
-        cols_back = torch.arange(0, height_data_scanner.shape[1], 10).unsqueeze(1) + torch.arange(5)
+        height_map_resolution = self._height_scanner.cfg.pattern_cfg.resolution
+        height_map_x_points = int(round(self._height_scanner.cfg.pattern_cfg.size[0] / height_map_resolution)) + 1
+        height_map_y_points = int(round(self._height_scanner.cfg.pattern_cfg.size[1] / height_map_resolution))
+        distance_between_front_and_back = (height_map_x_points/2)* height_map_resolution
+
+        #cols_back = torch.arange(0, height_data_scanner.shape[1], 10).unsqueeze(1) + torch.arange(5)
+        cols_back = torch.arange(0, height_data_scanner.shape[1], height_map_x_points).unsqueeze(1) + torch.arange(int(height_map_x_points/2))
         cols_back = cols_back.flatten().to(height_data_scanner.device)
         selected_height_data_back = height_data_scanner[:, cols_back]
 
-        cols_front = torch.arange(5, height_data_scanner.shape[1], 10).unsqueeze(1) + torch.arange(5)
+        #cols_front = torch.arange(5, height_data_scanner.shape[1], 10).unsqueeze(1) + torch.arange(5)
+        cols_front = torch.arange(int(height_map_x_points/2), height_data_scanner.shape[1], height_map_x_points).unsqueeze(1) + torch.arange(int(height_map_x_points/2))
         cols_front = cols_front.flatten().to(height_data_scanner.device)
         selected_height_data_front = height_data_scanner[:, cols_front]
 
         mean_height_ray_front = torch.mean(selected_height_data_front, dim=1)
         mean_height_ray_back = torch.mean(selected_height_data_back, dim=1)
         delta_z = mean_height_ray_front - mean_height_ray_back
-        delta_s = 0.4 - (-0.4)
+        #delta_s = 0.4 - (-0.4)
+        delta_s = distance_between_front_and_back
         terrain_pitch = -torch.atan(delta_z / delta_s)
         terrain_pitch = torch.atan2(torch.sin(terrain_pitch), torch.cos(terrain_pitch))
         

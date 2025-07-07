@@ -176,7 +176,7 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
 
     # observation history
     use_observation_history = True
-    history_length = 10
+    history_length = 5
     if(use_observation_history):
         single_observation_space = observation_space # Placeholder. Later we may add map, but only from the latest obs
         observation_space *= history_length
@@ -244,7 +244,7 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
         prim_path="/World/envs/env_.*/Robot/base",
         offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.0)),
         attach_yaw_only=True,
-        pattern_cfg=patterns.GridPatternCfg(resolution=0.2, size=[1.8, 1.0]),
+        pattern_cfg=patterns.GridPatternCfg(resolution=0.2, size=[1.4, 1.0]),
         debug_vis=False,
         mesh_prim_paths=["/World/ground"],
     )
