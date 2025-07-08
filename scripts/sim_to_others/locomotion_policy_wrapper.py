@@ -21,7 +21,7 @@ from gym_quadruped.utils.quadruped_utils import LegsAttr
 
 import onnxruntime as ort
 
-policy_path = "/home/alienware/isaaclab_ws_home/basic-locomotion-dls-isaaclab/tested_policies/aliengo/data_aug_policy"
+policy_path = "/home/alienware/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/aliengo_rough_direct/2025-07-07_19-39-04"
 #policy_path = dir_path + "/../../tested_policies/aliengo/data_augment"
 policy_path = policy_path + "/exported/policy.onnx"
 policy = ort.InferenceSession(policy_path)

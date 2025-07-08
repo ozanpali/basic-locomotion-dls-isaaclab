@@ -244,7 +244,8 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
         prim_path="/World/envs/env_.*/Robot/base",
         offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.0)),
         attach_yaw_only=True,
-        pattern_cfg=patterns.GridPatternCfg(resolution=0.2, size=[1.4, 1.0]),
+        #pattern_cfg=patterns.GridPatternCfg(resolution=0.2, size=[1.4, 1.0]),
+        pattern_cfg=patterns.GridPatternCfg(resolution=0.2, size=[0.6, 0.6]),
         debug_vis=False,
         mesh_prim_paths=["/World/ground"],
     )
@@ -282,7 +283,7 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     desired_feet_height = 0.06
 
     # Desired clip actions
-    desired_clip_actions = 6.0
+    desired_clip_actions = 3.0
     
     # Tracking reward scale
     lin_vel_reward_scale = 2.0
@@ -308,7 +309,7 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
 
     # Feet reward scale
     feet_air_time_reward_scale = 0.5 * 0.0 * (1-use_amp)
-    feet_height_clearance_reward_scale = 0.25 * (1-use_amp) 
+    feet_height_clearance_reward_scale = 0.25 * (1-use_amp)# * 0.0  
     feet_height_clearance_mujoco_reward_scale = 0.25 * 0.0 * (1-use_amp)
     feet_slide_reward_scale = -0.25 * 0.0 * (1-use_amp)
     feet_contact_suggestion_reward_scale =  0.25 * (1-use_amp)
