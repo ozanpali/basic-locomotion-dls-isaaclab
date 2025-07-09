@@ -8,6 +8,11 @@ This repository is about basic locomotion tasks with DLS robots. Here you can pl
 
 - Install Isaac Lab by following the [installation guide](https://github.com/isaac-sim/IsaacLab). We recommend using the conda installation as it simplifies calling Python scripts from the terminal.
 
+- Install git for very large file
+```bash
+sudo apt install git-lfs
+```
+
 - Clone the repository separately from the Isaac Lab installation (i.e. outside the `IsaacLab` directory)
 
 
