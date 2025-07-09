@@ -43,11 +43,11 @@ class MorphologycalSymmetriesCfg:
 
 
 @configclass
-class Go2FlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
+class FlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
     max_iterations = 500
     save_interval = 50
-    experiment_name = "aliengo_flat_direct"
+    experiment_name = "flat_direct"
     empirical_normalization = False
     policy = RslRlPpoActorCriticCfg(
         class_name="ActorCritic", #ActorCritic, ActorCriticRecurrent, ActorCriticSymmEquivariantNN
@@ -57,7 +57,7 @@ class Go2FlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         activation="elu",
     )
     algorithm = RslRlPpoAlgorithmCfg(
-        class_name="PPOSymmDataAugmented", #PPO, PPOSymmDataAugmented #AMP_PPO
+        class_name="PPO", #PPO, PPOSymmDataAugmented #AMP_PPO
         value_loss_coef=1.0,
         use_clipped_value_loss=True,
         clip_param=0.2,
@@ -113,11 +113,11 @@ class Go2FlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
 
 
 @configclass
-class Go2RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
+class RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
     max_iterations = 8000
     save_interval = 50
-    experiment_name = "aliengo_rough_direct"
+    experiment_name = "rough_direct"
     empirical_normalization = False
     policy = RslRlPpoActorCriticCfg(
         class_name="ActorCritic", #ActorCritic, ActorCriticRecurrent, ActorCriticSymmEquivariantNN

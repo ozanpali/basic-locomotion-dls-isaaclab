@@ -26,7 +26,7 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": AliengoFlatEnvCfg,
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.aliengo_agent.rsl_rl_ppo_cfg:AliengoFlatPPORunnerCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:FlatPPORunnerCfg",
     },
 )
 
@@ -36,7 +36,7 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": AliengoRoughBlindEnvCfg,
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.aliengo_agent.rsl_rl_ppo_cfg:AliengoRoughPPORunnerCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:RoughPPORunnerCfg",
     },
 )
 
@@ -46,7 +46,7 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": AliengoRoughVisionEnvCfg,
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.aliengo_agent.rsl_rl_ppo_cfg:AliengoRoughPPORunnerCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:RoughPPORunnerCfg",
     },
 )
 
@@ -59,7 +59,7 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": Go2FlatEnvCfg,
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.go2_agent.rsl_rl_ppo_cfg:Go2FlatPPORunnerCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:FlatPPORunnerCfg",
     },
 )
 
@@ -69,7 +69,7 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": Go2RoughBlindEnvCfg,
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.go2_agent.rsl_rl_ppo_cfg:Go2RoughPPORunnerCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:RoughPPORunnerCfg",
     },
 )
 
@@ -79,6 +79,6 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": Go2RoughVisionEnvCfg,
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.go2_agent.rsl_rl_ppo_cfg:Go2RoughPPORunnerCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:RoughPPORunnerCfg",
     },
 )
