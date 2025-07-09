@@ -368,14 +368,14 @@ class LocomotionEnv(DirectRLEnv):
         mean_height_ray_front = torch.mean(selected_height_data_front, dim=1)
         mean_height_ray_back = torch.mean(selected_height_data_back, dim=1)
         delta_z = mean_height_ray_front - mean_height_ray_back
-        delta_s = 0.6#distance_between_front_and_back
-        terrain_pitch = -torch.atan(delta_z / delta_s)
-        terrain_pitch = torch.atan2(torch.sin(terrain_pitch), torch.cos(terrain_pitch))
+        delta_s = torch.tensor(distance_between_front_and_back).to(self.device)
+        terrain_pitch = -torch.atan2(delta_z, delta_s)
+        #terrain_pitch = torch.atan2(torch.sin(terrain_pitch), torch.cos(terrain_pitch))
         
         root_roll_w, root_pitch_w, _ = math_utils.euler_xyz_from_quat(self._robot.data.root_quat_w)
         root_roll_w = torch.atan2(torch.sin(root_roll_w), torch.cos(root_roll_w))
         root_pitch_w = torch.atan2(torch.sin(root_pitch_w), torch.cos(root_pitch_w))
-
+        
         base_orientation =  torch.square(terrain_pitch - root_pitch_w)# + torch.square(0 - root_roll_w)
 
 
@@ -514,7 +514,7 @@ class LocomotionEnv(DirectRLEnv):
         forces_z = torch.abs(self._contact_sensor.data.net_forces_w[:, self._feet_ids, 2])
         forces_xy = torch.linalg.norm(self._contact_sensor.data.net_forces_w[:, self._feet_ids, :2], dim=2)
         feet_vertical_surface_contacts = torch.any(forces_xy > 4 * forces_z, dim=1).float()
-        #feet_vertical_surface_contacts *= torch.clamp(-self._robot.data.projected_gravity_b[:, 2], 0, 0.7) / 0.7
+        feet_vertical_surface_contacts *= torch.clamp(-self._robot.data.projected_gravity_b[:, 2], 0, 0.7) / 0.7
 
 
         # Nan and Inf check

@@ -280,7 +280,7 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
 
     # Desired tracking variables
     desired_base_height = 0.35
-    desired_feet_height = 0.06
+    desired_feet_height = 0.05
 
     # Desired clip actions
     desired_clip_actions = 3.0
@@ -315,7 +315,7 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     feet_contact_suggestion_reward_scale =  0.25 * (1-use_amp)
     feet_to_base_distance_reward_scale = 0.25 * 0.0 * (1-use_amp)
     feet_to_hip_distance_reward_scale = 1.5 * (1-use_amp)# * 0.0
-    feet_vertical_surface_contacts_reward_scale = -0.25 * (1-use_amp) * 0.0
+    feet_vertical_surface_contacts_reward_scale = -0.25 * (1-use_amp)# * 0.0
 
 
 
@@ -340,7 +340,10 @@ class AliengoRoughBlindEnvCfg(AliengoFlatEnvCfg):
                 proportion=0.2
             ),
             "boxes": terrain_gen.MeshRandomGridTerrainCfg(
-                proportion=0.2, grid_width=0.45, grid_height_range=(0.05, 0.10), platform_width=2.0,
+                proportion=0.1, grid_width=0.45, grid_height_range=(0.05, 0.10), platform_width=2.0,
+            ),
+            "star": terrain_gen.MeshStarTerrainCfg(
+                proportion=0.1, num_bars=10, bar_width_range=(0.15, 0.20), bar_height_range=(0.05, 0.15), platform_width=2.0,
             ),
             "random_rough": terrain_gen.HfRandomUniformTerrainCfg(
                 proportion=0.1, noise_range=(0.02, 0.06), noise_step=0.02, border_width=0.25
@@ -352,11 +355,11 @@ class AliengoRoughBlindEnvCfg(AliengoFlatEnvCfg):
                 proportion=0.1, slope_range=(0.2, 0.4), platform_width=2.0, border_width=0.25
             ),
             "pyramid_stairs": terrain_gen.MeshPyramidStairsTerrainCfg(
-                proportion=0.2, step_height_range=(0.05, 0.18), step_width=0.3,
+                proportion=0.15, step_height_range=(0.05, 0.18), step_width=0.3,
                 platform_width=3.0, border_width=1.0, holes=False,
             ),
             "pyramid_stairs_inv": terrain_gen.MeshInvertedPyramidStairsTerrainCfg(
-                proportion=0.1, step_height_range=(0.05, 0.18), step_width=0.3,
+                proportion=0.15, step_height_range=(0.05, 0.18), step_width=0.3,
                 platform_width=3.0, border_width=1.0, holes=False,
             ),
         },
