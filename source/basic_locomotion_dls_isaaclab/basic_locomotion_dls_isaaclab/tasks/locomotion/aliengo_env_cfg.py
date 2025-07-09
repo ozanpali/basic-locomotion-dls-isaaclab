@@ -14,8 +14,8 @@ from isaaclab.sensors import ImuCfg
 from isaaclab.utils import configclass
 from isaaclab.utils.noise import GaussianNoiseCfg, NoiseModelWithAdditiveBiasCfg
 
-from basic_locomotion_dls_isaaclab.assets.aliengo_asset import ALIENGO_CFG # isort: skip
-from isaaclab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: skip
+from basic_locomotion_dls_isaaclab.assets.aliengo_asset import ALIENGO_CFG
+from isaaclab.terrains.config.rough import ROUGH_TERRAINS_CFG
 
 import basic_locomotion_dls_isaaclab.tasks.custom_events as custom_events
 import basic_locomotion_dls_isaaclab.tasks.custom_curriculums as custom_curriculums
