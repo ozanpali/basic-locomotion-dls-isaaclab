@@ -15,7 +15,7 @@ from basic_locomotion_dls_isaaclab.assets import ISAAC_ASSET_DIR
 stiffness_mujoco = 25.0
 damping_mujoco = 2.0
 friction_static_mujoco = 0.2
-friction_dynamic_mujoco = 1.0
+friction_dynamic_mujoco = 0.6
 armature_mujoco = 0.01
 
 GO2_HIP_ACTUATOR_CFG = IdentifiedActuatorCfg(

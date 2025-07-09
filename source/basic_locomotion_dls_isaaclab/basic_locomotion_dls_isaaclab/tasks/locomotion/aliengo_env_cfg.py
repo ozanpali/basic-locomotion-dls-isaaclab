@@ -14,8 +14,8 @@ from isaaclab.sensors import ImuCfg
 from isaaclab.utils import configclass
 from isaaclab.utils.noise import GaussianNoiseCfg, NoiseModelWithAdditiveBiasCfg
 
-from basic_locomotion_dls_isaaclab.assets.aliengo_asset import ALIENGO_CFG # isort: skip
-from isaaclab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: skip
+from basic_locomotion_dls_isaaclab.assets.aliengo_asset import ALIENGO_CFG
+from isaaclab.terrains.config.rough import ROUGH_TERRAINS_CFG
 
 import basic_locomotion_dls_isaaclab.tasks.custom_events as custom_events
 import basic_locomotion_dls_isaaclab.tasks.custom_curriculums as custom_curriculums
@@ -123,6 +123,20 @@ class EventCfg:
                                    "roll": (-0.5, 0.5), "pitch": (-0.5, 0.5), "yaw": (-0.5, 0.5)}},
     )
 
+    # zero command velocity
+    """zero_command_velocity = EventTerm(
+        func=custom_events.zero_command_velocity,
+        mode="interval",
+        interval_range_s=(19.0, 19.0),
+    )"""
+
+    """# reset command velocity
+    resample_command_velocity = EventTerm(
+        func=custom_events.resample_command_velocity,
+        mode="interval",
+        interval_range_s=(11.0, 11.0),
+    )"""
+
 
 @configclass
 class CurriculumCfg:
@@ -164,7 +178,19 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     use_observation_history = True
     history_length = 5
     if(use_observation_history):
+        single_observation_space = observation_space # Placeholder. Later we may add map, but only from the latest obs
         observation_space *= history_length
+
+    use_rma = False
+    if(use_rma):
+        observation_space += 12 # P gain
+        observation_space += 12 # D gain 
+        #state_space += 1*17 # mass*num_bodies
+        #state_space += 1*17 # inertia*num_bodies
+        #state_space += 1 # wrench
+        observation_space += 12 # friction static
+        observation_space += 12 # friction dynamic
+        observation_space += 12 # armature
 
     use_filter_actions = True
 
@@ -218,7 +244,8 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
         prim_path="/World/envs/env_.*/Robot/base",
         offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.0)),
         attach_yaw_only=True,
-        pattern_cfg=patterns.GridPatternCfg(resolution=0.2, size=[1.8, 1.0]),
+        #pattern_cfg=patterns.GridPatternCfg(resolution=0.2, size=[1.4, 1.0]),
+        pattern_cfg=patterns.GridPatternCfg(resolution=0.2, size=[0.6, 0.6]),
         debug_vis=False,
         mesh_prim_paths=["/World/ground"],
     )
@@ -253,7 +280,7 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
 
     # Desired tracking variables
     desired_base_height = 0.35
-    desired_feet_height = 0.04
+    desired_feet_height = 0.05
 
     # Desired clip actions
     desired_clip_actions = 3.0
@@ -282,13 +309,13 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
 
     # Feet reward scale
     feet_air_time_reward_scale = 0.5 * 0.0 * (1-use_amp)
-    feet_height_clearance_reward_scale = 0.25 * (1-use_amp) 
+    feet_height_clearance_reward_scale = 0.25 * (1-use_amp)# * 0.0  
     feet_height_clearance_mujoco_reward_scale = 0.25 * 0.0 * (1-use_amp)
     feet_slide_reward_scale = -0.25 * 0.0 * (1-use_amp)
     feet_contact_suggestion_reward_scale =  0.25 * (1-use_amp)
     feet_to_base_distance_reward_scale = 0.25 * 0.0 * (1-use_amp)
     feet_to_hip_distance_reward_scale = 1.5 * (1-use_amp)# * 0.0
-    feet_vertical_surface_contacts_reward_scale = -0.25 * (1-use_amp) * 0.0
+    feet_vertical_surface_contacts_reward_scale = -0.25 * (1-use_amp)# * 0.0
 
 
 
@@ -313,7 +340,10 @@ class AliengoRoughBlindEnvCfg(AliengoFlatEnvCfg):
                 proportion=0.2
             ),
             "boxes": terrain_gen.MeshRandomGridTerrainCfg(
-                proportion=0.2, grid_width=0.45, grid_height_range=(0.05, 0.10), platform_width=2.0,
+                proportion=0.1, grid_width=0.45, grid_height_range=(0.05, 0.10), platform_width=2.0,
+            ),
+            "star": terrain_gen.MeshStarTerrainCfg(
+                proportion=0.1, num_bars=10, bar_width_range=(0.15, 0.20), bar_height_range=(0.05, 0.15), platform_width=2.0,
             ),
             "random_rough": terrain_gen.HfRandomUniformTerrainCfg(
                 proportion=0.1, noise_range=(0.02, 0.06), noise_step=0.02, border_width=0.25
@@ -325,11 +355,11 @@ class AliengoRoughBlindEnvCfg(AliengoFlatEnvCfg):
                 proportion=0.1, slope_range=(0.2, 0.4), platform_width=2.0, border_width=0.25
             ),
             "pyramid_stairs": terrain_gen.MeshPyramidStairsTerrainCfg(
-                proportion=0.2, step_height_range=(0.05, 0.15), step_width=0.3,
+                proportion=0.15, step_height_range=(0.05, 0.18), step_width=0.3,
                 platform_width=3.0, border_width=1.0, holes=False,
             ),
             "pyramid_stairs_inv": terrain_gen.MeshInvertedPyramidStairsTerrainCfg(
-                proportion=0.1, step_height_range=(0.05, 0.15), step_width=0.3,
+                proportion=0.15, step_height_range=(0.05, 0.18), step_width=0.3,
                 platform_width=3.0, border_width=1.0, holes=False,
             ),
         },

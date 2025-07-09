@@ -8,12 +8,14 @@ from isaaclab.managers import SceneEntityCfg
 from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sensors import ContactSensorCfg, RayCasterCfg, patterns
 from isaaclab.sim import SimulationCfg
+from isaaclab.envs import ViewerCfg
 from isaaclab.terrains import TerrainImporterCfg
 from isaaclab.sensors import ImuCfg
 from isaaclab.utils import configclass
+from isaaclab.utils.noise import GaussianNoiseCfg, NoiseModelWithAdditiveBiasCfg
 
-from basic_locomotion_dls_isaaclab.assets.go2_asset import GO2_CFG # isort: skip
-from isaaclab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: skip
+from basic_locomotion_dls_isaaclab.assets.go2_asset import GO2_CFG 
+from isaaclab.terrains.config.rough import ROUGH_TERRAINS_CFG
 
 import basic_locomotion_dls_isaaclab.tasks.custom_events as custom_events
 import basic_locomotion_dls_isaaclab.tasks.custom_curriculums as custom_curriculums
@@ -85,7 +87,16 @@ class EventCfg:
         func=custom_events.randomize_joint_friction_model,
         mode="startup",
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]), 
-                "friction_distribution_params": (0.5, 1.5),
+                "friction_distribution_params": (0.2, 2.0),
+                "operation": "scale"},
+    )
+
+
+    scale_all_joint_armature_model = EventTerm(
+        func=custom_events.randomize_joint_friction_model,
+        mode="startup",
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]), 
+                "armature_distribution_params": (0.0, 1.0),
                 "operation": "scale"},
     )
     
@@ -96,8 +107,8 @@ class EventCfg:
     mode="reset",
     params={
         "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
-        "stiffness_distribution_params": (-5., 5.),
-        "damping_distribution_params": (-0.5, .0),
+        "stiffness_distribution_params": (-5.0, 5.0),
+        "damping_distribution_params": (-1.0, 1.0),
         "operation": "add",
         "distribution": "uniform",
     },
@@ -108,8 +119,23 @@ class EventCfg:
         func=mdp.push_by_setting_velocity,
         mode="interval",
         interval_range_s=(10.0, 15.0),
-        params={"velocity_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5)}},
+        params={"velocity_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "z": (-0.5, 0.5),
+                                   "roll": (-0.5, 0.5), "pitch": (-0.5, 0.5), "yaw": (-0.5, 0.5)}},
     )
+
+    # zero command velocity
+    """zero_command_velocity = EventTerm(
+        func=custom_events.zero_command_velocity,
+        mode="interval",
+        interval_range_s=(19.0, 19.0),
+    )"""
+
+    """# reset command velocity
+    resample_command_velocity = EventTerm(
+        func=custom_events.resample_command_velocity,
+        mode="interval",
+        interval_range_s=(11.0, 11.0),
+    )"""
 
 
 @configclass
@@ -130,8 +156,12 @@ class CurriculumCfg:
 
 
 
+
 @configclass
 class Go2FlatEnvCfg(DirectRLEnvCfg):
+    # Viewer
+    #viewer = ViewerCfg(eye=(1.5, 1.5, 0.3), origin_type="world", env_index=0, asset_name="robot")
+
     # env
     episode_length_s = 20.0
     decimation = 4
@@ -140,9 +170,47 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
     observation_space = 48
     state_space = 0
 
-    #use_clock_signal = False
-    #if(use_clock_signal):
-    #    observation_space += 4
+    use_clock_signal = True
+    if(use_clock_signal):
+        observation_space += 4
+
+    # observation history
+    use_observation_history = True
+    history_length = 5
+    if(use_observation_history):
+        single_observation_space = observation_space # Placeholder. Later we may add map, but only from the latest obs
+        observation_space *= history_length
+
+    use_rma = False
+    if(use_rma):
+        observation_space += 12 # P gain
+        observation_space += 12 # D gain 
+        #state_space += 1*17 # mass*num_bodies
+        #state_space += 1*17 # inertia*num_bodies
+        #state_space += 1 # wrench
+        observation_space += 12 # friction static
+        observation_space += 12 # friction dynamic
+        observation_space += 12 # armature
+
+    use_filter_actions = True
+
+    
+    # asymmetric ppo
+    use_asymmetric_ppo = False
+    if(use_asymmetric_ppo):
+        state_space = observation_space
+        state_space += 12 # P gain
+        state_space += 12 # D gain
+        #state_space += 1*17 # mass*num_bodies
+        #state_space += 1*17 # inertia*num_bodies
+        #state_space += 1 # wrench
+        state_space += 12 # friction static
+        state_space += 12 # friction dynamic
+        state_space += 12 # armature
+        #state_space += 1 # restitution
+
+    use_amp = False
+
 
     # simulation
     sim: SimulationCfg = SimulationCfg(
@@ -176,7 +244,8 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
         prim_path="/World/envs/env_.*/Robot/base",
         offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.0)),
         attach_yaw_only=True,
-        pattern_cfg=patterns.GridPatternCfg(resolution=0.2, size=[1.6, 1.0]),
+        #pattern_cfg=patterns.GridPatternCfg(resolution=0.2, size=[1.4, 1.0]),
+        pattern_cfg=patterns.GridPatternCfg(resolution=0.2, size=[0.6, 0.6]),
         debug_vis=False,
         mesh_prim_paths=["/World/ground"],
     )
@@ -184,11 +253,24 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
     # an imu sensor in case we don't want any state estimator
     imu = ImuCfg(prim_path="/World/envs/env_.*/Robot/base", debug_vis=True)
 
+
     # scene
     scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=4096, env_spacing=4.0, replicate_physics=True)
 
     # events
     events: EventCfg = EventCfg()
+
+
+    # at every time-step add gaussian noise + bias. The bias is a gaussian sampled at reset
+    action_noise_model: NoiseModelWithAdditiveBiasCfg = NoiseModelWithAdditiveBiasCfg(
+        noise_cfg=GaussianNoiseCfg(mean=0.0, std=0.05, operation="add"),
+        bias_noise_cfg=GaussianNoiseCfg(mean=0.0, std=0.015, operation="abs"),
+    )
+    # at every time-step add gaussian noise + bias. The bias is a gaussian sampled at reset
+    observation_noise_model: NoiseModelWithAdditiveBiasCfg = NoiseModelWithAdditiveBiasCfg(
+        noise_cfg=GaussianNoiseCfg(mean=0.0, std=0.002, operation="add"),
+        bias_noise_cfg=GaussianNoiseCfg(mean=0.0, std=0.0001, operation="abs"),
+    )
 
     # robot
     robot: ArticulationCfg = GO2_CFG.replace(prim_path="/World/envs/env_.*/Robot")
@@ -197,43 +279,43 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
     )
 
     # Desired tracking variables
-    desired_base_height = 0.29
-    desired_feet_height = 0.15
+    desired_base_height = 0.28
+    desired_feet_height = 0.05
 
     # Desired clip actions
-    desired_clip_actions = 10.0
-
+    desired_clip_actions = 3.0
     
     # Tracking reward scale
     lin_vel_reward_scale = 2.0
     yaw_rate_reward_scale = 0.5
     z_vel_reward_scale = -2.0
-    ang_vel_reward_scale = -0.05
-    flat_orientation_reward_scale = -5.0
+    ang_vel_reward_scale = -0.25
+    orientation_reward_scale = -5.0
     height_reward_scale = 1.0
     
     # Joint reward scale
-    joints_torque_reward_scale = -2.5e-5
-    joints_accel_reward_scale = -2.5e-7
-    joints_energy_reward_scale = -1e-4
-    joints_hip_position_reward_scale = -0.1
-    joints_thigh_position_reward_scale = -0.1
-    joints_calf_position_reward_scale = -0.1
+    joints_torque_reward_scale = -2.5e-6 * (1-use_amp)
+    joints_accel_reward_scale = -2.5e-7 * (1-use_amp)
+    joints_energy_reward_scale = -1e-4 * (1-use_amp)
+    joints_hip_position_reward_scale = -0.1 * (1-use_amp)
+    joints_thigh_position_reward_scale = -0.1 * (1-use_amp)
+    joints_calf_position_reward_scale = -0.001 * (1-use_amp)
    
     
     # Undesired contacts reward scale
     undersired_contact_reward_scale = -1.0
-    action_rate_reward_scale = -0.01
+    action_rate_reward_scale = -0.01 * (1-use_amp)
+    action_smoothness_reward_scale = -0.001 * (1-use_amp)
 
     # Feet reward scale
-    feet_air_time_reward_scale = 1.5# * 0.0
-    feet_height_clearance_reward_scale = 0.25 * 0.0
-    feet_slide_reward_scale = -0.25# * 0.0
-    feet_contact_suggestion_reward_scale =  0.1 * 0.0
-    feet_to_base_distance_reward_scale = 0.25 
-    feet_to_hip_distance_reward_scale = 0.25# * 0.0
-    feet_vertical_surface_contacts_reward_scale = -1.0 * 0.0
-
+    feet_air_time_reward_scale = 0.5 * 0.0 * (1-use_amp)
+    feet_height_clearance_reward_scale = 0.25 * (1-use_amp)# * 0.0  
+    feet_height_clearance_mujoco_reward_scale = 0.25 * 0.0 * (1-use_amp)
+    feet_slide_reward_scale = -0.25 * 0.0 * (1-use_amp)
+    feet_contact_suggestion_reward_scale =  0.25 * (1-use_amp)
+    feet_to_base_distance_reward_scale = 0.25 * 0.0 * (1-use_amp)
+    feet_to_hip_distance_reward_scale = 1.5 * (1-use_amp)# * 0.0
+    feet_vertical_surface_contacts_reward_scale = -0.25 * (1-use_amp)# * 0.0
 
 
 import isaaclab.terrains as terrain_gen
@@ -257,7 +339,10 @@ class Go2RoughBlindEnvCfg(Go2FlatEnvCfg):
                 proportion=0.2
             ),
             "boxes": terrain_gen.MeshRandomGridTerrainCfg(
-                proportion=0.2, grid_width=0.45, grid_height_range=(0.05, 0.10), platform_width=2.0,
+                proportion=0.1, grid_width=0.45, grid_height_range=(0.05, 0.10), platform_width=2.0,
+            ),
+            "star": terrain_gen.MeshStarTerrainCfg(
+                proportion=0.1, num_bars=10, bar_width_range=(0.15, 0.20), bar_height_range=(0.05, 0.15), platform_width=2.0,
             ),
             "random_rough": terrain_gen.HfRandomUniformTerrainCfg(
                 proportion=0.1, noise_range=(0.02, 0.06), noise_step=0.02, border_width=0.25
@@ -269,11 +354,11 @@ class Go2RoughBlindEnvCfg(Go2FlatEnvCfg):
                 proportion=0.1, slope_range=(0.2, 0.4), platform_width=2.0, border_width=0.25
             ),
             "pyramid_stairs": terrain_gen.MeshPyramidStairsTerrainCfg(
-                proportion=0.2, step_height_range=(0.05, 0.15), step_width=0.3,
+                proportion=0.15, step_height_range=(0.05, 0.18), step_width=0.3,
                 platform_width=3.0, border_width=1.0, holes=False,
             ),
             "pyramid_stairs_inv": terrain_gen.MeshInvertedPyramidStairsTerrainCfg(
-                proportion=0.1, step_height_range=(0.05, 0.15), step_width=0.3,
+                proportion=0.15, step_height_range=(0.05, 0.18), step_width=0.3,
                 platform_width=3.0, border_width=1.0, holes=False,
             ),
         },
@@ -298,7 +383,6 @@ class Go2RoughBlindEnvCfg(Go2FlatEnvCfg):
         ),
         debug_vis=False,
     )
-
 
 
 
