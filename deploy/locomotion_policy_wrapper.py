@@ -4,6 +4,7 @@
 # Giulio Turrisi
 
 import time
+import copy
 import numpy as np
 np.set_printoptions(precision=3, suppress=True)
 
@@ -21,8 +22,7 @@ from gym_quadruped.utils.quadruped_utils import LegsAttr
 
 import onnxruntime as ort
 
-policy_path = "/home/alienware/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/aliengo_rough_direct/2025-07-07_19-39-04"
-#policy_path = dir_path + "/../../tested_policies/aliengo/data_augment"
+policy_path = dir_path + "/../tested_policies/aliengo/data_aug_policy_feet_stumble_good_orientation"
 policy_path = policy_path + "/exported/policy.onnx"
 policy = ort.InferenceSession(policy_path)
 
@@ -69,6 +69,7 @@ class LocomotionPolicyWrapper:
 
         self.step_freq = 1.4
         self.duty_factor = 0.65
+        self.full_stance_phase_signal = (np.array([0.5, 1.0, 1.0, 0.5]) + self.step_freq * (1 / (self.RL_FREQ))) % 1.0
         self.phase_signal = np.array([0.5, 1.0, 1.0, 0.5])
 
         self.desired_clip_actions = 3.0
@@ -139,12 +140,12 @@ class LocomotionPolicyWrapper:
         if(self.use_clock_signal):
             self.phase_signal += self.step_freq * (1 / (self.RL_FREQ))
             self.phase_signal = self.phase_signal % 1.0
-            #obs[0, 48:52] = self.phase_signal
             obs = np.concatenate((obs, self.phase_signal), axis=0)
 
             commands = np.array([ref_base_lin_vel_h[0], ref_base_lin_vel_h[1], ref_base_ang_vel[2]], dtype=np.float32)
             if(np.linalg.norm(commands) < 0.01):
                 obs[48:52] = -1.0
+                self.phase_signal = copy.deepcopy(self.full_stance_phase_signal)
         
         if(self.use_observation_history):
             #the bottom element is the newest observation!!

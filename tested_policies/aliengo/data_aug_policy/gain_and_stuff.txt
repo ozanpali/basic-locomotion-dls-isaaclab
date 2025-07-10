@@ -1,4 +1,0 @@
-Kp = 22.5
-Kd = 3.5
-history = 5
-clock = True
