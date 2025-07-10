@@ -82,3 +82,37 @@ gym.register(
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:RoughPPORunnerCfg",
     },
 )
+
+
+# B2 environments
+from .locomotion_env import B2FlatEnvCfg, B2RoughVisionEnvCfg, B2RoughBlindEnvCfg
+
+gym.register(
+    id="Locomotion-B2-Flat",
+    entry_point=LocomotionEnv,
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": B2FlatEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:FlatPPORunnerCfg",
+    },
+)
+
+gym.register(
+    id="Locomotion-B2-Rough-Blind",
+    entry_point=LocomotionEnv,
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": B2RoughBlindEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:RoughPPORunnerCfg",
+    },
+)
+
+gym.register(
+    id="Locomotion-B2-Rough-Vision",
+    entry_point=LocomotionEnv,
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": B2RoughVisionEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:RoughPPORunnerCfg",
+    },
+)
