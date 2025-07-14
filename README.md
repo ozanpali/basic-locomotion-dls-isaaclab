@@ -6,30 +6,32 @@ This repository is about basic locomotion tasks with DLS robots. Here you can pl
 
 ## Installation
 
-- Install Isaac Lab by following the [installation guide](https://github.com/isaac-sim/IsaacLab). We recommend using the conda installation as it simplifies calling Python scripts from the terminal.
+- If you want only to deploy a trained policy on your robot, go directly here.
 
-- Install git for very large file
+1. Install Isaac Lab by following the [installation guide](https://github.com/isaac-sim/IsaacLab). We recommend using the conda installation as it simplifies calling Python scripts from the terminal.
+
+2. Install git for very large file
 ```bash
 sudo apt install git-lfs
 ```
 
-- Clone the repository separately from the Isaac Lab installation (i.e. outside the `IsaacLab` directory)
+3. Clone the repository separately from the Isaac Lab installation (i.e. outside the `IsaacLab` directory)
 
 
-- Using a python interpreter that has Isaac Lab installed, install the library
+4. Using a python interpreter that has Isaac Lab installed, install the library
 
 ```bash
 python -m pip install -e source/basic_locomotion_dls_isaaclab
 ```
 
-- Verify that the extension is correctly installed by running the following command:
+
+### Run a train/play in IsaacLab
+
+- To train:
 
 ```bash
 python scripts/rsl_rl/train.py --task=Locomotion-Aliengo-Flat --num_envs=4096 --headless
 python scripts/rsl_rl/train.py --task=Locomotion-Aliengo-Rough-Blind --num_envs=4096 --headless
-
-python scripts/rsl_rl/train.py --task=Locomotion-Go2-Flat --num_envs=4096 --headless
-python scripts/rsl_rl/train.py --task=Locomotion-Go2-Rough-Blind --num_envs=4096 --headless
 ```
 
 - To train with Symmetries, modify the related rsl_rl_ppo_cfg.py
@@ -42,12 +44,8 @@ python scripts/rsl_rl/train_symm.py --task=Locomotion-Aliengo-Rough-Blind --num_
 ```bash
 python scripts/rsl_rl/play.py --task=Locomotion-Aliengo-Flat --num_envs=16
 python scripts/rsl_rl/play.py --task=Locomotion-Aliengo-Rough-Blind --num_envs=16
-
-python scripts/rsl_rl/play.py --task=Locomotion-Go2-Flat --num_envs=16
-python scripts/rsl_rl/play.py --task=Locomotion-Go2-Rough-Blind --num_envs=16
 ```
 
-- If you want to use symmetrues, launch the file play_symm or train_symm instead
 
 ### Run Hyperparameter Search
 
@@ -76,20 +74,27 @@ Remember to set in the application above, "set as default prim" to the root of t
 ```
 
 
-### Run Sim to Sim 
-Go in the folder scripts/sim_to_others, and install gym_quadruped with 
+### Run Sim-to-Sim and Sim-to-Real
+
+1. install [miniforge](https://github.com/conda-forge/miniforge/releases) (x86_64 or arm64 depending on your platform)
+
+2. create an environment using the file in the folder [installation](https://github.com/iit-DLSLab/basic-locomotion-dls-isaaclab/tree/main/installation):
+
 
 ```bash
-pip install -e .
+conda env create -f mamba_environment.yml`
+conda activate basic_locomotion_dls_isaaclab_env
 ```
 
-Then you can run play_mujoco.py
-
-
-### Run Sim to Real 
-Go in the folder scripts/sim_to_others, and run play_ros2_.py.
-For joystick, run
+3. Then you can run play_mujoco.py or run play_ros2.py
 
 ```bash
-ros2 launch teleop_twist_joy teleop-launch.py joy_config:='xbox'
+##Sim-to-Sim
+python3 play_mujoco.py
+
+#Sim-to-Real
+cd ros2/msg_wd
+colcon build
+python3 play_ros2.py 
+ros2 launch teleop_twist_joy teleop-launch.py joy_config:='xbox' (if want joystick)
 ```

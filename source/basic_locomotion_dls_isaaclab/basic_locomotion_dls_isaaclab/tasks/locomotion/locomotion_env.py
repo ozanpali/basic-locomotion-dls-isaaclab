@@ -152,6 +152,10 @@ class LocomotionEnv(DirectRLEnv):
 
 
     def _get_observations(self) -> dict:
+
+        # Stop and Go
+        rest_time = self.episode_length_buf >= self.max_episode_length - 50
+        self._commands[:, :3] *= ~rest_time.unsqueeze(1).expand(-1, 3)
         
         clock_data = None
         if(self.cfg.use_clock_signal):
