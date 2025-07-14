@@ -82,7 +82,7 @@ Remember to set in the application above, "set as default prim" to the root of t
 
 
 ```bash
-conda env create -f mamba_environment.yml`
+conda env create -f mamba_environment.yml
 conda activate basic_locomotion_dls_isaaclab_env
 ```
 
