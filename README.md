@@ -89,10 +89,10 @@ conda activate basic_locomotion_dls_isaaclab_env
 3. Then you can run play_mujoco.py or run play_ros2.py
 
 ```bash
-##Sim-to-Sim
+## Sim-to-Sim
 python3 play_mujoco.py
 
-#Sim-to-Real
+## Sim-to-Real
 cd ros2/msg_wd
 colcon build
 python3 play_ros2.py 
