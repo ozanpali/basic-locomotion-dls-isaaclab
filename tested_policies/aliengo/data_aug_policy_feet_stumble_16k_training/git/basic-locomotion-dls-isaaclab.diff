@@ -1,0 +1,68 @@
+--- git status ---
+HEAD detached at origin/devel
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_xml/Props/instanceable_meshes.usd
+	modified:   source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_xml/aliengo.usd
+	modified:   source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/agents/rsl_rl_ppo_cfg.py
+	modified:   source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/aliengo_env_cfg.py
+
+no changes added to commit (use "git add" and/or "git commit -a") 
+
+
+--- git diff ---
+diff --git a/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_xml/Props/instanceable_meshes.usd b/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_xml/Props/instanceable_meshes.usd
+index 6d5f4c3..f4bcf2a 100644
+Binary files a/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_xml/Props/instanceable_meshes.usd and b/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_xml/Props/instanceable_meshes.usd differ
+diff --git a/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_xml/aliengo.usd b/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_xml/aliengo.usd
+index c18884b..08ab35c 100644
+Binary files a/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_xml/aliengo.usd and b/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset/from_xml/aliengo.usd differ
+diff --git a/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/agents/rsl_rl_ppo_cfg.py b/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/agents/rsl_rl_ppo_cfg.py
+index 34c2ca1..19956d5 100644
+--- a/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/agents/rsl_rl_ppo_cfg.py
++++ b/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/agents/rsl_rl_ppo_cfg.py
+@@ -124,8 +124,8 @@ class RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
+         init_noise_std=1.0,
+         #actor_hidden_dims=[512, 256, 128],
+         #critic_hidden_dims=[512, 256, 128],
+-        actor_hidden_dims=[128, 128, 128],
+-        critic_hidden_dims=[128, 128, 128],
++        actor_hidden_dims=[256, 128, 128],
++        critic_hidden_dims=[256, 128, 128],
+         activation="elu",
+     )
+     algorithm = RslRlPpoAlgorithmCfg(
+diff --git a/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/aliengo_env_cfg.py b/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/aliengo_env_cfg.py
+index fa34d03..3965078 100644
+--- a/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/aliengo_env_cfg.py
++++ b/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/aliengo_env_cfg.py
+@@ -7,7 +7,7 @@ from isaaclab.managers import CurriculumTermCfg as CurrTerm
+ from isaaclab.managers import SceneEntityCfg
+ from isaaclab.scene import InteractiveSceneCfg
+ from isaaclab.sensors import ContactSensorCfg, RayCasterCfg, patterns
+-from isaaclab.sim import SimulationCfg
++from isaaclab.sim import PhysxCfg, SimulationCfg
+ from isaaclab.envs import ViewerCfg
+ from isaaclab.terrains import TerrainImporterCfg
+ from isaaclab.sensors import ImuCfg
+@@ -224,6 +224,9 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
+             dynamic_friction=1.0,
+             restitution=0.0,
+         ),
++        physx=PhysxCfg(
++            gpu_max_rigid_patch_count=2**24,
++        ),
+     )
+     terrain = TerrainImporterCfg(
+         prim_path="/World/ground",
+@@ -243,7 +246,8 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
+     height_scanner = RayCasterCfg(
+         prim_path="/World/envs/env_.*/Robot/base",
+         offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.0)),
+-        attach_yaw_only=True,
++        #attach_yaw_only=True,
++        ray_alignment='yaw',
+         #pattern_cfg=patterns.GridPatternCfg(resolution=0.2, size=[1.4, 1.0]),
+         pattern_cfg=patterns.GridPatternCfg(resolution=0.2, size=[0.6, 0.6]),
+         debug_vis=False,

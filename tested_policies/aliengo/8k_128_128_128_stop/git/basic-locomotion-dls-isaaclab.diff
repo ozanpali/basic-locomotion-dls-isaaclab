@@ -1,0 +1,41 @@
+--- git status ---
+HEAD detached from 5ad63fb
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   deploy/locomotion_policy_wrapper.py
+	modified:   source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/locomotion_env.py
+
+no changes added to commit (use "git add" and/or "git commit -a") 
+
+
+--- git diff ---
+diff --git a/deploy/locomotion_policy_wrapper.py b/deploy/locomotion_policy_wrapper.py
+index 660f59b..229cd36 100644
+--- a/deploy/locomotion_policy_wrapper.py
++++ b/deploy/locomotion_policy_wrapper.py
+@@ -22,7 +22,8 @@ from gym_quadruped.utils.quadruped_utils import LegsAttr
+ 
+ import onnxruntime as ort
+ 
+-policy_path = dir_path + "/../tested_policies/aliengo/data_aug_policy_feet_stumble_good_orientation"
++policy_path = "/home/alienware/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/rough_direct/2025-07-14_13-54-00_8k_128_128_128_stop"
++#policy_path = dir_path + "/../tested_policies/aliengo/data_aug_policy_feet_stumble_good_orientation"
+ policy_path = policy_path + "/exported/policy.onnx"
+ policy = ort.InferenceSession(policy_path)
+ 
+diff --git a/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/locomotion_env.py b/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/locomotion_env.py
+index 2107ef9..779de31 100644
+--- a/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/locomotion_env.py
++++ b/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/locomotion_env.py
+@@ -152,6 +152,10 @@ class LocomotionEnv(DirectRLEnv):
+ 
+ 
+     def _get_observations(self) -> dict:
++
++        # Stop and Go
++        rest_time = self.episode_length_buf >= self.max_episode_length - 50
++        self._commands[:, :3] *= ~rest_time.unsqueeze(1).expand(-1, 3)
+         
+         clock_data = None
+         if(self.cfg.use_clock_signal):
