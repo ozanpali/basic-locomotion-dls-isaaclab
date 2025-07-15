@@ -125,9 +125,17 @@ class Quadruped_RL_Collection_Node(Node):
         Callback function to handle joystick input. Joystick used is a 
         Logitech F710 Wireless Gamepad, with D modality and Model Light OFF.
         """
-        self.env._ref_base_lin_vel_H[0] = msg.axes[1]/2.5  # Forward/Backward
-        self.env._ref_base_lin_vel_H[1] = msg.axes[0]/2.5  # Left/Right
-        self.env._ref_base_ang_yaw_dot = msg.axes[2]  # Yaw
+        self.env._ref_base_lin_vel_H[0] = msg.axes[1]/3.5  # Forward/Backward
+        self.env._ref_base_lin_vel_H[1] = msg.axes[0]/3.5  # Left/Right
+        self.env._ref_base_ang_yaw_dot = msg.axes[3]/2.  # Yaw
+
+
+        #kill the node if the button is pressed
+        if msg.buttons[8] == 1:
+            self.get_logger().info("Joystick button pressed, shutting down the node.")
+            self.destroy_node()
+            rclpy.shutdown()
+            exit(0)
 
 
 

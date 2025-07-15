@@ -22,7 +22,7 @@ from gym_quadruped.utils.quadruped_utils import LegsAttr
 
 import onnxruntime as ort
 
-policy_path = dir_path + "/../tested_policies/aliengo/data_aug_policy_feet_stumble_good_orientation"
+policy_path = "/home/iit.local/gturrisi/isaaclab_ws_home/basic-locomotion-dls-isaaclab/tested_policies/aliengo/8k_128_128_128_stop"
 policy_path = policy_path + "/exported/policy.onnx"
 policy = ort.InferenceSession(policy_path)
 
@@ -145,7 +145,7 @@ class LocomotionPolicyWrapper:
             commands = np.array([ref_base_lin_vel_h[0], ref_base_lin_vel_h[1], ref_base_ang_vel[2]], dtype=np.float32)
             if(np.linalg.norm(commands) < 0.01):
                 obs[48:52] = -1.0
-                self.phase_signal = copy.deepcopy(self.full_stance_phase_signal)
+                #self.phase_signal = copy.deepcopy(self.full_stance_phase_signal)
         
         if(self.use_observation_history):
             #the bottom element is the newest observation!!
