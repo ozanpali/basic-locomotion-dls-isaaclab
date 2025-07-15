@@ -36,6 +36,6 @@ _build
 .lastformat
 
 # ROS2
-deploy/msgs_ws/build/
-deploy/msgs_ws/install/
-deploy/msgs_ws/log/
+deploy/ros2_ws/build/
+deploy/ros2_ws/install/
+deploy/ros2_ws/log/
