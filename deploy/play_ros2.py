@@ -45,7 +45,7 @@ USE_SATURATED_LOOP_TIME = False
 USE_SCHEDULER = True # This enable a call to the run function every tot seconds by using a ros2 timer
 RL_FREQ = 50 # this is only valid if USE_SCHEDULER is True
 
-USE_SMOOTH_VELOCITY = True
+USE_SMOOTH_VELOCITY = False
 
 class Quadruped_RL_Collection_Node(Node):
     def __init__(self):
@@ -132,13 +132,11 @@ class Quadruped_RL_Collection_Node(Node):
 
         #kill the node if the button is pressed
         if msg.buttons[8] == 1:
-            self.get_logger().info("Joystick button pressed, shutting down the node.")
-            self.destroy_node()
-            rclpy.shutdown()
-            # This will kill the process running this script
-            os.system("pkill -f play_ros2.py")  
+            self.get_logger().info("Joystick button pressed, shutting down the node.") 
             # This will kill the robot hal
-            os.system("kill -9 $(ps -u | grep -m 1 b2_hal | grep -o \"^[^ ]* *[0-9]*\" | grep -o \"[0-9]*\")")
+            os.system("kill -9 $(ps -u | grep -m 1 hal | grep -o \"^[^ ]* *[0-9]*\" | grep -o \"[0-9]*\")")
+            # This will kill the process running this script
+            os.system("pkill -f play_ros2.py") 
             exit(0)
 
 
