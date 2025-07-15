@@ -135,6 +135,10 @@ class Quadruped_RL_Collection_Node(Node):
             self.get_logger().info("Joystick button pressed, shutting down the node.")
             self.destroy_node()
             rclpy.shutdown()
+            # This will kill the process running this script
+            os.system("pkill -f play_ros2.py")  
+            # This will kill the robot hal
+            os.system("kill -9 $(ps -u | grep -m 1 b2_hal | grep -o \"^[^ ]* *[0-9]*\" | grep -o \"[0-9]*\")")
             exit(0)
 
 
