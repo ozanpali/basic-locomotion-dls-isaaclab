@@ -34,3 +34,8 @@ _isaac_sim*
 _repo
 _build
 .lastformat
+
+# ROS2
+deploy/msgs_ws/build/
+deploy/msgs_ws/install/
+deploy/msgs_ws/log/
