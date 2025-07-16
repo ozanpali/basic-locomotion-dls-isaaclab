@@ -10,6 +10,9 @@
 import argparse
 import sys
 
+# Import here to avoid the pinocchio error if morphosymm import it after the import of AppLauncher.
+import pinocchio as pin
+
 from isaaclab.app import AppLauncher
 
 # local imports
