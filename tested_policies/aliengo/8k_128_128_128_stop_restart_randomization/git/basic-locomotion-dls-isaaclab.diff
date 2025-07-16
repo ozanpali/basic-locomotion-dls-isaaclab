@@ -1,0 +1,77 @@
+--- git status ---
+HEAD detached from 5ad63fb
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/aliengo_env_cfg.py
+	modified:   source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/locomotion_env.py
+
+no changes added to commit (use "git add" and/or "git commit -a") 
+
+
+--- git diff ---
+diff --git a/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/aliengo_env_cfg.py b/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/aliengo_env_cfg.py
+index fa34d03..3ad5c81 100644
+--- a/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/aliengo_env_cfg.py
++++ b/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/aliengo_env_cfg.py
+@@ -63,6 +63,17 @@ class EventCfg:
+             "torque_range": (-5.0, 5.0),
+         },
+     )
++
++    """foot_external_force_torque = EventTerm(
++        func=mdp.apply_external_force_torque,
++        mode="interval",
++        interval_range_s=(8.0, 10.0),
++        params={
++            "asset_cfg": SceneEntityCfg("robot", body_names=".*foot"),
++            "force_range": (-2.0, 2.0),
++            "torque_range": (-2.0, 2.0),
++        },
++    )"""
+     
+ 
+     """add_all_joint_default_pos = EventTerm(
+diff --git a/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/locomotion_env.py b/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/locomotion_env.py
+index e6eed9d..8b8429c 100644
+--- a/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/locomotion_env.py
++++ b/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/tasks/locomotion/locomotion_env.py
+@@ -51,12 +51,12 @@ class LocomotionEnv(DirectRLEnv):
+         self._swing_peak = torch.tensor([0.0, 0.0, 0.0, 0.0], device=self.device).repeat(self.num_envs,1)
+         
+         # Periodic gait
+-        #self._step_freq = 1.4
+-        #self._duty_factor = 0.65
+-        #self._phase_signal = torch.tensor([0.5, 1.0, 1.0, 0.5], device=self.device).repeat(self.num_envs,1)
+-        self._step_freq = 0.5
+-        self._duty_factor = 0.8
+-        self._phase_signal = torch.tensor([0.0, 0.5, 0.75, 0.25], device=self.device).repeat(self.num_envs,1)
++        self._step_freq = 1.4
++        self._duty_factor = 0.65
++        self._phase_signal = torch.tensor([0.5, 1.0, 1.0, 0.5], device=self.device).repeat(self.num_envs,1)
++        #self._step_freq = 0.5
++        #self._duty_factor = 0.8
++        #self._phase_signal = torch.tensor([0.0, 0.5, 0.75, 0.25], device=self.device).repeat(self.num_envs,1)
+         self._phase_signal += self.step_dt * self._step_freq * torch.rand(self.num_envs, 1, device=self.device)*10.
+         self._phase_signal = self._phase_signal % 1.0
+ 
+@@ -170,7 +170,7 @@ class LocomotionEnv(DirectRLEnv):
+ 
+ 
+         # Stop and Go
+-        restart_time = self.episode_length_buf == self.max_episode_length - 101
++        restart_time = self.episode_length_buf == self.max_episode_length - 99
+         commands_restart = torch.zeros_like(self._commands).uniform_(-1.0, 1.0)
+         commands_restart[:, 0] *= 0.5 
+         commands_restart[:, 1] *= 0.25 
+@@ -736,8 +736,8 @@ class LocomotionEnv(DirectRLEnv):
+         self._swing_peak[env_ids] = torch.tensor([0.0, 0.0, 0.0, 0.0], device=self.device)
+         
+         # Reset contact periodic
+-        #self._phase_signal[env_ids] = torch.tensor([0.5, 1.0, 1.0, 0.5], device=self.device)
+-        self._phase_signal[env_ids] = torch.tensor([0.0, 0.5, 0.75, 0.25], device=self.device)
++        self._phase_signal[env_ids] = torch.tensor([0.5, 1.0, 1.0, 0.5], device=self.device)
++        #self._phase_signal[env_ids] = torch.tensor([0.0, 0.5, 0.75, 0.25], device=self.device)
+         self._phase_signal[env_ids] += self.step_dt * self._step_freq * torch.rand(env_ids.shape[0], 1, device=self.device)*10.
+         self._phase_signal[env_ids] = self._phase_signal[env_ids]  % 1.0
+ 
