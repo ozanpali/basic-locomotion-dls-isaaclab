@@ -66,11 +66,23 @@ class LocomotionPolicyWrapper:
         if(self.use_clock_signal):
             self.observation_space += 4
 
-
-        self.step_freq = 1.4
-        self.duty_factor = 0.65
-        self.full_stance_phase_signal = (np.array([0.5, 1.0, 1.0, 0.5]) + self.step_freq * (1 / (self.RL_FREQ))) % 1.0
-        self.phase_signal = np.array([0.5, 1.0, 1.0, 0.5])
+        desired_gait = "trot"  # trot, crawl, pace
+        if(desired_gait == "trot"):
+            self.step_freq = 1.4
+            self.duty_factor = 0.65
+            self.phase_offset = np.array([0.0, 0.5, 0.5, 0.0])
+            self._velocity_gait_multiplier = 1.0
+        elif(desired_gait == "crawl"):
+            self.step_freq = 0.5
+            self.duty_factor = 0.8
+            self.phase_offset = np.array([0.0, 0.5, 0.75, 0.25])
+            self.velocity_gait_multiplier = 0.5
+        elif(desired_gait == "pace"):
+            self.step_freq = 1.4
+            self.duty_factor = 0.7
+            self.phase_offset = np.array([0.8, 0.3, 0.8, 0.3])
+            self.velocity_gait_multiplier = 1.0
+        self.phase_signal = self.phase_offset
 
         self.desired_clip_actions = 3.0
 
@@ -145,7 +157,6 @@ class LocomotionPolicyWrapper:
             commands = np.array([ref_base_lin_vel_h[0], ref_base_lin_vel_h[1], ref_base_ang_vel[2]], dtype=np.float32)
             if(np.linalg.norm(commands) < 0.01):
                 obs[48:52] = -1.0
-                #self.phase_signal = copy.deepcopy(self.full_stance_phase_signal)
         
         if(self.use_observation_history):
             #the bottom element is the newest observation!!
