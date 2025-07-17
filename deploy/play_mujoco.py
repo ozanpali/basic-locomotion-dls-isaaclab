@@ -29,7 +29,7 @@ if __name__ == '__main__':
 
     robot_name = "aliengo"
     robot_feet_geom_names = dict(FL='FL', FR='FR', RL='RL', RR='RR')
-    scene_name = "stairs" #random_boxes
+    scene_name = "random_boxes" #random_boxes
     simulation_dt = 0.002
 
 
@@ -52,8 +52,8 @@ if __name__ == '__main__':
 
     if(locomotion_policy.use_vision):
         resolution_heightmap = 0.2
-        num_rows_heightmap = int(1.8/resolution_heightmap) + 1
-        num_cols_heightmap = int(1.0/resolution_heightmap) + 1
+        num_rows_heightmap = round(0.6/resolution_heightmap) + 1
+        num_cols_heightmap = round(0.6/resolution_heightmap) + 1
         heightmap = HeightMap(
             num_rows=num_rows_heightmap, num_cols=num_cols_heightmap, dist_x=resolution_heightmap, dist_y=resolution_heightmap, mj_model=env.mjModel, mj_data=env.mjData
         )     
