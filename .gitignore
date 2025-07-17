@@ -34,3 +34,8 @@ _isaac_sim*
 _repo
 _build
 .lastformat
+
+# ROS2
+deploy/ros2_ws/build/
+deploy/ros2_ws/install/
+deploy/ros2_ws/log/

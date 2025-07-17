@@ -90,11 +90,11 @@ conda activate basic_locomotion_dls_isaaclab_env
 
 ```bash
 ## Sim-to-Sim
-python3 play_mujoco.py
+python3 deploy/play_mujoco.py
 
 ## Sim-to-Real
-cd ros2/msg_wd
+cd deploy/ros2_ws
 colcon build
-python3 play_ros2.py 
+python3 deploy/play_ros2.py 
 ros2 launch teleop_twist_joy teleop-launch.py joy_config:='xbox' (if want joystick)
 ```

@@ -51,9 +51,28 @@ class LocomotionEnv(DirectRLEnv):
         self._swing_peak = torch.tensor([0.0, 0.0, 0.0, 0.0], device=self.device).repeat(self.num_envs,1)
         
         # Periodic gait
-        self._phase_signal = torch.tensor([0.5, 1.0, 1.0, 0.5], device=self.device).repeat(self.num_envs,1)
-        self._step_freq = 1.4
-        self._duty_factor = 0.65
+        if(cfg.desired_gait == "trot"):
+            self._step_freq = 1.4
+            self._duty_factor = 0.65
+            self._phase_offset = torch.tensor([0.0, 0.5, 0.5, 0.0], device=self.device).repeat(self.num_envs,1)
+            self._velocity_gait_multiplier = 1.0
+        elif(cfg.desired_gait == "crawl"):
+            self._step_freq = 0.5
+            self._duty_factor = 0.8
+            self._phase_offset = torch.tensor([0.0, 0.5, 0.75, 0.25], device=self.device).repeat(self.num_envs,1)
+            self._velocity_gait_multiplier = 0.5
+        elif(cfg.desired_gait == "pace"):
+            self._step_freq = 1.4
+            self._duty_factor = 0.7
+            self._phase_offset = torch.tensor([0.8, 0.3, 0.8, 0.3], device=self.device).repeat(self.num_envs,1)
+            self._velocity_gait_multiplier = 1.0
+        elif(cfg.desired_gait == "multigait"):
+            #TODO: implement multigait
+            raise NotImplementedError("Multigait not implemented yet")
+        self._phase_signal = self._phase_offset# + self.step_dt * self._step_freq * torch.rand(self.num_envs, 1, device=self.device)*10.
+        self._phase_signal = self._phase_signal % 1.0
+
+
 
         # Observation history
         self._observation_history = torch.zeros(self.num_envs, cfg.history_length, cfg.single_observation_space, device=self.device)
@@ -153,10 +172,27 @@ class LocomotionEnv(DirectRLEnv):
 
     def _get_observations(self) -> dict:
 
+        # Resample commands
+        resample_time = self.episode_length_buf == self.max_episode_length - 200
+        commands_resample = torch.zeros_like(self._commands).uniform_(-1.0, 1.0)
+        commands_resample[:, 0] *= 0.5 * self._velocity_gait_multiplier
+        commands_resample[:, 1] *= 0.25 
+        commands_resample[:, 2] *= 0.3 
+        self._commands[:, :3] = self._commands[:, :3] * ~resample_time.unsqueeze(1).expand(-1, 3) + commands_resample * resample_time.unsqueeze(1).expand(-1, 3)
+
+
         # Stop and Go
-        rest_time = self.episode_length_buf >= self.max_episode_length - 50
+        restart_time = self.episode_length_buf == self.max_episode_length - 99
+        commands_restart = torch.zeros_like(self._commands).uniform_(-1.0, 1.0)
+        commands_restart[:, 0] *= 0.5 * self._velocity_gait_multiplier
+        commands_restart[:, 1] *= 0.25 
+        commands_restart[:, 2] *= 0.3 
+        self._commands[:, :3] = self._commands[:, :3] * ~restart_time.unsqueeze(1).expand(-1, 3) + commands_restart * restart_time.unsqueeze(1).expand(-1, 3)
+
+        rest_time = (self.episode_length_buf >= self.max_episode_length - 150) & (self.episode_length_buf <= self.max_episode_length - 100)
         self._commands[:, :3] *= ~rest_time.unsqueeze(1).expand(-1, 3)
-        
+
+
         clock_data = None
         if(self.cfg.use_clock_signal):
             clock_data = torch.vstack([self._phase_signal[:,0], self._phase_signal[:,1], self._phase_signal[:,2], self._phase_signal[:,3]]).T
@@ -696,7 +732,7 @@ class LocomotionEnv(DirectRLEnv):
         
         # Sample new commands
         self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-1.0, 1.0)
-        self._commands[env_ids, 0] *= 0.5 
+        self._commands[env_ids, 0] *= 0.5 * self._velocity_gait_multiplier
         self._commands[env_ids, 1] *= 0.25 
         self._commands[env_ids, 2] *= 0.3 
 
@@ -712,7 +748,8 @@ class LocomotionEnv(DirectRLEnv):
         self._swing_peak[env_ids] = torch.tensor([0.0, 0.0, 0.0, 0.0], device=self.device)
         
         # Reset contact periodic
-        self._phase_signal[env_ids] = torch.tensor([0.5, 1.0, 1.0, 0.5], device=self.device)
+        self._phase_signal[env_ids] = self._phase_offset[env_ids]# + self.step_dt * self._step_freq * torch.rand(env_ids.shape[0], 1, device=self.device)*10.
+        self._phase_signal[env_ids] = self._phase_signal[env_ids]  % 1.0
 
         # Reset robot state
         joint_pos = self._robot.data.default_joint_pos[env_ids]
