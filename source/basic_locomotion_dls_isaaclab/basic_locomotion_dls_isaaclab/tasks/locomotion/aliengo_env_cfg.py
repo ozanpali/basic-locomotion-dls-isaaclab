@@ -396,4 +396,4 @@ class AliengoRoughBlindEnvCfg(AliengoFlatEnvCfg):
 @configclass
 class AliengoRoughVisionEnvCfg(AliengoRoughBlindEnvCfg):
     # env
-    observation_space = 235
+    observation_space = 276

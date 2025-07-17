@@ -748,7 +748,7 @@ class LocomotionEnv(DirectRLEnv):
         self._swing_peak[env_ids] = torch.tensor([0.0, 0.0, 0.0, 0.0], device=self.device)
         
         # Reset contact periodic
-        self._phase_signal[env_ids] = self._phase_offset# + self.step_dt * self._step_freq * torch.rand(env_ids.shape[0], 1, device=self.device)*10.
+        self._phase_signal[env_ids] = self._phase_offset[env_ids]# + self.step_dt * self._step_freq * torch.rand(env_ids.shape[0], 1, device=self.device)*10.
         self._phase_signal[env_ids] = self._phase_signal[env_ids]  % 1.0
 
         # Reset robot state
