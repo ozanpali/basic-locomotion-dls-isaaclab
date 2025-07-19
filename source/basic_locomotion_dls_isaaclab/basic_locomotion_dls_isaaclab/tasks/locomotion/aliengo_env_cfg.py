@@ -7,7 +7,7 @@ from isaaclab.managers import CurriculumTermCfg as CurrTerm
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sensors import ContactSensorCfg, RayCasterCfg, patterns
-from isaaclab.sim import SimulationCfg
+from isaaclab.sim import SimulationCfg, PhysxCfg
 from isaaclab.envs import ViewerCfg
 from isaaclab.terrains import TerrainImporterCfg
 from isaaclab.sensors import ImuCfg
@@ -224,6 +224,10 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
             dynamic_friction=1.0,
             restitution=0.0,
         ),
+        #physx=PhysxCfg(
+        #    gpu_max_rigid_contact_count=2**20,
+        #    gpu_max_rigid_patch_count=2**24,
+        #),
     )
     terrain = TerrainImporterCfg(
         prim_path="/World/ground",
@@ -396,4 +400,16 @@ class AliengoRoughBlindEnvCfg(AliengoFlatEnvCfg):
 @configclass
 class AliengoRoughVisionEnvCfg(AliengoRoughBlindEnvCfg):
     # env
-    observation_space = 276
+    #observation_space = 276
+    observation_space = 429
+
+    # we add a height scanner for perceptive locomotion
+    height_scanner = RayCasterCfg(
+        prim_path="/World/envs/env_.*/Robot/base",
+        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.0)),
+        attach_yaw_only=True,
+        #ray_alignment='yaw',
+        pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.2, 1.2]),
+        debug_vis=False,
+        mesh_prim_paths=["/World/ground"],
+    )
