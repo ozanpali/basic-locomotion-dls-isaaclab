@@ -29,6 +29,8 @@ sys.path.append(dir_path+"/../")
 # Locomotion Policy imports
 from locomotion_policy_wrapper import LocomotionPolicyWrapper
 
+import config
+
 # Set the priority of the process
 pid = os.getpid()
 print("PID: ", pid)
@@ -39,24 +41,18 @@ os.system("echo -20 > /proc/" + str(pid) + "/autogroup")
 USE_MUJOCO_RENDER = False
 USE_MUJOCO_SIMULATION = False
 
-USE_FIXED_LOOP_TIME = False
-USE_SATURATED_LOOP_TIME = False
-
-USE_SCHEDULER = True # This enable a call to the run function every tot seconds by using a ros2 timer
-RL_FREQ = 50 # this is only valid if USE_SCHEDULER is True
-
 USE_SMOOTH_VELOCITY = True
 
 class Quadruped_RL_Collection_Node(Node):
     def __init__(self):
         super().__init__('Basic_Locomotion_DLS_IsaacLab_Node')
+        
         # Subscribers and Publishers
         self.subscription_base_state = self.create_subscription(BaseStateMsg,"/dls2/base_state", self.get_base_state_callback, 1)
         self.subscription_blind_state = self.create_subscription(BlindStateMsg,"/dls2/blind_state", self.get_blind_state_callback, 1)
         self.subscription_joy = self.create_subscription(Joy,"joy", self.get_joy_callback, 1)
         self.publisher_trajectory_generator = self.create_publisher(TrajectoryGeneratorMsg,"dls2/trajectory_generator", 1)
-        if(USE_SCHEDULER):
-            self.timer = self.create_timer(1.0/RL_FREQ, self.compute_rl_control)
+        self.timer = self.create_timer(1.0/config.RL_FREQ, self.compute_rl_control)
 
 
         # Safety check to not do anything until a first base and blind state are received
@@ -79,7 +75,7 @@ class Quadruped_RL_Collection_Node(Node):
         self.feet_contact = np.zeros(4)
 
         # Mujoco env
-        robot_name = "aliengo"
+        robot_name = config.robot
         scene_name = "flat" #random-boxes
         simulation_dt = 0.002
 
@@ -105,12 +101,13 @@ class Quadruped_RL_Collection_Node(Node):
 
 
         self.stand_up_and_down_actions = LegsAttr(*[np.zeros((1, int(self.env.mjModel.nu/4))) for _ in range(4)])
-        self.stand_up_and_down_actions.FL = np.array([0.,   1.201, -2.791])
-        self.stand_up_and_down_actions.FR = np.array([0.,   1.201, -2.791])
-        self.stand_up_and_down_actions.RL = np.array([0.,   1.201, -2.791])
-        self.stand_up_and_down_actions.RR = np.array([0.,   1.201, -2.791])
-        self.Kp_stand_up_and_down = 25.
-        self.Kd_stand_up_and_down = 2.
+        keyframe_id = mujoco.mj_name2id(self.env.mjModel, mujoco.mjtObj.mjOBJ_KEY, "down")
+        goDown_qpos = self.env.mjModel.key_qpos[keyframe_id]
+        self.stand_up_and_down_actions.FL = goDown_qpos[7:10]
+        self.stand_up_and_down_actions.FR = goDown_qpos[10:13]
+        self.stand_up_and_down_actions.RL = goDown_qpos[13:16]
+        self.stand_up_and_down_actions.RR = goDown_qpos[16:29]
+
 
         # Interactive Command Line ----------------------------
         from console import Console
@@ -123,7 +120,7 @@ class Quadruped_RL_Collection_Node(Node):
     def get_joy_callback(self, msg):
         """
         Callback function to handle joystick input. Joystick used is a 
-        Logitech F710 Wireless Gamepad, with D modality and Model Light OFF.
+        8Bitdi Ultimate 2C Wireless Controller.
         """
         self.env._ref_base_lin_vel_H[0] = msg.axes[1]/3.5  # Forward/Backward
         self.env._ref_base_lin_vel_H[1] = msg.axes[0]/3.5  # Left/Right
@@ -168,39 +165,16 @@ class Quadruped_RL_Collection_Node(Node):
         self.joint_velocities[6] = -self.joint_velocities[6]
 
         self.first_message_joints_arrived = True
-
-        if(not USE_SCHEDULER):
-            if(self.last_start_time is not None):
-                start_time = time.perf_counter()
-                if(start_time - self.last_start_time > 1./RL_FREQ):
-                    self.compute_rl_control()
-            else:
-                self.compute_rl_control()
         
 
 
     def compute_rl_control(self):
         # Update the loop time
-        if(USE_FIXED_LOOP_TIME):
-            simulation_dt = 1./RL_FREQ
-            start_time = time.perf_counter()
-            if(self.last_start_time is not None):
-                self.loop_time = (start_time - self.last_start_time)
-            self.last_start_time = start_time
-        elif(USE_SATURATED_LOOP_TIME):
-            start_time = time.perf_counter()
-            if(self.last_start_time is not None):
-                self.loop_time = (start_time - self.last_start_time)
-            self.last_start_time = start_time
-            simulation_dt = self.loop_time
-            if(simulation_dt > 1./(RL_FREQ-10)):
-                simulation_dt = 0.025
-        else:
-            start_time = time.perf_counter()
-            if(self.last_start_time is not None):
-                self.loop_time = (start_time - self.last_start_time)
-            self.last_start_time = start_time
-            simulation_dt = self.loop_time
+        start_time = time.perf_counter()
+        if(self.last_start_time is not None):
+            self.loop_time = (start_time - self.last_start_time)
+        self.last_start_time = start_time
+        simulation_dt = self.loop_time
 
         # Safety check to not do anything until a first base and blind state are received
         if(not USE_MUJOCO_SIMULATION and self.first_message_base_arrived==False and self.first_message_joints_arrived==False):
@@ -255,8 +229,8 @@ class Quadruped_RL_Collection_Node(Node):
             desired_joint_pos.RR = self.stand_up_and_down_actions.RR
 
             # Impedence Loop
-            Kp = self.Kp_stand_up_and_down
-            Kd = self.Kd_stand_up_and_down
+            Kp = locomotion_policy.Kp_stand_up_and_down
+            Kd = locomotion_policy.Kd_stand_up_and_down
             
 
         elif(self.console.isRLActivated):
@@ -269,8 +243,8 @@ class Quadruped_RL_Collection_Node(Node):
                                                                     ref_base_lin_vel=ref_base_lin_vel, ref_base_ang_vel=ref_base_ang_vel)
             
             # Impedence Loop
-            Kp = locomotion_policy.Kp
-            Kd = locomotion_policy.Kd
+            Kp = locomotion_policy.Kp_walking
+            Kd = locomotion_policy.Kd_walking
 
 
         else:
@@ -302,11 +276,6 @@ class Quadruped_RL_Collection_Node(Node):
                 tau.RL = Kp * (error_joints_pos.RL) - Kd * joints_vel.RL
                 tau.RR = Kp * (error_joints_pos.RR) - Kd * joints_vel.RR
 
-                # Limit tau between tau_limits
-                for leg in ["FL", "FR", "RL", "RR"]:
-                    tau_min, tau_max = locomotion_policy.tau_limits[leg][:, 0], locomotion_policy.tau_limits[leg][:, 1]
-                    tau[leg] = np.clip(tau[leg], tau_min, tau_max)
-                
                 action = np.zeros(self.env.mjModel.nu)
                 action[self.env.legs_tau_idx.FL] = tau.FL.reshape((3,))
                 action[self.env.legs_tau_idx.FR] = tau.FR.reshape((3,))
