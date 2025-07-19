@@ -61,7 +61,7 @@ HYQREAL_CALF_ACTUATOR_CFG = IdentifiedActuatorCfg(
 
 HYQREAL_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=f"{ISAAC_ASSET_DIR}/hyqreal_asset/from_xml/hyqreal.usd",
+        usd_path=f"{ISAAC_ASSET_DIR}/hyqreal_asset/from_xml/hyqreal2.usd",
         #usd_path= "/home/iit.local/gturrisi/isaaclab_ws_home/hyqreal.usd",
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
