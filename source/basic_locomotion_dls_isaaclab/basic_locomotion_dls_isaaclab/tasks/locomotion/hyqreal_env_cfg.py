@@ -40,7 +40,7 @@ class EventCfg:
         mode="startup",
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-            "mass_distribution_params": (-5.0, 5.0),
+            "mass_distribution_params": (-5.0, 25.0),
             "operation": "add",
         },
     )
@@ -58,8 +58,8 @@ class EventCfg:
         mode="reset",
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-            "force_range": (-5.0, 5.0),
-            "torque_range": (-5.0, 5.0),
+            "force_range": (-15.0, 15.0),
+            "torque_range": (-15.0, 15.0),
         },
     )
     
@@ -106,8 +106,8 @@ class EventCfg:
     mode="reset",
     params={
         "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
-        "stiffness_distribution_params": (-5.0, 5.0),
-        "damping_distribution_params": (-1.0, 1.0),
+        "stiffness_distribution_params": (-15.0, 15.0),
+        "damping_distribution_params": (-3.0, 3.0),
         "operation": "add",
         "distribution": "uniform",
     },
