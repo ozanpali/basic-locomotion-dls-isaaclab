@@ -61,7 +61,7 @@ GO2_CALF_ACTUATOR_CFG = IdentifiedActuatorCfg(
 
 GO2_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=f"{ISAAC_ASSET_DIR}/go2_asset/from_unitree/go2_cleaned.usd",
+        usd_path=f"{ISAAC_ASSET_DIR}/go2_asset/from_xml/go2.usd",
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,

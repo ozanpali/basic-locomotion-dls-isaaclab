@@ -61,8 +61,7 @@ HYQREAL_CALF_ACTUATOR_CFG = IdentifiedActuatorCfg(
 
 HYQREAL_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=f"{ISAAC_ASSET_DIR}/hyqreal_asset/from_xml/hyqreal2.usd",
-        #usd_path= "/home/iit.local/gturrisi/isaaclab_ws_home/hyqreal.usd",
+        usd_path=f"{ISAAC_ASSET_DIR}/hyqreal_asset/from_xml/hyqreal2_nohpu.usd",
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
@@ -83,7 +82,7 @@ HYQREAL_CFG = ArticulationCfg(
             ".*L_hip_joint": 0.0,
             ".*R_hip_joint": 0.0,
             ".*_thigh_joint": 0.9,
-            ".*_calf_joint": -1.7,
+            ".*_calf_joint": -1.8,
         },
         joint_vel={".*": 0.0},
     ),

@@ -160,8 +160,9 @@ class RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     )
 
     # Symmetry Related Stuff
+    history_length = 5
     morphologycal_symmetries_cfg = MorphologycalSymmetriesCfg(
-        obs_space_names = [
+        obs_space_names = ([
             "base_lin_vel:base",
             "base_ang_vel:base",
             "gravity:base",
@@ -170,7 +171,7 @@ class RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
             "qvel_js",
             "actions",
             "clock_data",
-        ],
+        ])*int(history_length),
         
         action_space_names = ["actions"],
         
@@ -179,8 +180,6 @@ class RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
             "FL_thigh_joint", "FR_thigh_joint", "RL_thigh_joint", "RR_thigh_joint",
             "FL_calf_joint", "FR_calf_joint", "RL_calf_joint", "RR_calf_joint"
         ],
-        
-        history_length = 5,
         
         robot_name = "a1",
     )

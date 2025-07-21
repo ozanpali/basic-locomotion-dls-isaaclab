@@ -193,6 +193,15 @@ class LocomotionEnv(DirectRLEnv):
         self._commands[:, :3] *= ~rest_time.unsqueeze(1).expand(-1, 3)
 
 
+        # Took some envs, and put to zero the vel
+        if self.num_envs > 100:
+            num_fixed_envs = 100
+            fixed_env_ids = torch.arange(num_fixed_envs, device=self.device)
+            self._commands[fixed_env_ids, 0] = 0.0
+            self._commands[fixed_env_ids, 1] = 0.0
+            self._commands[fixed_env_ids, 2] = 0.0
+
+
         clock_data = None
         if(self.cfg.use_clock_signal):
             clock_data = torch.vstack([self._phase_signal[:,0], self._phase_signal[:,1], self._phase_signal[:,2], self._phase_signal[:,3]]).T
@@ -735,14 +744,6 @@ class LocomotionEnv(DirectRLEnv):
         self._commands[env_ids, 0] *= 0.5 * self._velocity_gait_multiplier
         self._commands[env_ids, 1] *= 0.25 
         self._commands[env_ids, 2] *= 0.3 
-
-        # Took some envs, and put to zero the vel
-        if self.num_envs > 100:
-            num_fixed_envs = 100
-            fixed_env_ids = torch.arange(num_fixed_envs, device=self.device)
-            self._commands[fixed_env_ids, 0] = 0.0
-            self._commands[fixed_env_ids, 1] = 0.0
-            self._commands[fixed_env_ids, 2] = 0.0
 
         # Reset swing peak
         self._swing_peak[env_ids] = torch.tensor([0.0, 0.0, 0.0, 0.0], device=self.device)
