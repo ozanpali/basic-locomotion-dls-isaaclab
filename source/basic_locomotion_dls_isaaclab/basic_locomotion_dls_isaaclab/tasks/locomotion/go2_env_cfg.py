@@ -156,7 +156,6 @@ class CurriculumCfg:
 
 
 
-
 @configclass
 class Go2FlatEnvCfg(DirectRLEnvCfg):
     # Viewer
@@ -224,6 +223,10 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
             dynamic_friction=1.0,
             restitution=0.0,
         ),
+        #physx=PhysxCfg(
+        #    gpu_max_rigid_contact_count=2**20,
+        #    gpu_max_rigid_patch_count=2**24,
+        #),
     )
     terrain = TerrainImporterCfg(
         prim_path="/World/ground",
@@ -244,6 +247,7 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
         prim_path="/World/envs/env_.*/Robot/base",
         offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.0)),
         attach_yaw_only=True,
+        #ray_alignment='yaw',
         #pattern_cfg=patterns.GridPatternCfg(resolution=0.2, size=[1.4, 1.0]),
         pattern_cfg=patterns.GridPatternCfg(resolution=0.2, size=[0.6, 0.6]),
         debug_vis=False,
@@ -278,8 +282,11 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
         prim_path="/World/envs/env_.*/Robot/.*", history_length=3, update_period=0.005, track_air_time=True
     )
 
+    # Desired gait
+    desired_gait = "trot" #crawl, pace, multigait
+
     # Desired tracking variables
-    desired_base_height = 0.28
+    desired_base_height = 0.35
     desired_feet_height = 0.05
 
     # Desired clip actions
@@ -386,9 +393,20 @@ class Go2RoughBlindEnvCfg(Go2FlatEnvCfg):
 
 
 
-
 @configclass
 class Go2RoughVisionEnvCfg(Go2FlatEnvCfg):
     # env
-    observation_space = 235
+    #observation_space = 276
+    observation_space = 429
+
+    # we add a height scanner for perceptive locomotion
+    height_scanner = RayCasterCfg(
+        prim_path="/World/envs/env_.*/Robot/base",
+        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.0)),
+        attach_yaw_only=True,
+        #ray_alignment='yaw',
+        pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.2, 1.2]),
+        debug_vis=False,
+        mesh_prim_paths=["/World/ground"],
+    )
 

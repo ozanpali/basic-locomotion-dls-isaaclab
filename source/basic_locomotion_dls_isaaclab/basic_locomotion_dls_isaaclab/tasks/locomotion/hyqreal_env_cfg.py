@@ -303,9 +303,9 @@ class HyQRealFlatEnvCfg(DirectRLEnvCfg):
     height_reward_scale = 1.0
     
     # Joint reward scale
-    joints_torque_reward_scale = -2.5e-7 * (1-use_amp)
+    joints_torque_reward_scale = -0.5e-7 * (1-use_amp)
     joints_accel_reward_scale = -2.5e-7 * (1-use_amp)
-    joints_energy_reward_scale = -1e-5 * (1-use_amp)
+    joints_energy_reward_scale = -1.5e-5 * (1-use_amp)
     joints_hip_position_reward_scale = -0.1 * (1-use_amp)
     joints_thigh_position_reward_scale = -0.1 * (1-use_amp)
     joints_calf_position_reward_scale = -0.001 * (1-use_amp)
