@@ -286,7 +286,7 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
     desired_gait = "trot" #crawl, pace, multigait
 
     # Desired tracking variables
-    desired_base_height = 0.35
+    desired_base_height = 0.27
     desired_feet_height = 0.05
 
     # Desired clip actions
