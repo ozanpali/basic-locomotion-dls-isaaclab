@@ -12,8 +12,8 @@ from basic_locomotion_dls_isaaclab.assets import ISAAC_ASSET_DIR
 
 
 # HYQREAL robot configuration from mujoco
-stiffness_mujoco = 200.0
-damping_mujoco = 20.0
+stiffness_mujoco = 175.0 #200.0
+damping_mujoco = 14.0 #20.0
 friction_static_mujoco = 0.2
 friction_dynamic_mujoco = 0.6
 armature_mujoco = 0.01
