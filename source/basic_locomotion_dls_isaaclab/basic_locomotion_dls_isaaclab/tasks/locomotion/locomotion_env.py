@@ -69,7 +69,7 @@ class LocomotionEnv(DirectRLEnv):
         elif(cfg.desired_gait == "multigait"):
             #TODO: implement multigait
             raise NotImplementedError("Multigait not implemented yet")
-        self._phase_signal = self._phase_offset# + self.step_dt * self._step_freq * torch.rand(self.num_envs, 1, device=self.device)*10.
+        self._phase_signal = self._phase_offset.clone()# + self.step_dt * self._step_freq * torch.rand(self.num_envs, 1, device=self.device)*10.
         self._phase_signal = self._phase_signal % 1.0
 
 
@@ -181,25 +181,28 @@ class LocomotionEnv(DirectRLEnv):
         self._commands[:, :3] = self._commands[:, :3] * ~resample_time.unsqueeze(1).expand(-1, 3) + commands_resample * resample_time.unsqueeze(1).expand(-1, 3)
 
 
-        # Stop and Go
+        # Stop
+        rest_time = self.episode_length_buf >= self.max_episode_length - 50
+        self._commands[:, :3] *= ~rest_time.unsqueeze(1).expand(-1, 3)        
+
+
+        """# Stop and Go
+        rest_time = (self.episode_length_buf >= self.max_episode_length - 150) & (self.episode_length_buf <= self.max_episode_length - 100)
+        self._commands[:, :3] *= ~rest_time.unsqueeze(1).expand(-1, 3)        
+
         restart_time = self.episode_length_buf == self.max_episode_length - 99
         commands_restart = torch.zeros_like(self._commands).uniform_(-1.0, 1.0)
         commands_restart[:, 0] *= 0.5 * self._velocity_gait_multiplier
         commands_restart[:, 1] *= 0.25 
         commands_restart[:, 2] *= 0.3 
-        self._commands[:, :3] = self._commands[:, :3] * ~restart_time.unsqueeze(1).expand(-1, 3) + commands_restart * restart_time.unsqueeze(1).expand(-1, 3)
-
-        rest_time = (self.episode_length_buf >= self.max_episode_length - 150) & (self.episode_length_buf <= self.max_episode_length - 100)
-        self._commands[:, :3] *= ~rest_time.unsqueeze(1).expand(-1, 3)
+        self._commands[:, :3] = self._commands[:, :3] * ~restart_time.unsqueeze(1).expand(-1, 3) + commands_restart * restart_time.unsqueeze(1).expand(-1, 3)"""
 
 
         # Took some envs, and put to zero the vel
         if self.num_envs > 100:
             num_fixed_envs = 100
             fixed_env_ids = torch.arange(num_fixed_envs, device=self.device)
-            self._commands[fixed_env_ids, 0] = 0.0
-            self._commands[fixed_env_ids, 1] = 0.0
-            self._commands[fixed_env_ids, 2] = 0.0
+            self._commands[fixed_env_ids, :3] *= 0.0
 
 
         clock_data = None
@@ -749,7 +752,7 @@ class LocomotionEnv(DirectRLEnv):
         self._swing_peak[env_ids] = torch.tensor([0.0, 0.0, 0.0, 0.0], device=self.device)
         
         # Reset contact periodic
-        self._phase_signal[env_ids] = self._phase_offset[env_ids]# + self.step_dt * self._step_freq * torch.rand(env_ids.shape[0], 1, device=self.device)*10.
+        self._phase_signal[env_ids] = self._phase_offset[env_ids].clone()# + self.step_dt * self._step_freq * torch.rand(env_ids.shape[0], 1, device=self.device)*10.
         self._phase_signal[env_ids] = self._phase_signal[env_ids]  % 1.0
 
         # Reset robot state
