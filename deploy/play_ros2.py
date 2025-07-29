@@ -43,10 +43,30 @@ USE_MUJOCO_SIMULATION = False
 
 USE_SMOOTH_VELOCITY = True
 
-class Quadruped_RL_Collection_Node(Node):
+class Basic_Locomotion_DLS_Isaaclab_Node(Node):
     def __init__(self):
         super().__init__('Basic_Locomotion_DLS_IsaacLab_Node')
+
+        # Mujoco env
+        robot_name = config.robot
+        scene_name = "flat" #random-boxes
+        simulation_dt = 0.002
+
+
+        # Create the quadruped robot environment -----------------------------------------------------------
+        self.env = QuadrupedEnv(
+            robot=robot_name,
+            scene=scene_name,
+            sim_dt=simulation_dt,
+            base_vel_command_type="human",  # "forward", "random", "forward+rotate", "human"
+        )
+        self.env.reset(random=False)
         
+        self.last_render_time = time.time()
+        if USE_MUJOCO_RENDER:
+            self.env.render()   
+                 
+
         # Subscribers and Publishers
         self.subscription_base_state = self.create_subscription(BaseStateMsg,"/dls2/base_state", self.get_base_state_callback, 1)
         self.subscription_blind_state = self.create_subscription(BlindStateMsg,"/dls2/blind_state", self.get_blind_state_callback, 1)
@@ -73,27 +93,6 @@ class Quadruped_RL_Collection_Node(Node):
         self.joint_positions = np.array([0.0, 1.21, -2.794, 0.0, 1.21, -2.794, 0.0, 1.21, -2.794, 0.0, 1.21, -2.794])
         self.joint_velocities = np.zeros(12)
         self.feet_contact = np.zeros(4)
-
-        # Mujoco env
-        robot_name = config.robot
-        scene_name = "flat" #random-boxes
-        simulation_dt = 0.002
-
-
-        # Create the quadruped robot environment -----------------------------------------------------------
-        self.env = QuadrupedEnv(
-            robot=robot_name,
-            scene=scene_name,
-            sim_dt=simulation_dt,
-            base_vel_command_type="human",  # "forward", "random", "forward+rotate", "human"
-        )
-        self.env.reset(random=False)
-
-
-        
-        self.last_render_time = time.time()
-        if USE_MUJOCO_RENDER:
-            self.env.render()
 
         
         # Initialization of variables used in the main control loop --------------------------------
@@ -250,7 +249,6 @@ class Quadruped_RL_Collection_Node(Node):
         else:
             return
 
-
         
         if USE_MUJOCO_SIMULATION:
             for j in range(10): #Hardcoded for now, if RL is 50Hz, this runs the simulation at 500Hz
@@ -318,13 +316,15 @@ class Quadruped_RL_Collection_Node(Node):
 
 #---------------------------
 if __name__ == '__main__':
-    print('Hello from quadruped_rl_collection.')
+    
+    print('Hello from basic-locomotion-dls-isaaclab ros node.')
+    
     rclpy.init()
-    quadruped_rl_collection_node = Quadruped_RL_Collection_Node()
-
-    rclpy.spin(quadruped_rl_collection_node)
-    quadruped_rl_collection_node.destroy_node()
+    basic_locomotion_dls_isaaclab_node = Basic_Locomotion_DLS_Isaaclab_Node()
+    rclpy.spin(basic_locomotion_dls_isaaclab_node)
+    
+    basic_locomotion_dls_isaaclab_node.destroy_node()
     rclpy.shutdown()
 
-    print("Quadruped-RL-Collection node is stopped")
+    print("basic-locomotion-dls-isaaclab ros node is stopped")
     exit(0)
