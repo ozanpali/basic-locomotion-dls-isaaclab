@@ -39,5 +39,7 @@ _build
 deploy/ros2_ws/build/
 deploy/ros2_ws/install/
 deploy/ros2_ws/log/
+# ROS1
+deploy/ros1_ws/build/
 deploy/ros1_ws/devel/
 deploy/ros1_ws/install/

@@ -6,7 +6,7 @@ sys.path.append(dir_path+"/../scripts/rsl_rl")
 
 robot = 'aliengo'  # 'aliengo', 'go1', 'go2', 'b2', 'hyqreal1', 'hyqreal2', 'mini_cheetah'  # TODO: Load from robot_descriptions.py
 
-#policy_path = ".."
+#policy_path = "/home/iit.local/gturrisi/isaaclab_ws_home/basic-locomotion-dls-isaaclab/tested_policies/hyqreal/2025-07-23_09-19-46_8k_128_128_128_hyq/exported/policy.onnx"
 policy_path = dir_path + "/../tested_policies/" + robot + "/8k_128_128_128_stop" + "/exported/policy.onnx"
 
 # ----------------------------------------------------------------------------------------------------------------
