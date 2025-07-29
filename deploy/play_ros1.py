@@ -36,8 +36,8 @@ os.system("renice -n -21 -p " + str(pid))
 os.system("echo -20 > /proc/" + str(pid) + "/autogroup")
 #for real time, launch it with chrt -r 99 python3 run_controller.py
 
-USE_MUJOCO_RENDER = True
-USE_MUJOCO_SIMULATION = True
+USE_MUJOCO_RENDER = False
+USE_MUJOCO_SIMULATION = False
 
 USE_SMOOTH_VELOCITY = True
 
@@ -115,12 +115,11 @@ class Basic_Locomotion_DLS_Isaaclab_Node():
 
     def get_state_callback(self, msg):
         
-        self.position = np.array(msg.position)
+        self.position = np.array(msg.position) #world frame
         # For the quaternion, the order is [w, x, y, z] on mujoco, and [x, y, z, w] on DLS1
-        self.orientation = np.roll(np.array(msg.orientation_quat), 1)
-        self.linear_velocity = np.array(msg.linear_velocity)
-        # For the angular velocity, mujoco is in the base frame, and DLS2 is in the world frame
-        self.angular_velocity = np.array(msg.angular_velocity) 
+        self.orientation = np.roll(np.array(msg.orientation_quat), 1) #world frame
+        self.linear_velocity = np.array(msg.linear_velocity) #world frame
+        self.angular_velocity = np.array(msg.angular_velocity) #base frame
 
         self.joint_positions = np.array(msg.joint_positions)
         self.joint_velocities = np.array(msg.joint_velocities)

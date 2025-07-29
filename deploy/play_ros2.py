@@ -140,12 +140,11 @@ class Basic_Locomotion_DLS_Isaaclab_Node(Node):
 
     def get_base_state_callback(self, msg):
         
-        self.position = np.array(msg.position)
+        self.position = np.array(msg.position) #world frame
         # For the quaternion, the order is [w, x, y, z] on mujoco, and [x, y, z, w] on DLS2
-        self.orientation = np.roll(np.array(msg.orientation), 1)
-        self.linear_velocity = np.array(msg.linear_velocity)
-        # For the angular velocity, mujoco is in the base frame, and DLS2 is in the world frame
-        self.angular_velocity = np.array(msg.angular_velocity) 
+        self.orientation = np.roll(np.array(msg.orientation), 1) #world frame
+        self.linear_velocity = np.array(msg.linear_velocity) #world frame
+        self.angular_velocity = np.array(msg.angular_velocity) #base frame
 
         self.first_message_base_arrived = True
 
