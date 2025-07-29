@@ -36,8 +36,8 @@ os.system("renice -n -21 -p " + str(pid))
 os.system("echo -20 > /proc/" + str(pid) + "/autogroup")
 #for real time, launch it with chrt -r 99 python3 run_controller.py
 
-USE_MUJOCO_RENDER = False
-USE_MUJOCO_SIMULATION = False
+USE_MUJOCO_RENDER = True
+USE_MUJOCO_SIMULATION = True
 
 USE_SMOOTH_VELOCITY = True
 
@@ -46,7 +46,7 @@ class Basic_Locomotion_DLS_Isaaclab_Node():
 
         # Mujoco env
         robot_name = config.robot
-        scene_name = "flat" #random-boxes
+        scene_name = config.scene
         simulation_dt = 0.002
 
 
@@ -136,7 +136,6 @@ class Basic_Locomotion_DLS_Isaaclab_Node():
 
 
     def compute_rl_control(self, event):
-        print("Compute RL Control")
         
         # Update the loop time
         start_time = time.perf_counter()

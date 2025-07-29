@@ -49,7 +49,7 @@ class Basic_Locomotion_DLS_Isaaclab_Node(Node):
 
         # Mujoco env
         robot_name = config.robot
-        scene_name = "flat" #random-boxes
+        scene_name = config.scene
         simulation_dt = 0.002
 
 

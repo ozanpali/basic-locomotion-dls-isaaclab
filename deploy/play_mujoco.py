@@ -29,8 +29,7 @@ if __name__ == '__main__':
     np.set_printoptions(precision=3, suppress=True)
 
     robot_name = config.robot
-    robot_feet_geom_names = dict(FL='FL', FR='FR', RL='RL', RR='RR')
-    scene_name = "random_boxes" #random_boxes
+    scene_name = config.scene
     simulation_dt = 0.002
 
 

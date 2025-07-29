@@ -4,7 +4,8 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(dir_path+"/../")
 sys.path.append(dir_path+"/../scripts/rsl_rl")
 
-robot = 'aliengo'  # 'aliengo', 'go1', 'go2', 'b2', 'hyqreal1', 'hyqreal2', 'mini_cheetah'  # TODO: Load from robot_descriptions.py
+robot = 'aliengo'  # 'aliengo', 'go1', 'go2', 'b2', 'hyqreal1', 'hyqreal2', 'mini_cheetah' 
+scene = 'flat'  # flat, random_boxes, random_pyramids, perlin
 
 #policy_path = "/home/iit.local/gturrisi/isaaclab_ws_home/basic-locomotion-dls-isaaclab/tested_policies/hyqreal/2025-07-23_09-19-46_8k_128_128_128_hyq/exported/policy.onnx"
 policy_path = dir_path + "/../tested_policies/" + robot + "/8k_128_128_128_stop" + "/exported/policy.onnx"
@@ -30,7 +31,7 @@ elif(robot == "b2"):
     Kp_stand_up_and_down = 25.
     Kd_stand_up_and_down = 2.
 elif(robot == "hyqreal2"):
-    Kp_walking = 200.
+    Kp_walking = 175.
     Kd_walking = 20.
 
     Kp_stand_up_and_down = 25.
