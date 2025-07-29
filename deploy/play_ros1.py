@@ -124,12 +124,6 @@ class Basic_Locomotion_DLS_Isaaclab_Node():
         self.joint_positions = np.array(msg.joint_positions)
         self.joint_velocities = np.array(msg.joint_velocities)
 
-        # Fix convention DLS2
-        self.joint_positions[0] = -self.joint_positions[0]
-        self.joint_positions[6] = -self.joint_positions[6]
-        self.joint_velocities[0] = -self.joint_velocities[0]
-        self.joint_velocities[6] = -self.joint_velocities[6]
-
         self.first_message_base_arrived = True
         self.first_message_joints_arrived = True
 
@@ -247,10 +241,7 @@ class Basic_Locomotion_DLS_Isaaclab_Node():
                 action[self.env.legs_tau_idx.RL] = tau.RL.reshape((3,))
                 action[self.env.legs_tau_idx.RR] = tau.RR.reshape((3,))
                 self.env.step(action=action)
-
-        # Fix convention DLS2 and send PD target
-        desired_joint_pos.FL[0] = -desired_joint_pos.FL[0]
-        desired_joint_pos.RL[0] = -desired_joint_pos.RL[0] 
+ 
 
         rl_signal_out_msg = rl_signal_out()
         rl_signal_out_msg.desired_joint_positions = np.concatenate([desired_joint_pos.FL, desired_joint_pos.FR, desired_joint_pos.RL, desired_joint_pos.RR], axis=0).flatten()
