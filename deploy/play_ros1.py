@@ -94,12 +94,12 @@ class Basic_Locomotion_DLS_Isaaclab_Node():
 
 
         self.stand_up_and_down_actions = LegsAttr(*[np.zeros((1, int(self.env.mjModel.nu/4))) for _ in range(4)])
-        keyframe_id = mujoco.mj_name2id(self.env.mjModel, mujoco.mjtObj.mjOBJ_KEY, "down")
-        goDown_qpos = self.env.mjModel.key_qpos[keyframe_id]
-        self.stand_up_and_down_actions.FL = goDown_qpos[7:10]
-        self.stand_up_and_down_actions.FR = goDown_qpos[10:13]
-        self.stand_up_and_down_actions.RL = goDown_qpos[13:16]
-        self.stand_up_and_down_actions.RR = goDown_qpos[16:29]
+        #keyframe_id = mujoco.mj_name2id(self.env.mjModel, mujoco.mjtObj.mjOBJ_KEY, "down")
+        #goDown_qpos = self.env.mjModel.key_qpos[keyframe_id]
+        self.stand_up_and_down_actions.FL = self.joint_positions[0:3] #goDown_qpos[7:10]
+        self.stand_up_and_down_actions.FR = self.joint_positions[3:6] #goDown_qpos[10:13]
+        self.stand_up_and_down_actions.RL = self.joint_positions[6:9] #goDown_qpos[13:16]
+        self.stand_up_and_down_actions.RR = self.joint_positions[9:12] #goDown_qpos[16:29]
 
 
         # Interactive Command Line ----------------------------
