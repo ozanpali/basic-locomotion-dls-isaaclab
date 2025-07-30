@@ -86,7 +86,6 @@ class Basic_Locomotion_DLS_Isaaclab_Node():
         # Blind State
         self.joint_positions = np.array([0.0, 1.21, -2.794, 0.0, 1.21, -2.794, 0.0, 1.21, -2.794, 0.0, 1.21, -2.794])
         self.joint_velocities = np.zeros(12)
-        self.feet_contact = np.zeros(4)
 
         
         # Initialization of variables used in the main control loop --------------------------------
