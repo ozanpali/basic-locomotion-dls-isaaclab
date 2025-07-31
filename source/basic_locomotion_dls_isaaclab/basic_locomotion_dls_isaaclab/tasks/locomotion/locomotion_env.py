@@ -50,6 +50,9 @@ class LocomotionEnv(DirectRLEnv):
         # Swing peak
         self._swing_peak = torch.tensor([0.0, 0.0, 0.0, 0.0], device=self.device).repeat(self.num_envs,1)
         
+        # Desired Hip Offset
+        self._desired_hip_offset = torch.tensor([-self.cfg.desired_hip_offset, self.cfg.desired_hip_offset, -self.cfg.desired_hip_offset, self.cfg.desired_hip_offset], device=self.device)
+        
         # Periodic gait
         if(cfg.desired_gait == "trot"):
             self._step_freq = 1.4
@@ -557,11 +560,11 @@ class LocomotionEnv(DirectRLEnv):
         hip_to_base_w = self._robot.data.body_pos_w[:, self._hip_ids_robot, :3] - self._robot.data.root_state_w[:, :3].unsqueeze(1)
         hip_to_base_h = torch.matmul(ROT_W2H.transpose(1,2), hip_to_base_w.transpose(1, 2))
         
-        hip_offset = torch.tensor([-0.1, +0.1, -0.1, +0.1], device=self.device)
+        desired_hip_offset = self._desired_hip_offset
         feet_to_hip_distance_x = torch.square(feet_to_base_h[:, 0] - hip_to_base_h[:, 0])
-        feet_to_hip_distance_y = torch.square(feet_to_base_h[:, 1] + hip_offset.unsqueeze(0) - hip_to_base_h[:, 1])
+        feet_to_hip_distance_y = torch.square(feet_to_base_h[:, 1] + desired_hip_offset.unsqueeze(0) - hip_to_base_h[:, 1])
         feet_to_hip_distance = -torch.mean(torch.sqrt(feet_to_hip_distance_x + feet_to_hip_distance_y), dim=1)
-
+        
 
         # Penalize feet hitting vertical surfaces  
         forces_z = torch.abs(self._contact_sensor.data.net_forces_w[:, self._feet_ids, 2])
