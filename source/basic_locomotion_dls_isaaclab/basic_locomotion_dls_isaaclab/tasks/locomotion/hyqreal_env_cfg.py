@@ -40,7 +40,7 @@ class EventCfg:
         mode="startup",
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-            "mass_distribution_params": (-5.0, 5.0),
+            "mass_distribution_params": (-5.0, 25.0),
             "operation": "add",
         },
     )
@@ -58,8 +58,8 @@ class EventCfg:
         mode="reset",
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-            "force_range": (-5.0, 5.0),
-            "torque_range": (-5.0, 5.0),
+            "force_range": (-15.0, 15.0),
+            "torque_range": (-15.0, 15.0),
         },
     )
     
@@ -106,8 +106,8 @@ class EventCfg:
     mode="reset",
     params={
         "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
-        "stiffness_distribution_params": (-5.0, 5.0),
-        "damping_distribution_params": (-1.0, 1.0),
+        "stiffness_distribution_params": (-15.0, 15.0),
+        "damping_distribution_params": (-3.0, 3.0),
         "operation": "add",
         "distribution": "uniform",
     },
@@ -121,6 +121,20 @@ class EventCfg:
         params={"velocity_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "z": (-0.5, 0.5),
                                    "roll": (-0.5, 0.5), "pitch": (-0.5, 0.5), "yaw": (-0.5, 0.5)}},
     )
+
+    # zero command velocity
+    """zero_command_velocity = EventTerm(
+        func=custom_events.zero_command_velocity,
+        mode="interval",
+        interval_range_s=(19.0, 19.0),
+    )"""
+
+    """# reset command velocity
+    resample_command_velocity = EventTerm(
+        func=custom_events.resample_command_velocity,
+        mode="interval",
+        interval_range_s=(11.0, 11.0),
+    )"""
 
 
 @configclass
@@ -141,8 +155,14 @@ class CurriculumCfg:
 
 
 
+
+
 @configclass
 class HyQRealFlatEnvCfg(DirectRLEnvCfg):
+
+    # Viewer
+    #viewer = ViewerCfg(eye=(1.5, 1.5, 0.3), origin_type="world", env_index=0, asset_name="robot")
+
     # env
     episode_length_s = 20.0
     decimation = 4
@@ -154,13 +174,24 @@ class HyQRealFlatEnvCfg(DirectRLEnvCfg):
     use_clock_signal = True
     if(use_clock_signal):
         observation_space += 4
-        #observation_space += 2
 
     # observation history
     use_observation_history = True
-    history_length = 3
+    history_length = 5
     if(use_observation_history):
+        single_observation_space = observation_space # Placeholder. Later we may add map, but only from the latest obs
         observation_space *= history_length
+
+    use_rma = False
+    if(use_rma):
+        observation_space += 12 # P gain
+        observation_space += 12 # D gain 
+        #state_space += 1*17 # mass*num_bodies
+        #state_space += 1*17 # inertia*num_bodies
+        #state_space += 1 # wrench
+        observation_space += 12 # friction static
+        observation_space += 12 # friction dynamic
+        observation_space += 12 # armature
 
     use_filter_actions = True
 
@@ -179,7 +210,8 @@ class HyQRealFlatEnvCfg(DirectRLEnvCfg):
         state_space += 12 # armature
         #state_space += 1 # restitution
 
-        
+    use_amp = False
+
 
     # simulation
     sim: SimulationCfg = SimulationCfg(
@@ -193,6 +225,10 @@ class HyQRealFlatEnvCfg(DirectRLEnvCfg):
             dynamic_friction=1.0,
             restitution=0.0,
         ),
+        #physx=PhysxCfg(
+        #    gpu_max_rigid_contact_count=2**20,
+        #    gpu_max_rigid_patch_count=2**24,
+        #),
     )
     terrain = TerrainImporterCfg(
         prim_path="/World/ground",
@@ -213,7 +249,9 @@ class HyQRealFlatEnvCfg(DirectRLEnvCfg):
         prim_path="/World/envs/env_.*/Robot/base",
         offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.0)),
         attach_yaw_only=True,
-        pattern_cfg=patterns.GridPatternCfg(resolution=0.2, size=[1.6, 1.0]),
+        #ray_alignment='yaw',
+        #pattern_cfg=patterns.GridPatternCfg(resolution=0.2, size=[1.4, 1.0]),
+        pattern_cfg=patterns.GridPatternCfg(resolution=0.2, size=[0.6, 0.6]),
         debug_vis=False,
         mesh_prim_paths=["/World/ground"],
     )
@@ -246,9 +284,12 @@ class HyQRealFlatEnvCfg(DirectRLEnvCfg):
         prim_path="/World/envs/env_.*/Robot/.*", history_length=3, update_period=0.005, track_air_time=True
     )
 
+    # Desired gait
+    desired_gait = "trot" #crawl, pace, multigait
+
     # Desired tracking variables
     desired_base_height = 0.5
-    desired_feet_height = 0.04
+    desired_feet_height = 0.05
 
     # Desired clip actions
     desired_clip_actions = 3.0
@@ -258,32 +299,36 @@ class HyQRealFlatEnvCfg(DirectRLEnvCfg):
     yaw_rate_reward_scale = 0.5
     z_vel_reward_scale = -2.0
     ang_vel_reward_scale = -0.25
-    flat_orientation_reward_scale = -5.0
+    orientation_reward_scale = -5.0
     height_reward_scale = 1.0
     
     # Joint reward scale
-    joints_torque_reward_scale = -2.5e-7
-    joints_accel_reward_scale = -2.5e-7
-    joints_energy_reward_scale = -1e-5
-    joints_hip_position_reward_scale = -0.1
-    joints_thigh_position_reward_scale = -0.1
-    joints_calf_position_reward_scale = -0.001
+    joints_torque_reward_scale = -0.5e-7 * (1-use_amp)
+    joints_accel_reward_scale = -2.5e-7 * (1-use_amp)
+    joints_energy_reward_scale = -1.5e-5 * (1-use_amp)
+    joints_hip_position_reward_scale = -0.1 * (1-use_amp)
+    joints_thigh_position_reward_scale = -0.1 * (1-use_amp)
+    joints_calf_position_reward_scale = -0.001 * (1-use_amp)
    
     
     # Undesired contacts reward scale
     undersired_contact_reward_scale = -1.0
-    action_rate_reward_scale = -0.01
-    action_smoothness_reward_scale = -0.01
+    action_rate_reward_scale = -0.01 * (1-use_amp)
+    action_smoothness_reward_scale = -0.001 * (1-use_amp)
 
     # Feet reward scale
-    feet_air_time_reward_scale = 0.5 * 0.0
-    feet_height_clearance_reward_scale = 0.25# * 0.0
-    feet_height_clearance_mujoco_reward_scale = 0.25*0.0
-    feet_slide_reward_scale = -0.25 * 0.0
-    feet_contact_suggestion_reward_scale =  0.25# * 0.0
-    feet_to_base_distance_reward_scale = 0.25 * 0.0
-    feet_to_hip_distance_reward_scale = 1.5 #* 0.0
-    feet_vertical_surface_contacts_reward_scale = -1.0 * 0.0
+    feet_air_time_reward_scale = 0.5 * 0.0 * (1-use_amp)
+    feet_height_clearance_reward_scale = 0.25 * (1-use_amp)# * 0.0  
+    feet_height_clearance_mujoco_reward_scale = 0.25 * 0.0 * (1-use_amp)
+    feet_slide_reward_scale = -0.25 * 0.0 * (1-use_amp)
+    feet_contact_suggestion_reward_scale =  0.25 * (1-use_amp)
+    feet_to_base_distance_reward_scale = 0.25 * 0.0 * (1-use_amp)
+    
+    feet_to_hip_distance_reward_scale = 1.5 * (1-use_amp)# * 0.0
+    # This is used in loocmotion_env.py for the above reward
+    desired_hip_offset = 0.165
+
+    feet_vertical_surface_contacts_reward_scale = -0.25 * (1-use_amp)# * 0.0
 
 
 
@@ -291,7 +336,8 @@ import isaaclab.terrains as terrain_gen
 from isaaclab.terrains.terrain_generator_cfg import TerrainGeneratorCfg
 @configclass
 class HyQRealRoughBlindEnvCfg(HyQRealFlatEnvCfg):
-    
+    #curriculum: CurriculumCfg = CurriculumCfg()
+
     ROUGH_TERRAINS_CFG = TerrainGeneratorCfg(
         curriculum=False,
         size=(8.0, 8.0),
@@ -307,7 +353,10 @@ class HyQRealRoughBlindEnvCfg(HyQRealFlatEnvCfg):
                 proportion=0.2
             ),
             "boxes": terrain_gen.MeshRandomGridTerrainCfg(
-                proportion=0.2, grid_width=0.45, grid_height_range=(0.05, 0.10), platform_width=2.0,
+                proportion=0.1, grid_width=0.45, grid_height_range=(0.05, 0.10), platform_width=2.0,
+            ),
+            "star": terrain_gen.MeshStarTerrainCfg(
+                proportion=0.1, num_bars=10, bar_width_range=(0.15, 0.20), bar_height_range=(0.05, 0.15), platform_width=2.0,
             ),
             "random_rough": terrain_gen.HfRandomUniformTerrainCfg(
                 proportion=0.1, noise_range=(0.02, 0.06), noise_step=0.02, border_width=0.25
@@ -319,11 +368,11 @@ class HyQRealRoughBlindEnvCfg(HyQRealFlatEnvCfg):
                 proportion=0.1, slope_range=(0.2, 0.4), platform_width=2.0, border_width=0.25
             ),
             "pyramid_stairs": terrain_gen.MeshPyramidStairsTerrainCfg(
-                proportion=0.2, step_height_range=(0.05, 0.15), step_width=0.3,
+                proportion=0.15, step_height_range=(0.05, 0.18), step_width=0.3,
                 platform_width=3.0, border_width=1.0, holes=False,
             ),
             "pyramid_stairs_inv": terrain_gen.MeshInvertedPyramidStairsTerrainCfg(
-                proportion=0.1, step_height_range=(0.05, 0.15), step_width=0.3,
+                proportion=0.15, step_height_range=(0.05, 0.18), step_width=0.3,
                 platform_width=3.0, border_width=1.0, holes=False,
             ),
         },
@@ -356,5 +405,16 @@ class HyQRealRoughBlindEnvCfg(HyQRealFlatEnvCfg):
 @configclass
 class HyQRealRoughVisionEnvCfg(HyQRealFlatEnvCfg):
     # env
-    observation_space = 235
+    #observation_space = 276
+    observation_space = 429
 
+    # we add a height scanner for perceptive locomotion
+    height_scanner = RayCasterCfg(
+        prim_path="/World/envs/env_.*/Robot/base",
+        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.0)),
+        attach_yaw_only=True,
+        #ray_alignment='yaw',
+        pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.2, 1.2]),
+        debug_vis=False,
+        mesh_prim_paths=["/World/ground"],
+    )

@@ -156,7 +156,6 @@ class CurriculumCfg:
 
 
 
-
 @configclass
 class Go2FlatEnvCfg(DirectRLEnvCfg):
     # Viewer
@@ -224,6 +223,10 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
             dynamic_friction=1.0,
             restitution=0.0,
         ),
+        #physx=PhysxCfg(
+        #    gpu_max_rigid_contact_count=2**20,
+        #    gpu_max_rigid_patch_count=2**24,
+        #),
     )
     terrain = TerrainImporterCfg(
         prim_path="/World/ground",
@@ -244,6 +247,7 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
         prim_path="/World/envs/env_.*/Robot/base",
         offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.0)),
         attach_yaw_only=True,
+        #ray_alignment='yaw',
         #pattern_cfg=patterns.GridPatternCfg(resolution=0.2, size=[1.4, 1.0]),
         pattern_cfg=patterns.GridPatternCfg(resolution=0.2, size=[0.6, 0.6]),
         debug_vis=False,
@@ -278,8 +282,11 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
         prim_path="/World/envs/env_.*/Robot/.*", history_length=3, update_period=0.005, track_air_time=True
     )
 
+    # Desired gait
+    desired_gait = "trot" #crawl, pace, multigait
+
     # Desired tracking variables
-    desired_base_height = 0.28
+    desired_base_height = 0.30
     desired_feet_height = 0.05
 
     # Desired clip actions
@@ -314,7 +321,11 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
     feet_slide_reward_scale = -0.25 * 0.0 * (1-use_amp)
     feet_contact_suggestion_reward_scale =  0.25 * (1-use_amp)
     feet_to_base_distance_reward_scale = 0.25 * 0.0 * (1-use_amp)
+
     feet_to_hip_distance_reward_scale = 1.5 * (1-use_amp)# * 0.0
+    # This is used in loocmotion_env.py for the above reward
+    desired_hip_offset = 0.1
+
     feet_vertical_surface_contacts_reward_scale = -0.25 * (1-use_amp)# * 0.0
 
 
@@ -342,7 +353,7 @@ class Go2RoughBlindEnvCfg(Go2FlatEnvCfg):
                 proportion=0.1, grid_width=0.45, grid_height_range=(0.05, 0.10), platform_width=2.0,
             ),
             "star": terrain_gen.MeshStarTerrainCfg(
-                proportion=0.1, num_bars=10, bar_width_range=(0.15, 0.20), bar_height_range=(0.05, 0.15), platform_width=2.0,
+                proportion=0.1, num_bars=10, bar_width_range=(0.15, 0.20), bar_height_range=(0.05, 0.13), platform_width=2.0,
             ),
             "random_rough": terrain_gen.HfRandomUniformTerrainCfg(
                 proportion=0.1, noise_range=(0.02, 0.06), noise_step=0.02, border_width=0.25
@@ -354,11 +365,11 @@ class Go2RoughBlindEnvCfg(Go2FlatEnvCfg):
                 proportion=0.1, slope_range=(0.2, 0.4), platform_width=2.0, border_width=0.25
             ),
             "pyramid_stairs": terrain_gen.MeshPyramidStairsTerrainCfg(
-                proportion=0.15, step_height_range=(0.05, 0.18), step_width=0.3,
+                proportion=0.15, step_height_range=(0.05, 0.13), step_width=0.3,
                 platform_width=3.0, border_width=1.0, holes=False,
             ),
             "pyramid_stairs_inv": terrain_gen.MeshInvertedPyramidStairsTerrainCfg(
-                proportion=0.15, step_height_range=(0.05, 0.18), step_width=0.3,
+                proportion=0.15, step_height_range=(0.05, 0.13), step_width=0.3,
                 platform_width=3.0, border_width=1.0, holes=False,
             ),
         },
@@ -386,9 +397,20 @@ class Go2RoughBlindEnvCfg(Go2FlatEnvCfg):
 
 
 
-
 @configclass
 class Go2RoughVisionEnvCfg(Go2FlatEnvCfg):
     # env
-    observation_space = 235
+    #observation_space = 276
+    observation_space = 429
+
+    # we add a height scanner for perceptive locomotion
+    height_scanner = RayCasterCfg(
+        prim_path="/World/envs/env_.*/Robot/base",
+        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.0)),
+        attach_yaw_only=True,
+        #ray_alignment='yaw',
+        pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.2, 1.2]),
+        debug_vis=False,
+        mesh_prim_paths=["/World/ground"],
+    )
 

@@ -20,9 +20,9 @@ armature_mujoco = 0.01
 
 GO2_HIP_ACTUATOR_CFG = IdentifiedActuatorCfg(
     joint_names_expr=[".*_hip_joint"],
-    effort_limit=44.4,
-    velocity_limit=21.0,
-    saturation_effort=44.4,
+    effort_limit=23.7,
+    velocity_limit=30.1,
+    saturation_effort=23.7,
     stiffness=stiffness_mujoco,
     damping=damping_mujoco,
     armature=armature_mujoco,
@@ -33,9 +33,9 @@ GO2_HIP_ACTUATOR_CFG = IdentifiedActuatorCfg(
 
 GO2_THIGH_ACTUATOR_CFG = IdentifiedActuatorCfg(
     joint_names_expr=[".*_thigh_joint"],
-    effort_limit=44.4,
-    velocity_limit=21.0,
-    saturation_effort=44.4,
+    effort_limit=23.7,
+    velocity_limit=30.1,
+    saturation_effort=23.7,
     stiffness=stiffness_mujoco,
     damping=damping_mujoco,
     armature=armature_mujoco,
@@ -46,9 +46,9 @@ GO2_THIGH_ACTUATOR_CFG = IdentifiedActuatorCfg(
 
 GO2_CALF_ACTUATOR_CFG = IdentifiedActuatorCfg(
     joint_names_expr=[".*_calf_joint"],
-    effort_limit=44.4,
-    velocity_limit=21.0,
-    saturation_effort=44.4,
+    effort_limit=45.43,
+    velocity_limit=15.7,
+    saturation_effort=45.43,
     stiffness=stiffness_mujoco,
     damping=damping_mujoco,
     armature=armature_mujoco,
@@ -61,7 +61,7 @@ GO2_CALF_ACTUATOR_CFG = IdentifiedActuatorCfg(
 
 GO2_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=f"{ISAAC_ASSET_DIR}/go2_asset/from_unitree/go2_cleaned.usd",
+        usd_path=f"{ISAAC_ASSET_DIR}/go2_asset/from_xml/go2.usd",
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
@@ -87,17 +87,6 @@ GO2_CFG = ArticulationCfg(
         joint_vel={".*": 0.0},
     ),
 
-    #actuators={
-    #    "base_legs": DCMotorCfg(
-    #        joint_names_expr=[".*_hip_joint", ".*_thigh_joint", ".*_calf_joint"],
-    #        effort_limit=44.4,
-    #        saturation_effort=44.4,
-    #        velocity_limit=21.0,
-    #        stiffness=25.0,
-    #        damping=2,
-    #        friction=0.0,
-    #    ),
-    #},
     
     actuators={"hip": GO2_HIP_ACTUATOR_CFG, "thigh": GO2_THIGH_ACTUATOR_CFG,
                "calf": GO2_CALF_ACTUATOR_CFG},

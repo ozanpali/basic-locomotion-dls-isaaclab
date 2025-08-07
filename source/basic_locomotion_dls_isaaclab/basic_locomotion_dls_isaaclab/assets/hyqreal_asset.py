@@ -12,8 +12,8 @@ from basic_locomotion_dls_isaaclab.assets import ISAAC_ASSET_DIR
 
 
 # HYQREAL robot configuration from mujoco
-stiffness_mujoco = 200.0
-damping_mujoco = 20.0
+stiffness_mujoco = 175.0 #200.0
+damping_mujoco = 14.0 #20.0
 friction_static_mujoco = 0.2
 friction_dynamic_mujoco = 0.6
 armature_mujoco = 0.01
@@ -61,8 +61,7 @@ HYQREAL_CALF_ACTUATOR_CFG = IdentifiedActuatorCfg(
 
 HYQREAL_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=f"{ISAAC_ASSET_DIR}/hyqreal_asset/from_xml/hyqreal.usd",
-        #usd_path= "/home/iit.local/gturrisi/isaaclab_ws_home/hyqreal.usd",
+        usd_path=f"{ISAAC_ASSET_DIR}/hyqreal_asset/from_xml/hyqreal2_nohpu.usd",
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
@@ -83,7 +82,7 @@ HYQREAL_CFG = ArticulationCfg(
             ".*L_hip_joint": 0.0,
             ".*R_hip_joint": 0.0,
             ".*_thigh_joint": 0.9,
-            ".*_calf_joint": -1.7,
+            ".*_calf_joint": -1.8,
         },
         joint_vel={".*": 0.0},
     ),

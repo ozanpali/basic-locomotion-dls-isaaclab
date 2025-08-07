@@ -26,20 +26,25 @@ class DiscriminatorCfg:
 
 @configclass
 class MorphologycalSymmetriesCfg:
-    """Configuration for the discriminator network."""
+    """Configuration for using morphosymm-rl."""
 
     class_name: str = "MorphologycalSymmetries"
-    """The discriminator class name. Default is Discriminator."""
+    """The class name."""
 
-    obs_space_names =  None
+    obs_space_names_actor =  None
+    """The observation space names for the actor network."""
+
+    obs_space_names_critic = None
+    """The observation space names for the critic network."""
 
     action_space_names = None
+    """The action space names."""
 
     joints_order = None
-
-    history_length = None
+    """The order of the joints in the robot."""
 
     robot_name = None
+    """The name of the robot to use inside Morphosymm."""
 
 
 @configclass
@@ -50,7 +55,7 @@ class FlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     experiment_name = "flat_direct"
     empirical_normalization = False
     policy = RslRlPpoActorCriticCfg(
-        class_name="ActorCritic", #ActorCritic, ActorCriticRecurrent, ActorCriticSymmEquivariantNN
+        class_name="ActorCritic", #ActorCritic, ActorCriticRecurrent, ActorCriticSymm, ActorCriticMoE
         init_noise_std=1.0,
         actor_hidden_dims=[128, 128, 128],
         critic_hidden_dims=[128, 128, 128],
@@ -73,11 +78,8 @@ class FlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     )
 
     #AMP Related Stuff
-    amp_data_path = "/home/alienware/personal_ws_home/Quadruped-PyMPC/datasets/"
-    dataset_names = [
-        "traj_0",
-        "traj_1",
-    ]
+    amp_data_path = "./../../../amp_dataset/"
+    dataset_names = ["flat"]
     dataset_weights = [1.0, 1.0]
     slow_down_factor = 1.0
     discriminator = DiscriminatorCfg(
@@ -86,8 +88,8 @@ class FlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     )
 
     # Symmetry Related Stuff
-    morphologycal_symmetries_cfg = MorphologycalSymmetriesCfg(
-        obs_space_names = [
+    history_length = 5
+    obs_space_names_actor = [
             "base_lin_vel:base",
             "base_ang_vel:base",
             "gravity:base",
@@ -96,18 +98,24 @@ class FlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
             "qvel_js",
             "actions",
             "clock_data",
-        ],
-        
+        ]*int(history_length)
+    obs_space_names_critic = obs_space_names_actor
+    """obs_space_names_critic += ["position_gains", 
+            "velocity_gains",
+            "friction_static",
+            "friction_dynamic",
+            "armature"
+        ]"""
+
+    morphologycal_symmetries_cfg = MorphologycalSymmetriesCfg(
+        obs_space_names_actor = obs_space_names_actor,
+        obs_space_names_critic = obs_space_names_critic,
         action_space_names = ["actions"],
-        
         joints_order = [
             "FL_hip_joint", "FR_hip_joint", "RL_hip_joint", "RR_hip_joint", 
             "FL_thigh_joint", "FR_thigh_joint", "RL_thigh_joint", "RR_thigh_joint",
             "FL_calf_joint", "FR_calf_joint", "RL_calf_joint", "RR_calf_joint"
         ],
-        
-        history_length = 5,
-        
         robot_name = "a1",
     )
 
@@ -120,7 +128,7 @@ class RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     experiment_name = "rough_direct"
     empirical_normalization = False
     policy = RslRlPpoActorCriticCfg(
-        class_name="ActorCritic", #ActorCritic, ActorCriticRecurrent, ActorCriticSymmEquivariantNN
+        class_name="ActorCritic", #ActorCritic, ActorCriticRecurrent, ActorCriticSymm, ActorCriticMoE
         init_noise_std=1.0,
         #actor_hidden_dims=[512, 256, 128],
         #critic_hidden_dims=[512, 256, 128],
@@ -145,13 +153,8 @@ class RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     )
 
     #AMP Related Stuff
-    amp_data_path = "/home/iit.local/gturrisi/personal_ws_home/Quadruped-PyMPC/"
-    dataset_names = [
-        "traj_0",
-        "traj_1",
-        "traj_2",
-        "traj_3",
-    ]
+    amp_data_path = "./../../../amp_dataset/"
+    dataset_names = ["flat", "boxes", "stairs"]
     dataset_weights = [1.0, 1.0, 1.0, 1.0]
     slow_down_factor = 1.0
     discriminator = DiscriminatorCfg(
@@ -160,8 +163,8 @@ class RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     )
 
     # Symmetry Related Stuff
-    morphologycal_symmetries_cfg = MorphologycalSymmetriesCfg(
-        obs_space_names = [
+    history_length = 5
+    obs_space_names_actor = [
             "base_lin_vel:base",
             "base_ang_vel:base",
             "gravity:base",
@@ -170,17 +173,24 @@ class RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
             "qvel_js",
             "actions",
             "clock_data",
-        ],
-        
+        ]*int(history_length)
+    obs_space_names_critic = obs_space_names_actor
+    """obs_space_names_critic += ["position_gains", 
+            "velocity_gains",
+            "friction_static",
+            "friction_dynamic",
+            "armature"
+        ]"""
+    #obs_space_names_actor += "heightmap:rows4xcols4"
+
+    morphologycal_symmetries_cfg = MorphologycalSymmetriesCfg(
+        obs_space_names_actor = obs_space_names_actor,
+        obs_space_names_critic = obs_space_names_critic,
         action_space_names = ["actions"],
-        
         joints_order = [
             "FL_hip_joint", "FR_hip_joint", "RL_hip_joint", "RR_hip_joint", 
             "FL_thigh_joint", "FR_thigh_joint", "RL_thigh_joint", "RR_thigh_joint",
             "FL_calf_joint", "FR_calf_joint", "RL_calf_joint", "RR_calf_joint"
         ],
-        
-        history_length = 5,
-        
         robot_name = "a1",
     )

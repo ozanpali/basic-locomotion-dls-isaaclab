@@ -7,7 +7,7 @@ from isaaclab.managers import CurriculumTermCfg as CurrTerm
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sensors import ContactSensorCfg, RayCasterCfg, patterns
-from isaaclab.sim import SimulationCfg
+from isaaclab.sim import SimulationCfg, PhysxCfg
 from isaaclab.envs import ViewerCfg
 from isaaclab.terrains import TerrainImporterCfg
 from isaaclab.sensors import ImuCfg
@@ -224,6 +224,10 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
             dynamic_friction=1.0,
             restitution=0.0,
         ),
+        #physx=PhysxCfg(
+        #    gpu_max_rigid_contact_count=2**20,
+        #    gpu_max_rigid_patch_count=2**24,
+        #),
     )
     terrain = TerrainImporterCfg(
         prim_path="/World/ground",
@@ -318,7 +322,11 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     feet_slide_reward_scale = -0.25 * 0.0 * (1-use_amp)
     feet_contact_suggestion_reward_scale =  0.25 * (1-use_amp)
     feet_to_base_distance_reward_scale = 0.25 * 0.0 * (1-use_amp)
+    
     feet_to_hip_distance_reward_scale = 1.5 * (1-use_amp)# * 0.0
+    # This is used in loocmotion_env.py for the above reward
+    desired_hip_offset = 0.1
+    
     feet_vertical_surface_contacts_reward_scale = -0.25 * (1-use_amp)# * 0.0
 
 
@@ -396,4 +404,16 @@ class AliengoRoughBlindEnvCfg(AliengoFlatEnvCfg):
 @configclass
 class AliengoRoughVisionEnvCfg(AliengoRoughBlindEnvCfg):
     # env
-    observation_space = 276
+    #observation_space = 276
+    observation_space = 429
+
+    # we add a height scanner for perceptive locomotion
+    height_scanner = RayCasterCfg(
+        prim_path="/World/envs/env_.*/Robot/base",
+        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.0)),
+        attach_yaw_only=True,
+        #ray_alignment='yaw',
+        pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.2, 1.2]),
+        debug_vis=False,
+        mesh_prim_paths=["/World/ground"],
+    )

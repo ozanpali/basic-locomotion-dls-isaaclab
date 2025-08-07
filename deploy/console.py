@@ -6,6 +6,7 @@ from gym_quadruped.utils.quadruped_utils import LegsAttr
 
 import numpy as np
 import copy
+import mujoco
 
 class Console():
     def __init__(self, controller_node):
@@ -56,10 +57,13 @@ class Console():
                     initial_joint_positions.RR = temp[9:12]
 
                     reference_joint_positions = LegsAttr(*[np.zeros((1, int(self.controller_node.env.mjModel.nu/4))) for _ in range(4)])
-                    reference_joint_positions.FL = np.array([0, 0.9, -1.8])
-                    reference_joint_positions.FR = np.array([0, 0.9, -1.8])
-                    reference_joint_positions.RL = np.array([0, 0.9, -1.6])
-                    reference_joint_positions.RR = np.array([0, 0.9, -1.6])
+                    keyframe_id = mujoco.mj_name2id(self.controller_node.env.mjModel, mujoco.mjtObj.mjOBJ_KEY, "home")
+                    standUp_qpos = self.controller_node.env.mjModel.key_qpos[keyframe_id]
+                    
+                    reference_joint_positions.FL = standUp_qpos[7:10]
+                    reference_joint_positions.FR = standUp_qpos[10:13]
+                    reference_joint_positions.RL = standUp_qpos[13:16]
+                    reference_joint_positions.RR = standUp_qpos[16:19]
                     while(time.time() - start_time < time_motion):
                         time_diff = time.time() - start_time
                         alpha = time_diff / time_motion
@@ -96,10 +100,13 @@ class Console():
                     initial_joint_positions.RL = temp[6:9]
                     initial_joint_positions.RR = temp[9:12]
 
-                    reference_joint_positions.FL = np.array([0.0, 1.21, -2.794])
-                    reference_joint_positions.FR = np.array([0.0, 1.21, -2.794])
-                    reference_joint_positions.RL = np.array([0.0, 1.21, -2.794])
-                    reference_joint_positions.RR = np.array([0.0, 1.21, -2.794])
+                    keyframe_id = mujoco.mj_name2id(self.controller_node.env.mjModel, mujoco.mjtObj.mjOBJ_KEY, "down")
+                    goDown_qpos = self.controller_node.env.mjModel.key_qpos[keyframe_id]
+                    reference_joint_positions.FL = goDown_qpos[7:10]
+                    reference_joint_positions.FR = goDown_qpos[10:13]
+                    reference_joint_positions.RL = goDown_qpos[13:16]
+                    reference_joint_positions.RR = goDown_qpos[16:19]
+
                     while(time.time() - start_time < time_motion):
                         time_diff = time.time() - start_time
                         alpha = time_diff / time_motion
@@ -125,24 +132,24 @@ class Console():
 
 
                 elif(input_string == "setKp"):
-                    print("Kp stand_up_and_down: ", self.controller_node.Kp_stand_up_and_down)
+                    print("Kp stand_up_and_down: ", self.controller_node.locomotion_policy.Kp_stand_up_and_down)
                     temp = input("Enter Kp: ")
                     if(temp != ""):
                         self.controller_node.Kp_stand_up_and_down= float(temp)
                     
-                    print("Kp policy: ", self.controller_node.locomotion_policy.Kp)
+                    print("Kp walking: ", self.controller_node.locomotion_policy.Kp_walking)
                     temp = input("Enter Kp: ")
                     if(temp != ""):
-                        self.controller_node.locomotion_policy.Kp = float(temp)
+                        self.controller_node.locomotion_policy.Kp_walking = float(temp)
                 
 
                 elif(input_string == "setKd"):
-                    print("Kd stand_up_and_down: ", self.controller_node.Kd_stand_up_and_down)
+                    print("Kd stand_up_and_down: ", self.controller_node.locomotion_policy.Kd_stand_up_and_down)
                     temp = input("Enter Kd: ")
                     if(temp != ""):
                         self.controller_node.Kd_stand_up_and_down = float(temp)
 
-                    print("Kd policy: ", self.controller_node.locomotion_policy.Kd)
+                    print("Kd walking: ", self.controller_node.locomotion_policy.Kd_walking)
                     temp = input("Enter Kd: ")
                     if(temp != ""):
                         self.controller_node.locomotion_policy.Kd = float(temp)

@@ -22,14 +22,14 @@ from gym_quadruped.utils.mujoco.visual import render_sphere
 # Locomotion Policy imports
 from locomotion_policy_wrapper import LocomotionPolicyWrapper
 
+import config
 
 
 if __name__ == '__main__':
     np.set_printoptions(precision=3, suppress=True)
 
-    robot_name = "aliengo"
-    robot_feet_geom_names = dict(FL='FL', FR='FR', RL='RL', RR='RR')
-    scene_name = "random_boxes" #random_boxes
+    robot_name = config.robot
+    scene_name = config.scene
     simulation_dt = 0.002
 
 
@@ -51,12 +51,10 @@ if __name__ == '__main__':
     locomotion_policy = LocomotionPolicyWrapper(env=env)
 
     if(locomotion_policy.use_vision):
-        resolution_heightmap = 0.2
-        num_rows_heightmap = round(0.6/resolution_heightmap) + 1
-        num_cols_heightmap = round(0.6/resolution_heightmap) + 1
-        heightmap = HeightMap(
-            num_rows=num_rows_heightmap, num_cols=num_cols_heightmap, dist_x=resolution_heightmap, dist_y=resolution_heightmap, mj_model=env.mjModel, mj_data=env.mjData
-        )     
+        resolution_heightmap = config.resolution_heightmap
+        num_rows_heightmap = round(config.size_x_heightmap/resolution_heightmap) + 1
+        num_cols_heightmap = round(config.size_y_heightmap/resolution_heightmap) + 1
+        heightmap = HeightMap(num_rows=num_rows_heightmap, num_cols=num_cols_heightmap, dist_x=resolution_heightmap, dist_y=resolution_heightmap, mj_model=env.mjModel, mj_data=env.mjData)     
     
 
     # --------------------------------------------------------------
@@ -105,8 +103,8 @@ if __name__ == '__main__':
             desired_joint_pos = locomotion_policy.desired_joint_pos
 
 
-        Kp = locomotion_policy.Kp
-        Kd = locomotion_policy.Kd
+        Kp = locomotion_policy.Kp_walking
+        Kd = locomotion_policy.Kd_walking
 
         error_joints_pos = LegsAttr(*[np.zeros((1, int(env.mjModel.nu/4))) for _ in range(4)])
         error_joints_pos.FL = desired_joint_pos.FL - joints_pos.FL
@@ -120,12 +118,6 @@ if __name__ == '__main__':
         tau.RL = Kp * (error_joints_pos.RL) - Kd * joints_vel.RL
         tau.RR = Kp * (error_joints_pos.RR) - Kd * joints_vel.RR
 
-
-
-        # Limit tau between tau_limits
-        for leg in ["FL", "FR", "RL", "RR"]:
-            tau_min, tau_max = locomotion_policy.tau_limits[leg][:, 0], locomotion_policy.tau_limits[leg][:, 1]
-        tau[leg] = np.clip(tau[leg], tau_min, tau_max)
 
         # Set control and mujoco step ----------------------------------------------------------------------
         action = np.zeros(env.mjModel.nu)

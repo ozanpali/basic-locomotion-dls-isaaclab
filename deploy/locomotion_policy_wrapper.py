@@ -16,53 +16,45 @@ sys.path.append(dir_path+"/../")
 sys.path.append(dir_path+"/../scripts/rsl_rl")
 
 # Gym and Simulation related imports
-from gym_quadruped.quadruped_env import QuadrupedEnv
 from gym_quadruped.utils.quadruped_utils import LegsAttr
 
-
+import mujoco
 import onnxruntime as ort
-
-policy_path = dir_path + "/../tested_policies/aliengo/8k_128_128_128_stop"
-policy_path = policy_path + "/exported/policy.onnx"
-policy = ort.InferenceSession(policy_path)
-
 import torch
+
+import config
 
 
 class LocomotionPolicyWrapper:
     def __init__(self, env):
-        # Torque and desired joint vector
-        self.tau = LegsAttr(*[np.zeros((1, int(env.mjModel.nu/4))) for _ in range(4)])
-        self.desired_joint_pos = LegsAttr(*[np.zeros((1, int(env.mjModel.nu/4))) for _ in range(4)])
 
-        # Torque limits
-        tau_soft_limits_scalar = 0.9
-        self.tau_limits = LegsAttr(
-            FL=env.mjModel.actuator_ctrlrange[env.legs_tau_idx.FL]*tau_soft_limits_scalar,
-            FR=env.mjModel.actuator_ctrlrange[env.legs_tau_idx.FR]*tau_soft_limits_scalar,
-            RL=env.mjModel.actuator_ctrlrange[env.legs_tau_idx.RL]*tau_soft_limits_scalar,
-            RR=env.mjModel.actuator_ctrlrange[env.legs_tau_idx.RR]*tau_soft_limits_scalar)
-        
+        self.policy = ort.InferenceSession(config.policy_path)
+        self.Kp_walking = config.Kp_walking
+        self.Kd_walking = config.Kd_walking
+        self.Kp_stand_up_and_down = config.Kp_stand_up_and_down
+        self.Kd_stand_up_and_down = config.Kd_stand_up_and_down
+
+        self.RL_FREQ = config.RL_FREQ
+
 
         # RL controller initialization -------------------------------------------------------------
-        self.action_scale = 0.5
+        self.action_scale = config.action_scale
         self.rl_actions = LegsAttr(*[np.zeros((1, int(env.mjModel.nu/4))) for _ in range(4)])
         self.past_rl_actions = np.zeros(env.mjModel.nu)
         
         self.default_joint_pos = LegsAttr(*[np.zeros((1, int(env.mjModel.nu/4))) for _ in range(4)])
-        self.default_joint_pos.FL = np.array([0, 0.9, -1.8])
-        self.default_joint_pos.FR = np.array([0, 0.9, -1.8])
-        self.default_joint_pos.RL = np.array([0, 0.9, -1.8])
-        self.default_joint_pos.RR = np.array([0, 0.9, -1.8])
+        
+        keyframe_id = mujoco.mj_name2id(env.mjModel, mujoco.mjtObj.mjOBJ_KEY, "home")
+        standUp_qpos = env.mjModel.key_qpos[keyframe_id]
+        self.default_joint_pos.FL = standUp_qpos[7:10]
+        self.default_joint_pos.FR = standUp_qpos[10:13]
+        self.default_joint_pos.RL = standUp_qpos[13:16]
+        self.default_joint_pos.RR = standUp_qpos[16:19]
 
+        # Observation space initialization -------------------------------------------------------
+        self.observation_space = config.observation_space
 
-        self.RL_FREQ = 50  # Hz
-        self.Kp = 25.
-        self.Kd = 2.
-
-        self.observation_space = 48
-
-        self.use_clock_signal = True
+        self.use_clock_signal = config.use_clock_signal
         if(self.use_clock_signal):
             self.observation_space += 4
 
@@ -84,21 +76,26 @@ class LocomotionPolicyWrapper:
             self.velocity_gait_multiplier = 1.0
         self.phase_signal = self.phase_offset
 
-        self.desired_clip_actions = 3.0
+        self.desired_clip_actions = config.clip_actions
 
-        self.use_action_filter = True
+        self.use_action_filter = config.use_clip_actions
 
 
-        self.use_observation_history = True
-        self.history_length = 5
+        self.use_observation_history = config.use_observation_history
+        self.history_length = config.history_length
         if(self.use_observation_history):
             self.observation_space = self.observation_space * self.history_length
         single_observation_space = int(self.observation_space/self.history_length)
         self._observation_history = np.zeros((self.history_length, single_observation_space), dtype=np.float32)
 
-        self.use_vision = False
+        self.use_vision = config.use_vision
         if(self.use_vision):
             self.observation_space = 235
+
+        # Desired joint vector
+        self.desired_joint_pos = LegsAttr(*[np.zeros((1, int(env.mjModel.nu/4))) for _ in range(4)])
+
+        
 
 
     def compute_control(self, base_pos, base_ori_euler_xyz, base_quat_wxyz,
@@ -181,7 +178,7 @@ class LocomotionPolicyWrapper:
             
         obs = obs.reshape(1, -1)
         obs = obs.astype(np.float32)
-        rl_action_temp = policy.run(None, {'obs': obs})[0][0]
+        rl_action_temp = self.policy.run(None, {'obs': obs})[0][0]
         rl_action_temp = np.clip(rl_action_temp, -self.desired_clip_actions, self.desired_clip_actions)
         
         if(self.use_action_filter):

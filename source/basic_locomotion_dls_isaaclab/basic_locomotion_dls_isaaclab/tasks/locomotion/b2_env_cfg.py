@@ -314,7 +314,11 @@ class B2FlatEnvCfg(DirectRLEnvCfg):
     feet_slide_reward_scale = -0.25 * 0.0 * (1-use_amp)
     feet_contact_suggestion_reward_scale =  0.25 * (1-use_amp)
     feet_to_base_distance_reward_scale = 0.25 * 0.0 * (1-use_amp)
+
     feet_to_hip_distance_reward_scale = 1.5 * (1-use_amp)# * 0.0
+    # This is used in loocmotion_env.py for the above reward
+    desired_hip_offset = 0.1
+
     feet_vertical_surface_contacts_reward_scale = -0.25 * (1-use_amp)# * 0.0
 
 
