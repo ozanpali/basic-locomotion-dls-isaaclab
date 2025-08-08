@@ -147,13 +147,15 @@ class HyQRealFlatEnvCfg(DirectRLEnvCfg):
         single_observation_space = observation_space # Placeholder. Later we may add map, but only from the latest obs
         observation_space *= history_length
 
+    use_imu = False
+
     use_cuncurrent_state_est = False
     if(use_cuncurrent_state_est):
         cuncurrent_state_est_output_space = 3 #lin_vel_b
         cuncurrent_state_est_output_space += 3 #ang_vel_b
         cuncurrent_state_est_observation_space = observation_space
 
-    use_rma = True
+    use_rma = False
     if(use_rma):
         rma_output_space = 12 # P gain
         rma_output_space += 12 # D gain 

@@ -259,10 +259,16 @@ class LocomotionEnv(DirectRLEnv):
                 self._cuncurrent_state_est_network.train_network(batch_size=512, epochs=100, learning_rate=1e-3)
 
         else: 
-            #Using a model-based state estimation
-            linear_velocity_b = self._robot.data.root_lin_vel_b
-            angular_velocity_b = self._robot.data.root_ang_vel_b
-            projected_gravity_b = self._robot.data.projected_gravity_b
+            if(self.cfg.use_imu):
+                # Using a model-based state estimation
+                linear_velocity_b = self._imu.data.lin_acc_b
+                angular_velocity_b = self._imu.data.ang_vel_b
+                projected_gravity_b = self._robot.data.projected_gravity_b
+            else:
+                #Using a model-based state estimation
+                linear_velocity_b = self._robot.data.root_lin_vel_b
+                angular_velocity_b = self._robot.data.root_ang_vel_b
+                projected_gravity_b = self._robot.data.projected_gravity_b
         
         
         # Standard Obs for the Actor/Critic
