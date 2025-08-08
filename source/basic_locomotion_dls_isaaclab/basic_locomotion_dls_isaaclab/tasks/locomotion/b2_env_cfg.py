@@ -65,24 +65,6 @@ class EventCfg:
     )
     
 
-    """add_all_joint_default_pos = EventTerm(
-        func=mdp.randomize_joint_default_pos,
-        mode="startup",
-        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]), "pos_distribution_params": (-0.05, 0.05),
-                "operation": "add"},
-    )"""
-
-    """joint_parameters = EventTerm(
-    func=mdp.randomize_joint_parameters,
-    mode="reset",
-    params={
-        "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
-        "armature_distribution_params": (0.0, 0.2),
-        "operation": "add",
-        "distribution": "uniform",
-    },
-    )"""
-
     scale_all_joint_friction_model = EventTerm(
         func=custom_events.randomize_joint_friction_model,
         mode="startup",
@@ -138,24 +120,6 @@ class EventCfg:
     )"""
 
 
-@configclass
-class CurriculumCfg:
-    """Curriculum terms for the MDP."""
-
-    terrain_levels = CurrTerm(func=custom_curriculums.terrain_levels_vel)
-    
-    # push force follows curriculum
-    #push_force_levels = CurrTerm(func=mdp.modify_push_force,
-    #                             params={"term_name": "push_robot", "max_velocity": [3.0, 3.0], "interval": 200 * 24,
-    #                                     "starting_step": 1500 * 24})
-    # command vel follows curriculum
-    #command_vel = CurrTerm(func=mdp.modify_command_velocity,
-    #                       params={"term_name": "track_lin_vel_xy_exp", "max_velocity": [-1.5, 3.0],
-    #                               "interval": 200 * 24, "starting_step": 5000 * 24})
-
-
-
-
 
 @configclass
 class B2FlatEnvCfg(DirectRLEnvCfg):
@@ -181,16 +145,16 @@ class B2FlatEnvCfg(DirectRLEnvCfg):
         single_observation_space = observation_space # Placeholder. Later we may add map, but only from the latest obs
         observation_space *= history_length
 
+    use_cuncurrent_state_est = False
+    if(use_cuncurrent_state_est):
+        cuncurrent_state_est_output_space = 3 #lin_vel_b
+        cuncurrent_state_est_output_space += 3 #ang_vel_b
+
     use_rma = False
     if(use_rma):
-        observation_space += 12 # P gain
-        observation_space += 12 # D gain 
-        #state_space += 1*17 # mass*num_bodies
-        #state_space += 1*17 # inertia*num_bodies
-        #state_space += 1 # wrench
-        observation_space += 12 # friction static
-        observation_space += 12 # friction dynamic
-        observation_space += 12 # armature
+        rma_output_space = 12 # P gain
+        rma_output_space += 12 # D gain 
+        observation_space += rma_output_space
 
     use_filter_actions = True
 
@@ -326,7 +290,6 @@ import isaaclab.terrains as terrain_gen
 from isaaclab.terrains.terrain_generator_cfg import TerrainGeneratorCfg
 @configclass
 class B2RoughBlindEnvCfg(B2FlatEnvCfg):
-    #curriculum: CurriculumCfg = CurriculumCfg()
 
     ROUGH_TERRAINS_CFG = TerrainGeneratorCfg(
         curriculum=False,
