@@ -285,10 +285,6 @@ class Basic_Locomotion_DLS_Isaaclab_Node(Node):
         desired_joint_pos.RL[0] = -desired_joint_pos.RL[0] 
 
         trajectory_generator_msg = TrajectoryGeneratorMsg()
-        trajectory_generator_msg.stance_legs[0] = not self.console.isRLActivated
-        trajectory_generator_msg.stance_legs[1] = not self.console.isRLActivated
-        trajectory_generator_msg.stance_legs[2] = not self.console.isRLActivated
-        trajectory_generator_msg.stance_legs[3] = not self.console.isRLActivated
         trajectory_generator_msg.joints_position = np.concatenate([desired_joint_pos.FL, desired_joint_pos.FR, desired_joint_pos.RL, desired_joint_pos.RR], axis=0).flatten()
         
         desired_joint_vel = LegsAttr(*[np.zeros((1, int(env.mjModel.nu/4))) for _ in range(4)])
