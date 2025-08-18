@@ -27,7 +27,7 @@ from .go2_env_cfg import Go2FlatEnvCfg, Go2RoughVisionEnvCfg, Go2RoughBlindEnvCf
 from .hyqreal_env_cfg import HyQRealFlatEnvCfg, HyQRealRoughVisionEnvCfg, HyQRealRoughBlindEnvCfg
 from .b2_env_cfg import B2FlatEnvCfg, B2RoughVisionEnvCfg, B2RoughBlindEnvCfg
 
-from basic_locomotion_dls_isaaclab.tasks.rma_and_se import SimpleNN
+from basic_locomotion_dls_isaaclab.tasks.supervised_learning_networks import SimpleNN
 
 class LocomotionEnv(DirectRLEnv):
     cfg: AliengoFlatEnvCfg | AliengoRoughBlindEnvCfg | AliengoRoughVisionEnvCfg | Go2FlatEnvCfg | Go2RoughVisionEnvCfg | Go2RoughBlindEnvCfg | HyQRealFlatEnvCfg | HyQRealRoughVisionEnvCfg | HyQRealRoughBlindEnvCfg
@@ -321,18 +321,18 @@ class LocomotionEnv(DirectRLEnv):
             self._rma_network.dataset.add_sample(obs, outputs_rma)
 
             # Prediction
-            #max_episode_from_start = self.common_step_counter * self.max_episode_length
-            #max_episode_to_wait = self.max_episode_length * 1000
-            #if max_episode_from_start > max_episode_to_wait:
-            #    prediction_rma = self._rma_network(obs)
-            #    obs = torch.cat((obs, prediction_rma), dim=-1)  
-            #else:
-            obs = torch.cat((obs, outputs_rma), dim=-1)
+            max_episode_from_start = self.common_step_counter * self.max_episode_length
+            max_episode_to_wait = self.max_episode_length * 1000
+            if max_episode_from_start > max_episode_to_wait:
+                prediction_rma = self._rma_network(obs)
+                obs = torch.cat((obs, prediction_rma), dim=-1)  
+            else:
+                obs = torch.cat((obs, outputs_rma), dim=-1)
 
             # Train at some interval
-            #if max_episode_from_start % max_episode_to_wait == 0 and max_episode_from_start > max_episode_to_wait - 1:  # Adjust the interval as needed
-            #if(max_episode_from_start > 10):
-            #self._rma_network.train_network(batch_size=512, epochs=100, learning_rate=1e-3, device=self.device)
+            if max_episode_from_start % max_episode_to_wait == 0 and max_episode_from_start > max_episode_to_wait - 1:  # Adjust the interval as needed
+                #if(max_episode_from_start > 10):
+                self._rma_network.train_network(batch_size=512, epochs=100, learning_rate=1e-3, device=self.device)
 
 
 

@@ -48,37 +48,39 @@ class SimpleNN(torch.nn.Module):
         return x
     
     def train_network(self, batch_size=512, epochs=1000, learning_rate=1e-3, device='cpu'):
-        # Define optimizer and loss function
-        optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
-        loss_fn = torch.nn.MSELoss()
-
-        # Create a DataLoader for batching
-        dataloader = torch.utils.data.DataLoader(
-            self.dataset,
-            batch_size=batch_size,
-            shuffle=True
-        )
-
-        # Training loop
-        self.train()
-        for epoch in range(epochs):
-            for inputs, targets in dataloader:
-  
-                # Forward pass
-                inputs = inputs.view(-1, inputs.size(-1))
-                targets = targets.view(-1, targets.size(-1))
-                predictions = self(inputs)
-
-                loss = loss_fn(predictions, targets)
-
-                # Backward pass and optimization
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-
-            print(f"Epoch {epoch + 1}/{epochs}, Loss: {loss.item()}")
-
-
+        with torch.inference_mode(False):
+            with torch.enable_grad():
+                # Define optimizer and loss function
+                optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
+                loss_fn = torch.nn.MSELoss()
+    
+                # Create a DataLoader for batching
+                dataloader = torch.utils.data.DataLoader(
+                    self.dataset,
+                    batch_size=batch_size,
+                    shuffle=True
+                )
+    
+                # Training loop
+                self.train()
+                for epoch in range(epochs):
+                    for inputs, targets in dataloader:
+                    
+                        # Forward pass
+                        inputs = inputs.view(-1, inputs.size(-1))
+                        targets = targets.view(-1, targets.size(-1))
+                        predictions = self(inputs)
+    
+                        loss = loss_fn(predictions, targets)
+    
+                        # Backward pass and optimization
+                        optimizer.zero_grad()
+                        loss.backward()
+                        optimizer.step()
+    
+                    print(f"Epoch {epoch + 1}/{epochs}, Loss: {loss.item()}")
+    
+    
 
 model = SimpleNN(10, 2)
 x = torch.randn(4, 10)
