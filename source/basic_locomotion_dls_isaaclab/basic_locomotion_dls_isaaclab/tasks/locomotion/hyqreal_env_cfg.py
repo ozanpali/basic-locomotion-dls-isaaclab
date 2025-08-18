@@ -153,6 +153,7 @@ class HyQRealFlatEnvCfg(DirectRLEnvCfg):
     if(use_cuncurrent_state_est):
         cuncurrent_state_est_output_space = 3 #lin_vel_b
         cuncurrent_state_est_output_space += 3 #ang_vel_b
+        single_cuncurrent_state_est_observation_space = single_observation_space
         cuncurrent_state_est_observation_space = observation_space
 
     use_rma = False

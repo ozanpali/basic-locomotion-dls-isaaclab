@@ -39,7 +39,7 @@ class SimpleNN(torch.nn.Module):
         self.fc2 = torch.nn.Linear(128, 64)
         self.fc3 = torch.nn.Linear(64, out_features)
 
-        self.dataset = CustomDataset()
+        self.dataset = CustomDataset(max_size=100000)
 
     def forward(self, x):
         x = torch.relu(self.fc1(x))

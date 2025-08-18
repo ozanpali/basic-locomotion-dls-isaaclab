@@ -88,6 +88,7 @@ class LocomotionEnv(DirectRLEnv):
         if(cfg.use_cuncurrent_state_est == True):
             self._cuncurrent_state_est_network = SimpleNN(cfg.cuncurrent_state_est_observation_space, cfg.cuncurrent_state_est_output_space)
             self._cuncurrent_state_est_network.to(self.device)
+            self._observation_history_cuncurrent_state_est = torch.zeros(self.num_envs, cfg.history_length, cfg.single_cuncurrent_state_est_observation_space, device=self.device)
 
 
         # Logging
@@ -236,7 +237,6 @@ class LocomotionEnv(DirectRLEnv):
             #the bottom element is the newest observation!!
             self._observation_history_cuncurrent_state_est = torch.cat((self._observation_history_cuncurrent_state_est[:,1:,:], obs_cuncurrent_state_est.unsqueeze(1)), dim=1)
             obs_cuncurrent_state_est = torch.flatten(self._observation_history_cuncurrent_state_est, start_dim=1)                  
-            prediction_cuncurrent_state_est = self._cuncurrent_state_est_network(obs_cuncurrent_state_est)
 
             # Saving data
             output_cuncurrent_state_est = torch.cat((self._robot.data.root_lin_vel_b, self._robot.data.root_ang_vel_b), dim=-1)
@@ -246,6 +246,7 @@ class LocomotionEnv(DirectRLEnv):
             max_episode_from_start = self.common_step_counter * self.max_episode_length
             max_episode_to_wait = self.max_episode_length * 1000
             if max_episode_from_start > max_episode_to_wait == 0:
+                prediction_cuncurrent_state_est = self._cuncurrent_state_est_network(obs_cuncurrent_state_est)
                 linear_velocity_b = prediction_cuncurrent_state_est[:, :3]
                 angular_velocity_b = prediction_cuncurrent_state_est[:, 3:6]
                 projected_gravity_b = self._imu.data.projected_gravity_b
