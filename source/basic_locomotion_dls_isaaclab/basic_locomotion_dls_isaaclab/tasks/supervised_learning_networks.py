@@ -9,8 +9,8 @@ class CustomDataset(Dataset):
         self.max_size = max_size
 
     def add_sample(self, input_data, label):
-        self.data.append(input_data)
-        self.labels.append(label)
+        self.data.append(input_data.detach().cpu())
+        self.labels.append(label.detach().cpu())
 
         # Check if the buffer exceeds the maximum size
         if self.max_size is not None and len(self.data) > self.max_size:
@@ -39,7 +39,7 @@ class SimpleNN(torch.nn.Module):
         self.fc2 = torch.nn.Linear(128, 64)
         self.fc3 = torch.nn.Linear(64, out_features)
 
-        self.dataset = CustomDataset(max_size=100000)
+        self.dataset = CustomDataset(max_size=1000)
 
     def forward(self, x):
         x = torch.relu(self.fc1(x))
@@ -67,8 +67,8 @@ class SimpleNN(torch.nn.Module):
                     for inputs, targets in dataloader:
                     
                         # Forward pass
-                        inputs = inputs.view(-1, inputs.size(-1))
-                        targets = targets.view(-1, targets.size(-1))
+                        inputs = inputs.view(-1, inputs.size(-1)).to(device)
+                        targets = targets.view(-1, targets.size(-1)).to(device)
                         predictions = self(inputs)
     
                         loss = loss_fn(predictions, targets)
@@ -79,13 +79,34 @@ class SimpleNN(torch.nn.Module):
                         optimizer.step()
     
                     print(f"Epoch {epoch + 1}/{epochs}, Loss: {loss.item()}")
+
+    def save_network(self, filepath, device='cpu'):
+        """Save the network state dict to a file."""
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.dirname(filepath) if os.path.dirname(filepath) else '.', exist_ok=True)
+        
+        # Move model to CPU for saving (optional, saves GPU memory)
+        original_device = next(self.parameters()).device
+        self.cpu()
+        
+        # Save the state dict
+        torch.save({
+            'model_state_dict': self.state_dict(),
+            'input_features': self.fc1.in_features,
+            'output_features': self.fc3.out_features,
+        }, filepath)
+        
+        print(f"Network saved to {filepath}")
+        
+        # Move model back to original device
+        self.to(original_device)
     
     
 
-model = SimpleNN(10, 2)
+"""model = SimpleNN(10, 2)
 x = torch.randn(4, 10)
 y = torch.randn(4, 2)
 out = model(x)
 print("out.requires_grad:", out.requires_grad)
 loss = torch.nn.MSELoss()(out, y)
-print("loss.requires_grad:", loss.requires_grad)
+print("loss.requires_grad:", loss.requires_grad)"""

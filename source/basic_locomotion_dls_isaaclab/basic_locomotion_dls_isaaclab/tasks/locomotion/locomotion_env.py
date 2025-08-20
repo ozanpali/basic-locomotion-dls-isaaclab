@@ -223,7 +223,7 @@ class LocomotionEnv(DirectRLEnv):
                     for tensor in (
                         self._imu.data.lin_acc_b,
                         self._imu.data.ang_vel_b,
-                        self._imu.data.projected_gravity_b,
+                        self._robot.data.projected_gravity_b,
                         self._commands,
                         self._robot.data.joint_pos - self._robot.data.default_joint_pos,
                         self._robot.data.joint_vel,
@@ -243,13 +243,14 @@ class LocomotionEnv(DirectRLEnv):
             self._cuncurrent_state_est_network.dataset.add_sample(obs_cuncurrent_state_est, output_cuncurrent_state_est)
 
             # Prediction
-            max_episode_from_start = self.common_step_counter * self.max_episode_length
-            max_episode_to_wait = self.max_episode_length * 1000
+            max_episode_from_start = self.common_step_counter / 24. #self.max_episode_length #HACK this should be taken from rsl rl
+            max_episode_to_wait = 100. 
+            final_episode_from_start = 8000.
             if max_episode_from_start > max_episode_to_wait == 0:
                 prediction_cuncurrent_state_est = self._cuncurrent_state_est_network(obs_cuncurrent_state_est)
                 linear_velocity_b = prediction_cuncurrent_state_est[:, :3]
                 angular_velocity_b = prediction_cuncurrent_state_est[:, 3:6]
-                projected_gravity_b = self._imu.data.projected_gravity_b
+                projected_gravity_b = self._robot.data.projected_gravity_b
             else:
                 linear_velocity_b = self._robot.data.root_lin_vel_b
                 angular_velocity_b = self._robot.data.root_ang_vel_b
@@ -257,7 +258,12 @@ class LocomotionEnv(DirectRLEnv):
 
             # Train at some interval
             if max_episode_from_start % max_episode_to_wait == 0 and max_episode_from_start > max_episode_to_wait - 1:  # Adjust the interval as needed
-                self._cuncurrent_state_est_network.train_network(batch_size=512, epochs=100, learning_rate=1e-3)
+                self._cuncurrent_state_est_network.train_network(batch_size=self.cfg.cuncurrent_state_est_batch_size, 
+                                                                epochs=self.cfg.cuncurrent_state_est_train_epochs, 
+                                                                learning_rate=self.cfg.cuncurrent_state_est_lr, device=self.device)
+            if max_episode_from_start == final_episode_from_start - 1:
+                # Save the network
+                self._cuncurrent_state_est_network.save_network("cuncurrent_state_estimator.pth", self.device)
 
         else: 
             if(self.cfg.use_imu):
@@ -322,8 +328,9 @@ class LocomotionEnv(DirectRLEnv):
             self._rma_network.dataset.add_sample(obs, outputs_rma)
 
             # Prediction
-            max_episode_from_start = self.common_step_counter * self.max_episode_length
-            max_episode_to_wait = self.max_episode_length * 1000
+            max_episode_from_start = self.common_step_counter / 24. #self.max_episode_length #HACK this should be taken from rsl rl
+            max_episode_to_wait = 1000. 
+            final_episode_from_start = 8000.
             if max_episode_from_start > max_episode_to_wait:
                 prediction_rma = self._rma_network(obs)
                 obs = torch.cat((obs, prediction_rma), dim=-1)  
@@ -332,8 +339,10 @@ class LocomotionEnv(DirectRLEnv):
 
             # Train at some interval
             if max_episode_from_start % max_episode_to_wait == 0 and max_episode_from_start > max_episode_to_wait - 1:  # Adjust the interval as needed
-                #if(max_episode_from_start > 10):
-                self._rma_network.train_network(batch_size=512, epochs=100, learning_rate=1e-3, device=self.device)
+                self._rma_network.train_network(batch_size=32, epochs=100, learning_rate=1e-3, device=self.device)
+            if max_episode_from_start == final_episode_from_start - 1:
+                # Save the network
+                self._cuncurrent_state_est_network.save_network("cuncurrent_state_estimator.pth", self.device)
 
 
 

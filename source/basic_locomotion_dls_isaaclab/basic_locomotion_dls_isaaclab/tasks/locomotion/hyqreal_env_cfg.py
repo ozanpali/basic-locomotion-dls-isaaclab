@@ -155,13 +155,17 @@ class HyQRealFlatEnvCfg(DirectRLEnvCfg):
         cuncurrent_state_est_output_space += 3 #ang_vel_b
         single_cuncurrent_state_est_observation_space = single_observation_space
         cuncurrent_state_est_observation_space = observation_space
+        cuncurrent_state_est_batch_size = 512
+        cuncurrent_state_est_train_epochs = 1000
+        cuncurrent_state_est_lr = 1e-3
 
     use_rma = False
     if(use_rma):
         rma_output_space = 12 # P gain
         rma_output_space += 12 # D gain 
-        rma_observation_space = observation_space
         observation_space += rma_output_space
+        batch_size = 512
+        epochs = 1000
 
     use_filter_actions = True
 
