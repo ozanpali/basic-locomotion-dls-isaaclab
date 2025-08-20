@@ -244,9 +244,9 @@ class LocomotionEnv(DirectRLEnv):
 
             # Prediction
             max_episode_from_start = self.common_step_counter / 24. #self.max_episode_length #HACK this should be taken from rsl rl
-            max_episode_to_wait = 100. 
+            max_episode_to_wait = 1000. 
             final_episode_from_start = 8000.
-            if max_episode_from_start > max_episode_to_wait == 0:
+            if max_episode_from_start > max_episode_to_wait:
                 prediction_cuncurrent_state_est = self._cuncurrent_state_est_network(obs_cuncurrent_state_est)
                 linear_velocity_b = prediction_cuncurrent_state_est[:, :3]
                 angular_velocity_b = prediction_cuncurrent_state_est[:, 3:6]
@@ -261,7 +261,7 @@ class LocomotionEnv(DirectRLEnv):
                 self._cuncurrent_state_est_network.train_network(batch_size=self.cfg.cuncurrent_state_est_batch_size, 
                                                                 epochs=self.cfg.cuncurrent_state_est_train_epochs, 
                                                                 learning_rate=self.cfg.cuncurrent_state_est_lr, device=self.device)
-            if max_episode_from_start == final_episode_from_start - 1:
+            if max_episode_from_start == final_episode_from_start - 10:
                 # Save the network
                 self._cuncurrent_state_est_network.save_network("cuncurrent_state_estimator.pth", self.device)
 
@@ -340,7 +340,7 @@ class LocomotionEnv(DirectRLEnv):
             # Train at some interval
             if max_episode_from_start % max_episode_to_wait == 0 and max_episode_from_start > max_episode_to_wait - 1:  # Adjust the interval as needed
                 self._rma_network.train_network(batch_size=32, epochs=100, learning_rate=1e-3, device=self.device)
-            if max_episode_from_start == final_episode_from_start - 1:
+            if max_episode_from_start == final_episode_from_start - 10:
                 # Save the network
                 self._cuncurrent_state_est_network.save_network("cuncurrent_state_estimator.pth", self.device)
 
