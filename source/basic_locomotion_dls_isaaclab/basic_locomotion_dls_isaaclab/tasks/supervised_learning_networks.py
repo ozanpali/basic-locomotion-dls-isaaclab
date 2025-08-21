@@ -1,6 +1,7 @@
 import torch
 from torch.utils.data import Dataset
 import random
+import os
 
 class CustomDataset(Dataset):
     def __init__(self, max_size=None):
@@ -9,6 +10,7 @@ class CustomDataset(Dataset):
         self.max_size = max_size
 
     def add_sample(self, input_data, label):
+        # There is a problem! we append (num_envs, features) as one element inside the list, not N!
         self.data.append(input_data.detach().cpu())
         self.labels.append(label.detach().cpu())
 
@@ -101,7 +103,7 @@ class SimpleNN(torch.nn.Module):
         # Move model back to original device
         self.to(original_device)
     
-    
+
 
 """model = SimpleNN(10, 2)
 x = torch.randn(4, 10)

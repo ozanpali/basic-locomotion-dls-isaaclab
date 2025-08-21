@@ -153,9 +153,10 @@ class B2FlatEnvCfg(DirectRLEnvCfg):
         cuncurrent_state_est_output_space += 3 #ang_vel_b
         single_cuncurrent_state_est_observation_space = single_observation_space
         cuncurrent_state_est_observation_space = observation_space
-        cuncurrent_state_est_batch_size = 512
-        cuncurrent_state_est_train_epochs = 1000
+        cuncurrent_state_est_batch_size = 32
+        cuncurrent_state_est_train_epochs = 500
         cuncurrent_state_est_lr = 1e-3
+        cuncurrent_state_est_ep_saving_interval = 1000
 
     use_rma = False
     if(use_rma):
