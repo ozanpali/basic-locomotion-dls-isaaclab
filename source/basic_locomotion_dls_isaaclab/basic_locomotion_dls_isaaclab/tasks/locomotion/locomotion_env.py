@@ -209,7 +209,7 @@ class LocomotionEnv(DirectRLEnv):
             # Using directly the IMU
             velocity_b = self._imu.data.lin_acc_b
             angular_velocity_b = self._imu.data.ang_vel_b
-            projected_gravity_b = self._robot.data.projected_gravity_b
+            projected_gravity_b = self._imu.data.projected_gravity_b
         else:
             #Using a model-based state estimation
             velocity_b = self._robot.data.root_lin_vel_b
