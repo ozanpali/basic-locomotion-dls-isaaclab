@@ -187,7 +187,7 @@ class LocomotionEnv(DirectRLEnv):
     def _get_observations(self) -> dict:
         
         # This is a custom event, to be moved in custom_events.py
-        self._resample_commands()
+        self._get_new_random_commands()
 
 
         # Observation --------------------------------------------------------------------------------------
@@ -202,7 +202,9 @@ class LocomotionEnv(DirectRLEnv):
         # Choosing the main source of observation
         if(self.cfg.use_cuncurrent_state_est):
             # If Cuncurrent SE/Learned State Estimator, we predict linear and angular vel from IMU
-            velocity_b, angular_velocity_b, projected_gravity_b = self._cuncurrent_state_estimation(clock_data)
+            velocity_b, \
+            angular_velocity_b, \
+            projected_gravity_b = self._get_cuncurrent_state_estimation(clock_data)
         elif(self.cfg.use_imu):
             # Using directly the IMU
             velocity_b = self._imu.data.lin_acc_b
@@ -253,7 +255,7 @@ class LocomotionEnv(DirectRLEnv):
         if(self.cfg.use_rma):
 
             # Predict the RMA observation
-            obs_rma = self._rma_network(obs)
+            obs_rma = self._get_rma()
             # Add the RMA observation to the obs
             obs = torch.cat((obs, obs_rma), dim=-1)
 
@@ -610,7 +612,7 @@ class LocomotionEnv(DirectRLEnv):
 
 
 
-    def _resample_commands(self):
+    def _get_new_random_commands(self):
         resample_time = self.episode_length_buf == self.max_episode_length - 200
         commands_resample = torch.zeros_like(self._commands).uniform_(-1.0, 1.0)
         commands_resample[:, 0] *= 0.5 * self._velocity_gait_multiplier
@@ -629,7 +631,7 @@ class LocomotionEnv(DirectRLEnv):
             self._commands[fixed_env_ids, :3] *= 0.0
 
 
-    def _cuncurrent_state_estimation(self, clock_data):
+    def _get_cuncurrent_state_estimation(self, clock_data):
         # Using a supervised learning state estimation
         obs_cuncurrent_state_est = torch.cat(
             [
@@ -681,7 +683,7 @@ class LocomotionEnv(DirectRLEnv):
         return linear_velocity_b, angular_velocity_b, projected_gravity_b    
 
 
-    def _rma(self):
+    def _get_rma(self):
         # Saving data
         asset_cfg = SceneEntityCfg("robot", joint_names=[".*"])
         asset: Articulation = self.scene[asset_cfg.name]
