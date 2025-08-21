@@ -255,7 +255,7 @@ class LocomotionEnv(DirectRLEnv):
         if(self.cfg.use_rma):
 
             # Predict the RMA observation
-            obs_rma = self._get_rma()
+            obs_rma = self._get_rma(obs)
             # Add the RMA observation to the obs
             obs = torch.cat((obs, obs_rma), dim=-1)
 
@@ -683,7 +683,7 @@ class LocomotionEnv(DirectRLEnv):
         return linear_velocity_b, angular_velocity_b, projected_gravity_b    
 
 
-    def _get_rma(self):
+    def _get_rma(self, obs):
         # Saving data
         asset_cfg = SceneEntityCfg("robot", joint_names=[".*"])
         asset: Articulation = self.scene[asset_cfg.name]
