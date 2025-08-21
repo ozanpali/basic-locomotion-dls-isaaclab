@@ -90,7 +90,7 @@ class Basic_Locomotion_DLS_Isaaclab_Node(Node):
         self.angular_velocity = np.zeros(3)
 
         # Blind State
-        self.joint_positions = np.array([0.0, 1.21, -2.794, 0.0, 1.21, -2.794, 0.0, 1.21, -2.794, 0.0, 1.21, -2.794])
+        self.joint_positions = np.zeros(12)
         self.joint_velocities = np.zeros(12)
 
         
@@ -99,12 +99,12 @@ class Basic_Locomotion_DLS_Isaaclab_Node(Node):
 
 
         self.stand_up_and_down_actions = LegsAttr(*[np.zeros((1, int(self.env.mjModel.nu/4))) for _ in range(4)])
-        #keyframe_id = mujoco.mj_name2id(self.env.mjModel, mujoco.mjtObj.mjOBJ_KEY, "down")
-        #goDown_qpos = self.env.mjModel.key_qpos[keyframe_id]
-        self.stand_up_and_down_actions.FL = self.joint_positions[0:3] #goDown_qpos[7:10]
-        self.stand_up_and_down_actions.FR = self.joint_positions[3:6] #goDown_qpos[10:13]
-        self.stand_up_and_down_actions.RL = self.joint_positions[6:9] #goDown_qpos[13:16]
-        self.stand_up_and_down_actions.RR = self.joint_positions[9:12] #goDown_qpos[16:29]
+        keyframe_id = mujoco.mj_name2id(self.env.mjModel, mujoco.mjtObj.mjOBJ_KEY, "down")
+        goDown_qpos = self.env.mjModel.key_qpos[keyframe_id]
+        self.stand_up_and_down_actions.FL = self.joint_positions[0:3] - goDown_qpos[7:10]
+        self.stand_up_and_down_actions.FR = self.joint_positions[3:6] - goDown_qpos[10:13]
+        self.stand_up_and_down_actions.RL = self.joint_positions[6:9] - goDown_qpos[13:16]
+        self.stand_up_and_down_actions.RR = self.joint_positions[9:12] - goDown_qpos[16:29]
 
 
         # Interactive Command Line ----------------------------
@@ -285,10 +285,6 @@ class Basic_Locomotion_DLS_Isaaclab_Node(Node):
         desired_joint_pos.RL[0] = -desired_joint_pos.RL[0] 
 
         trajectory_generator_msg = TrajectoryGeneratorMsg()
-        trajectory_generator_msg.stance_legs[0] = not self.console.isRLActivated
-        trajectory_generator_msg.stance_legs[1] = not self.console.isRLActivated
-        trajectory_generator_msg.stance_legs[2] = not self.console.isRLActivated
-        trajectory_generator_msg.stance_legs[3] = not self.console.isRLActivated
         trajectory_generator_msg.joints_position = np.concatenate([desired_joint_pos.FL, desired_joint_pos.FR, desired_joint_pos.RL, desired_joint_pos.RR], axis=0).flatten()
         
         desired_joint_vel = LegsAttr(*[np.zeros((1, int(env.mjModel.nu/4))) for _ in range(4)])

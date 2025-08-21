@@ -1,7 +1,7 @@
 # Overview
 
 
-This repository is about basic locomotion tasks with DLS robots. Here you can play with standard PPO, Morphologycal Symmetries, and Adversarial Motion Priors. Scripts for sim-to-sim (mujoco) and sim-to-real are provided. 
+This repository is about basic RL quadruped locomotion tasks with DLS robots. Here you can play with standard PPO, [Morphologycal Symmetries](https://arxiv.org/pdf/2403.17320), [Adversarial Motion Priors](https://arxiv.org/pdf/2104.02180), [Cuncurrent State Estimator](https://arxiv.org/pdf/2202.05481) and [Rapid Motor Adaptation](https://arxiv.org/pdf/2107.04034) training. Scripts for sim-to-sim in [Mujoco](https://github.com/google-deepmind/mujoco) and sim-to-real are provided. 
 
 
 ## Installation
@@ -59,6 +59,7 @@ python3 ../basic_locomotion_dls_isaaclab/exts/basic_locomotion_dls_isaaclab/basi
 
 
 ### Convert XML to USD
+We use model from [gym-quadruped](https://github.com/iit-DLSLab/gym-quadruped).
 
 ```bash
 ./isaaclab.sh -p scripts/tools/convert_mjcf.py   ../basic_locomotion_dls_isaaclab/scripts/sim_to_sim_mujoco/gym-quadruped/gym_quadruped/robot_model/aliengo/aliengo.xml   ../aliengo.usd   --import-sites   --make-instanceable
