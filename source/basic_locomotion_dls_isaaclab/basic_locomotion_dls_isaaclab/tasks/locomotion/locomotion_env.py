@@ -253,7 +253,6 @@ class LocomotionEnv(DirectRLEnv):
         
         # If RMA, we add some other predicted obs
         if(self.cfg.use_rma):
-
             # Predict the RMA observation
             obs_rma = self._get_rma(obs)
             # Add the RMA observation to the obs
