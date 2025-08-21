@@ -165,8 +165,10 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
         rma_output_space = 12 # P gain
         rma_output_space += 12 # D gain 
         observation_space += rma_output_space
-        batch_size = 512
-        epochs = 1000
+        rma_batch_size = 32
+        rma_train_epochs = 500
+        rma_lr = 1e-3
+        rma_ep_saving_interval = 1000
         
 
 
@@ -225,8 +227,8 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     height_scanner = RayCasterCfg(
         prim_path="/World/envs/env_.*/Robot/base",
         offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.0)),
-        attach_yaw_only=True,
-        #ray_alignment='yaw',
+        #attach_yaw_only=True,
+        ray_alignment='yaw',
         #pattern_cfg=patterns.GridPatternCfg(resolution=0.2, size=[1.4, 1.0]),
         pattern_cfg=patterns.GridPatternCfg(resolution=0.2, size=[0.6, 0.6]),
         debug_vis=False,
