@@ -3,6 +3,12 @@
 
 This repository is about basic RL quadruped locomotion tasks with DLS robots. Here you can play with standard PPO, [Morphologycal Symmetries](https://arxiv.org/pdf/2403.17320), [Adversarial Motion Priors](https://arxiv.org/pdf/2104.02180), [Cuncurrent State Estimator](https://arxiv.org/pdf/2202.05481) and [Rapid Motor Adaptation](https://arxiv.org/pdf/2107.04034) training. Scripts for sim-to-sim in [Mujoco](https://github.com/google-deepmind/mujoco) and sim-to-real are provided. 
 
+| Robot Model         | Environment Name (ID)                                      | Screenshot |
+|---------------------|------------------------------------------------------------|------------|
+| [Aliengo](https://github.com/iit-DLSLab/gym-quadruped/tree/master/gym_quadruped/robot_model/aliengo) | Locomotion-Aliengo-Flat <br> Locomotion-Aliengo-Rough-Blind <br> Locomotion-Aliengo-Rough-Vision  | <img src="./imgs/deeprobotics_lite3.png" alt="Lite3" width="150">
+| [Go2](https://github.com/iit-DLSLab/gym-quadruped/tree/master/gym_quadruped/robot_model/go2) | Locomotion-Go2-Flat <br> Locomotion-Go2-Rough-Blind <br> Locomotion-Go2-Rough-Vision | <img src="./imgs/deeprobotics_m20.png" alt="deeprobotics_m20" width="150">
+| [B2](https://github.com/iit-DLSLab/gym-quadruped/tree/master/gym_quadruped/robot_model/b2) | Locomotion-B2-Flat <br> Locomotion-B2-Rough-Blind <br> Locomotion-B2-Rough-Vision | <img src="./imgs/deeprobotics_m20.png" alt="deeprobotics_m20" width="150">
+| [HyQReal2](https://github.com/iit-DLSLab/gym-quadruped/tree/master/gym_quadruped/robot_model/hyqreal2) | Locomotion-HyQReal-Flat <br> Locomotion-HyQReal-Rough-Blind <br> Locomotion-HyQReal-Rough-Vision | <img src="./imgs/deeprobotics_m20.png" alt="deeprobotics_m20" width="150">
 
 ## Installation
 
