@@ -36,8 +36,8 @@ os.system("renice -n -21 -p " + str(pid))
 os.system("echo -20 > /proc/" + str(pid) + "/autogroup")
 #for real time, launch it with chrt -r 99 python3 run_controller.py
 
-USE_MUJOCO_RENDER = False
-USE_MUJOCO_SIMULATION = False
+USE_MUJOCO_RENDER = True
+USE_MUJOCO_SIMULATION = True
 
 USE_SMOOTH_VELOCITY = True
 
@@ -124,6 +124,13 @@ class Basic_Locomotion_DLS_Isaaclab_Node():
         self.joint_positions = np.array(msg.joint_positions)
         self.joint_velocities = np.array(msg.joint_velocities)
 
+        if(config.robot == "aliengo"):
+            # Fix convention
+            self.joint_positions[0] = -self.joint_positions[0]
+            self.joint_positions[6] = -self.joint_positions[6]
+            self.joint_velocities[0] = -self.joint_velocities[0]
+            self.joint_velocities[6] = -self.joint_velocities[6]
+
         self.first_message_base_arrived = True
         self.first_message_joints_arrived = True
 
@@ -173,6 +180,9 @@ class Basic_Locomotion_DLS_Isaaclab_Node():
         joints_pos.FR = qpos[env.legs_qpos_idx.FR]
         joints_pos.RL = qpos[env.legs_qpos_idx.RL]
         joints_pos.RR = qpos[env.legs_qpos_idx.RR]
+
+        # variable saved for goDown and goUp motion
+        self.joint_positions = np.concatenate([joints_pos.FL, joints_pos.FR, joints_pos.RL, joints_pos.RR], axis=0).flatten()
     
         joints_vel = LegsAttr(*[np.zeros((1, int(env.mjModel.nu/4))) for _ in range(4)])
         joints_vel.FL = qvel[env.legs_qvel_idx.FL]
@@ -242,6 +252,11 @@ class Basic_Locomotion_DLS_Isaaclab_Node():
                 action[self.env.legs_tau_idx.RR] = tau.RR.reshape((3,))
                 self.env.step(action=action)
  
+ 
+        if(config.robot == "aliengo"):
+            # Fix convention
+            desired_joint_pos.FL[0] = -desired_joint_pos.FL[0]
+            desired_joint_pos.RL[0] = -desired_joint_pos.RL[0] 
 
         rl_signal_out_msg = rl_signal_out()
         rl_signal_out_msg.desired_joint_positions = np.concatenate([desired_joint_pos.FL, desired_joint_pos.FR, desired_joint_pos.RL, desired_joint_pos.RR], axis=0).flatten()

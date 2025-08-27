@@ -209,6 +209,9 @@ class Basic_Locomotion_DLS_Isaaclab_Node(Node):
         joints_pos.FR = qpos[env.legs_qpos_idx.FR]
         joints_pos.RL = qpos[env.legs_qpos_idx.RL]
         joints_pos.RR = qpos[env.legs_qpos_idx.RR]
+
+        # variable saved for goDown and goUp motion
+        self.joint_positions = np.concatenate([joints_pos.FL, joints_pos.FR, joints_pos.RL, joints_pos.RR], axis=0).flatten()
     
         joints_vel = LegsAttr(*[np.zeros((1, int(env.mjModel.nu/4))) for _ in range(4)])
         joints_vel.FL = qvel[env.legs_qvel_idx.FL]
