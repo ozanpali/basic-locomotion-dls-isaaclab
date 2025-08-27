@@ -651,7 +651,12 @@ class LocomotionEnv(DirectRLEnv):
         )
         #the bottom element is the newest observation!!
         self._observation_history_cuncurrent_state_est = torch.cat((self._observation_history_cuncurrent_state_est[:,1:,:], obs_cuncurrent_state_est.unsqueeze(1)), dim=1)
-        obs_cuncurrent_state_est = torch.flatten(self._observation_history_cuncurrent_state_est, start_dim=1)                  
+        obs_cuncurrent_state_est = torch.flatten(self._observation_history_cuncurrent_state_est, start_dim=1)     
+
+        # Add noise to the observation - this is usually done in direct_rl.py in IsaacLab, but 
+        # the obs of cuncurrent SE does not pass from there - its prediciton yes instead!
+        if self.cfg.observation_noise_model:          
+            obs_cuncurrent_state_est = self._observation_noise_model(obs_cuncurrent_state_est)   
 
         # Saving data
         output_cuncurrent_state_est = torch.cat((self._robot.data.root_lin_vel_b, self._robot.data.root_ang_vel_b), dim=-1)
@@ -683,6 +688,9 @@ class LocomotionEnv(DirectRLEnv):
 
 
     def _get_rma(self, obs):
+        if self.cfg.observation_noise_model:          
+            obs = self._observation_noise_model(obs.clone())  
+        
         # Saving data
         asset_cfg = SceneEntityCfg("robot", joint_names=[".*"])
         asset: Articulation = self.scene[asset_cfg.name]
@@ -710,10 +718,8 @@ class LocomotionEnv(DirectRLEnv):
         num_final_episode_from_start = 8000.
         if num_episode_from_start > self.cfg.rma_ep_saving_interval:
             prediction_rma = self._rma_network(obs)
-            #obs = torch.cat((obs, prediction_rma), dim=-1)  
             obs_rma = prediction_rma
         else:
-            #obs = torch.cat((obs, outputs_rma), dim=-1)
             obs_rma = outputs_rma
 
         # Train at some interval
