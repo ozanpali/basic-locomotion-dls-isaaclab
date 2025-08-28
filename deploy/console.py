@@ -116,7 +116,6 @@ class Console():
                             (1 - alpha) * initial + alpha * reference
                             for initial, reference in zip(initial_joint_positions, reference_joint_positions)
                         ]
-                        print(interpolated_positions)
             
                         self.controller_node.stand_up_and_down_actions.FL = interpolated_positions[0]
                         self.controller_node.stand_up_and_down_actions.FR = interpolated_positions[1]
