@@ -11,6 +11,8 @@ Features:
 - Sim-to-Sim in [Mujoco](https://github.com/google-deepmind/mujoco)
 - Sim-to-Real in ROS1 and ROS2
 
+A list of robots available and envs are described below:
+
 | Robot Model         | Environment Name (ID)                                      |
 |---------------------|------------------------------------------------------------|
 | [Aliengo](https://github.com/iit-DLSLab/gym-quadruped/tree/master/gym_quadruped/robot_model/aliengo) | Locomotion-Aliengo-Flat, Locomotion-Aliengo-Rough-Blind, Locomotion-Aliengo-Rough-Vision
