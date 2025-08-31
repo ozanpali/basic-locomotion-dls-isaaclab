@@ -59,3 +59,7 @@ if(use_vision):
     size_y_heightmap = 0.6  # Size of the heightmap in meters
 
 observation_space = 48  # Number of observations in the RL policy
+
+use_imu = False
+use_rma = False
+use_cuncurrent_state_est = False

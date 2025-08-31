@@ -206,13 +206,18 @@ class Basic_Locomotion_DLS_Isaaclab_Node():
 
         elif(self.console.isRLActivated):
 
-            desired_joint_pos = locomotion_policy.compute_control(base_pos=base_pos, 
-                                                                    base_ori_euler_xyz=base_ori_euler_xyz, base_quat_wxyz=base_quat_wxyz,
-                                                                    base_lin_vel=base_lin_vel, base_ang_vel=base_ang_vel,
-                                                                    heading_orientation_SO3=heading_orientation_SO3,
-                                                                    joints_pos=joints_pos, joints_vel=joints_vel,
-                                                                    ref_base_lin_vel=ref_base_lin_vel, ref_base_ang_vel=ref_base_ang_vel)
-            
+            desired_joint_pos = locomotion_policy.compute_control(
+                        base_pos=base_pos, 
+                        base_ori_euler_xyz=base_ori_euler_xyz, 
+                        base_quat_wxyz=base_quat_wxyz,
+                        base_lin_vel=base_lin_vel, 
+                        base_ang_vel=base_ang_vel,
+                        heading_orientation_SO3=heading_orientation_SO3,
+                        joints_pos=joints_pos, 
+                        joints_vel=joints_vel,
+                        ref_base_lin_vel=ref_base_lin_vel, 
+                        ref_base_ang_vel=ref_base_ang_vel)
+
             # Impedence Loop
             Kp = locomotion_policy.Kp_walking
             Kd = locomotion_policy.Kd_walking
