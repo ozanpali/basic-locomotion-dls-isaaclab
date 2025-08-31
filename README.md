@@ -1,5 +1,10 @@
-# Overview
+<div style="display: flex; justify-content: space-around;">
+  <img src="./gifs/train.gif" alt="Train" width="30%">
+  <img src="./gifs/sim-to-sim.gif" alt="Sim-to-Sim" width="30%">
+  <img src="./gifs/sim-to-real.gif" alt="Sim-to-Real" width="30%">
+</div>
 
+# Overview
 
 This repository is about basic RL quadruped locomotion tasks within the robots available at DLS on IsaacLab, with sim-to-sim and sim-to-real scripts. 
 
