@@ -83,7 +83,8 @@ class LocomotionEnv(DirectRLEnv):
         if(cfg.use_rma == True):
             self._rma_network = SimpleNN(cfg.rma_observation_space, cfg.rma_output_space)
             self._rma_network.to(self.device)
-        
+            self._observation_history_rma = torch.zeros(self.num_envs, cfg.history_length, cfg.single_rma_observation_space, device=self.device)
+
         # Learned State Estimator
         if(cfg.use_cuncurrent_state_est == True):
             self._cuncurrent_state_est_network = SimpleNN(cfg.cuncurrent_state_est_observation_space, cfg.cuncurrent_state_est_output_space)
@@ -202,9 +203,9 @@ class LocomotionEnv(DirectRLEnv):
         # Choosing the main source of observation
         if(self.cfg.use_cuncurrent_state_est):
             # If Cuncurrent SE/Learned State Estimator, we predict linear and angular vel from IMU
-            velocity_b, \
-            angular_velocity_b, \
-            projected_gravity_b = self._get_cuncurrent_state_estimation(clock_data)
+            velocity_b = self._get_cuncurrent_state_estimation(clock_data)
+            angular_velocity_b = self._imu.data.ang_vel_b
+            projected_gravity_b = self._imu.data.projected_gravity_b
         elif(self.cfg.use_imu):
             # Using directly the IMU
             velocity_b = self._imu.data.lin_acc_b
@@ -250,12 +251,11 @@ class LocomotionEnv(DirectRLEnv):
             height_data = height_data.clip(-1.0, 1.0)
             obs = torch.cat((obs, height_data), dim=-1)      
 
-        
+
         # If RMA, we add some other predicted obs
         if(self.cfg.use_rma):
             # Predict the RMA observation
-            obs_rma = self._get_rma(obs)
-            # Add the RMA observation to the obs
+            obs_rma = self._get_rma(clock_data)
             obs = torch.cat((obs, obs_rma), dim=-1)
 
 
@@ -659,7 +659,7 @@ class LocomotionEnv(DirectRLEnv):
             obs_cuncurrent_state_est = self._observation_noise_model(obs_cuncurrent_state_est)   
 
         # Saving data
-        output_cuncurrent_state_est = torch.cat((self._robot.data.root_lin_vel_b, self._robot.data.root_ang_vel_b), dim=-1)
+        output_cuncurrent_state_est = torch.cat((self._robot.data.root_lin_vel_b), dim=-1)
         self._cuncurrent_state_est_network.dataset.add_sample(obs_cuncurrent_state_est, output_cuncurrent_state_est)
 
         # Prediction
@@ -668,12 +668,8 @@ class LocomotionEnv(DirectRLEnv):
         if num_episode_from_start > self.cfg.cuncurrent_state_est_ep_saving_interval:
             prediction_cuncurrent_state_est = self._cuncurrent_state_est_network(obs_cuncurrent_state_est)
             linear_velocity_b = prediction_cuncurrent_state_est[:, :3]
-            angular_velocity_b = prediction_cuncurrent_state_est[:, 3:6]
-            projected_gravity_b = self._imu.data.projected_gravity_b
         else:
             linear_velocity_b = self._robot.data.root_lin_vel_b
-            angular_velocity_b = self._robot.data.root_ang_vel_b
-            projected_gravity_b = self._imu.data.projected_gravity_b
 
         # Train at some interval
         if num_episode_from_start % self.cfg.cuncurrent_state_est_ep_saving_interval == 0 and num_episode_from_start > self.cfg.cuncurrent_state_est_ep_saving_interval - 1:  # Adjust the interval as needed
@@ -684,32 +680,38 @@ class LocomotionEnv(DirectRLEnv):
             # Save the network
             self._cuncurrent_state_est_network.save_network("cuncurrent_state_estimator.pth", self.device)    
 
-        return linear_velocity_b, angular_velocity_b, projected_gravity_b    
+        return linear_velocity_b  
 
 
-    def _get_rma(self, obs):
+    def _get_rma(self, clock_data):
+        # Learning privileged information via supervised learning
+        obs_rma = torch.cat(
+            [
+                tensor
+                for tensor in (
+                    self._imu.data.lin_acc_b,
+                    self._imu.data.ang_vel_b,
+                    self._robot.data.projected_gravity_b,
+                    self._commands,
+                    self._robot.data.joint_pos - self._robot.data.default_joint_pos,
+                    self._robot.data.joint_vel,
+                    self._actions,
+                    clock_data,
+                )
+                if tensor is not None
+            ],
+            dim=-1,
+        )
+        #the bottom element is the newest observation!!
+        self._observation_history_rma = torch.cat((self._observation_history_rma[:,1:,:], obs_rma.unsqueeze(1)), dim=1)
+        obs = torch.flatten(self._observation_history_rma, start_dim=1)
+
+        # Add noise to the observation - this is usually done in direct_rl.py in IsaacLab, but 
+        # the obs of cuncurrent SE does not pass from there - its prediciton yes instead!
         if self.cfg.observation_noise_model:          
             obs = self._observation_noise_model(obs.clone())  
         
-        # Saving data
-        asset_cfg = SceneEntityCfg("robot", joint_names=[".*"])
-        asset: Articulation = self.scene[asset_cfg.name]
-
-        hip_stiffness = asset.actuators["hip"].stiffness
-        thigh_stiffness = asset.actuators["thigh"].stiffness
-        calf_stiffness = asset.actuators["calf"].stiffness
-
-        hip_damping = asset.actuators["hip"].damping
-        thigh_damping = asset.actuators["thigh"].damping
-        calf_damping = asset.actuators["calf"].damping
-
-        default_stiffness = asset.data.default_joint_stiffness[0][0]
-        default_damping = asset.data.default_joint_damping[0][0]
-
-        outputs_rma = torch.cat((
-                        hip_stiffness/default_stiffness, thigh_stiffness/default_stiffness, calf_stiffness/default_stiffness, #P gain
-                        hip_damping/default_damping, thigh_damping/default_damping, calf_damping/default_damping, #D gain
-                    ), dim=-1)
+        outputs_rma = self._get_privileged_observation()
 
         self._rma_network.dataset.add_sample(obs, outputs_rma)
 
@@ -773,5 +775,6 @@ class LocomotionEnv(DirectRLEnv):
                             #masses, inertias,
                             hip_static_friction, thigh_static_friction, calf_static_friction,  
                             hip_dynamic_friction, thigh_dynamic_friction, calf_dynamic_friction, 
-                            hip_armature, thigh_armature, calf_armature), dim=-1)
+                            hip_armature, thigh_armature, calf_armature) 
+                        , dim=-1)
         return obs_privileged
