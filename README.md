@@ -1,7 +1,7 @@
 <div style="display: flex; justify-content: space-around;">
-  <img src="./gifs/train.gif" alt="Train" width="30%">
-  <img src="./gifs/sim-to-sim.gif" alt="Sim-to-Sim" width="30%">
-  <img src="./gifs/sim-to-real.gif" alt="Sim-to-Real" width="30%">
+  <img src="./gifs/train.gif" alt="Train" width="33%">
+  <img src="./gifs/sim-to-sim.gif" alt="Sim-to-Sim" width="33%">
+  <img src="./gifs/sim-to-real.gif" alt="Sim-to-Real" width="33%">
 </div>
 
 # Overview
