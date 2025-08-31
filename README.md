@@ -11,12 +11,12 @@ Features:
 - Sim-to-Sim in [Mujoco](https://github.com/google-deepmind/mujoco)
 - Sim-to-Real in ROS1 and ROS2
 
-| Robot Model         | Environment Name (ID)                                      | Screenshot |
-|---------------------|------------------------------------------------------------|------------|
-| [Aliengo](https://github.com/iit-DLSLab/gym-quadruped/tree/master/gym_quadruped/robot_model/aliengo) | Locomotion-Aliengo-Flat <br> Locomotion-Aliengo-Rough-Blind <br> Locomotion-Aliengo-Rough-Vision  | <img src="./imgs/deeprobotics_lite3.png" alt="Lite3" width="150">
-| [Go2](https://github.com/iit-DLSLab/gym-quadruped/tree/master/gym_quadruped/robot_model/go2) | Locomotion-Go2-Flat <br> Locomotion-Go2-Rough-Blind <br> Locomotion-Go2-Rough-Vision | <img src="./imgs/deeprobotics_m20.png" alt="deeprobotics_m20" width="150">
-| [B2](https://github.com/iit-DLSLab/gym-quadruped/tree/master/gym_quadruped/robot_model/b2) | Locomotion-B2-Flat <br> Locomotion-B2-Rough-Blind <br> Locomotion-B2-Rough-Vision | <img src="./imgs/deeprobotics_m20.png" alt="deeprobotics_m20" width="150">
-| [HyQReal2](https://github.com/iit-DLSLab/gym-quadruped/tree/master/gym_quadruped/robot_model/hyqreal2) | Locomotion-HyQReal-Flat <br> Locomotion-HyQReal-Rough-Blind <br> Locomotion-HyQReal-Rough-Vision | <img src="./imgs/deeprobotics_m20.png" alt="deeprobotics_m20" width="150">
+| Robot Model         | Environment Name (ID)                                      |
+|---------------------|------------------------------------------------------------|
+| [Aliengo](https://github.com/iit-DLSLab/gym-quadruped/tree/master/gym_quadruped/robot_model/aliengo) | Locomotion-Aliengo-Flat, Locomotion-Aliengo-Rough-Blind, Locomotion-Aliengo-Rough-Vision
+| [Go2](https://github.com/iit-DLSLab/gym-quadruped/tree/master/gym_quadruped/robot_model/go2) | Locomotion-Go2-Flat, Locomotion-Go2-Rough-Blind, Locomotion-Go2-Rough-Vision |
+| [B2](https://github.com/iit-DLSLab/gym-quadruped/tree/master/gym_quadruped/robot_model/b2) | Locomotion-B2-Flat, Locomotion-B2-Rough-Blind, Locomotion-B2-Rough-Vision |
+| [HyQReal2](https://github.com/iit-DLSLab/gym-quadruped/tree/master/gym_quadruped/robot_model/hyqreal2) | Locomotion-HyQReal-Flat, Locomotion-HyQReal-Rough-Blind, Locomotion-HyQReal-Rough-Vision |
 
 
 ## Citing this work
