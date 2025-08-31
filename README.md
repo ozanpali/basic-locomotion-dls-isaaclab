@@ -1,7 +1,15 @@
 # Overview
 
 
-This repository is about basic RL quadruped locomotion tasks with DLS robots. Here you can play with standard PPO, [Morphologycal Symmetries](https://arxiv.org/pdf/2403.17320), [Adversarial Motion Priors](https://arxiv.org/pdf/2104.02180), [Cuncurrent State Estimator](https://arxiv.org/pdf/2202.05481) and [Rapid Motor Adaptation](https://arxiv.org/pdf/2107.04034) training. Scripts for sim-to-sim in [Mujoco](https://github.com/google-deepmind/mujoco) and sim-to-real are provided. 
+This repository is about basic RL quadruped locomotion tasks within the robots available at DLS. 
+
+Features:
+- [Cuncurrent State Estimator](https://arxiv.org/pdf/2202.05481)
+- [Rapid Motor Adaptation](https://arxiv.org/pdf/2107.04034)
+- [Morphologycal Symmetries](https://arxiv.org/pdf/2403.17320) 
+- [Adversarial Motion Priors](https://arxiv.org/pdf/2104.02180)
+- Sim-to-Sim in [Mujoco](https://github.com/google-deepmind/mujoco)
+- Sim-to-Real in ROS1 and ROS2
 
 | Robot Model         | Environment Name (ID)                                      | Screenshot |
 |---------------------|------------------------------------------------------------|------------|
@@ -9,6 +17,39 @@ This repository is about basic RL quadruped locomotion tasks with DLS robots. He
 | [Go2](https://github.com/iit-DLSLab/gym-quadruped/tree/master/gym_quadruped/robot_model/go2) | Locomotion-Go2-Flat <br> Locomotion-Go2-Rough-Blind <br> Locomotion-Go2-Rough-Vision | <img src="./imgs/deeprobotics_m20.png" alt="deeprobotics_m20" width="150">
 | [B2](https://github.com/iit-DLSLab/gym-quadruped/tree/master/gym_quadruped/robot_model/b2) | Locomotion-B2-Flat <br> Locomotion-B2-Rough-Blind <br> Locomotion-B2-Rough-Vision | <img src="./imgs/deeprobotics_m20.png" alt="deeprobotics_m20" width="150">
 | [HyQReal2](https://github.com/iit-DLSLab/gym-quadruped/tree/master/gym_quadruped/robot_model/hyqreal2) | Locomotion-HyQReal-Flat <br> Locomotion-HyQReal-Rough-Blind <br> Locomotion-HyQReal-Rough-Vision | <img src="./imgs/deeprobotics_m20.png" alt="deeprobotics_m20" width="150">
+
+
+## Citing this work
+
+If you find the work useful and you adopt [Morphologycal Symmetries](https://arxiv.org/pdf/2403.17320), please consider citing one of our works:
+
+#### [Leveraging Symmetry in RL-based Legged Locomotion Control (IROS-2024)](https://arxiv.org/pdf/2403.17320)
+
+```
+@inproceedings{suhuang2024leveraging,
+  author={Su, Zhi and Huang, Xiaoyu and Ordoñez-Apraez, Daniel and Li, Yunfei and Li, Zhongyu and Liao, Qiayuan and Turrisi, Giulio and Pontil, Massimiliano and Semini, Claudio and Wu, Yi and Sreenath, Koushil},
+  booktitle={2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)}, 
+  title={Leveraging Symmetry in RL-based Legged Locomotion Control}, 
+  year={2024},
+  pages={6899-6906},
+  doi={10.1109/IROS58592.2024.10802439}
+}
+```
+
+#### [Morphological symmetries in robotics (IJRR-2025)](https://arxiv.org/pdf/2402.15552):
+
+```
+@article{ordonez2025morphosymm,
+  author = {Daniel Ordoñez-Apraez and Giulio Turrisi and Vladimir Kostic and Mario Martin and Antonio Agudo and Francesc Moreno-Noguer and Massimiliano Pontil and Claudio Semini and Carlos Mastalli},
+  title ={Morphological symmetries in robotics},
+  journal = {The International Journal of Robotics Research},
+  year = {2025},
+  doi = {10.1177/02783649241282422},
+  URL = {https://doi.org/10.1177/02783649241282422},
+  eprint = {https://doi.org/10.1177/02783649241282422}
+}
+```
+
 
 ## Installation
 
@@ -29,6 +70,8 @@ sudo apt install git-lfs
 ```bash
 python -m pip install -e source/basic_locomotion_dls_isaaclab
 ```
+
+5. If you want to play with [Morphologycal Symmetries](https://arxiv.org/pdf/2403.17320), install the repo [morphosymm-rl](https://github.com/iit-DLSLab/morphosymm-rl)
 
 
 ### Run a train/play in IsaacLab
