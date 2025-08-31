@@ -6,7 +6,7 @@
 
 # Overview
 
-This repository is about basic RL quadruped locomotion tasks within the robots available at DLS on IsaacLab, with sim-to-sim and sim-to-real scripts. 
+This repository provides basic reinforcement learning implementations for quadruped locomotion in IsaacLab. It includes support for different robots available at DLS, along with scripts for both sim-to-sim and sim-to-real transfer.
 
 Features:
 - [Cuncurrent State Estimator](https://arxiv.org/pdf/2202.05481)
