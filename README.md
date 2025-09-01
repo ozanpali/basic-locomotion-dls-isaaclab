@@ -12,7 +12,7 @@ Features:
 - [Cuncurrent State Estimator](https://arxiv.org/pdf/2202.05481)
 - [Rapid Motor Adaptation](https://arxiv.org/pdf/2107.04034)
 - [Morphological Symmetries](https://arxiv.org/pdf/2403.17320) 
-- [Adversarial Motion Priors](https://arxiv.org/pdf/2104.02180)
+- [Adversarial Motion Priors](https://arxiv.org/pdf/2104.02180) (big thanks to [Giuseppe L'erario](https://github.com/Giulero) and [Giulio Romualdi](https://github.com/giulioromualdi))
 - Sim-to-Sim in [Mujoco](https://github.com/google-deepmind/mujoco)
 - Sim-to-Real in ROS1 and ROS2
 
