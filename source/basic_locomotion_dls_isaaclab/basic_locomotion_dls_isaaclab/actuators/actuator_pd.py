@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 from isaacsim.core.utils.types import ArticulationActions
 
 from isaaclab.actuators import DCMotor
+from isaaclab.utils import DelayBuffer, LinearInterpolation
 
 if TYPE_CHECKING:
     from .actuator_cfg import IdentifiedActuatorCfg
@@ -25,11 +26,20 @@ class IdentifiedActuator(DCMotor):
         self.activation_vel = self._parse_joint_parameter(self.cfg.activation_vel, torch.inf)
         self.friction_dynamic = self._parse_joint_parameter(self.cfg.friction_dynamic, 0.)
 
+        self.first_order_delay_filter = self._parse_joint_parameter(self.cfg.first_order_delay_filter, 1.)
+        self.last_joint_efforts = 0.0
+
+
     def compute(
             self, control_action: ArticulationActions, joint_pos: torch.Tensor, joint_vel: torch.Tensor
     ) -> ArticulationActions:
         # call the base method
         control_action = super().compute(control_action, joint_pos, joint_vel)
+
+        # apply first order delay on the torque
+        control_action.joint_efforts = control_action.joint_efforts*self.first_order_delay_filter + \
+            (1.-self.first_order_delay_filter)*self.last_joint_efforts
+        self.last_joint_efforts = control_action.joint_efforts
 
         # apply friction model on the torque
         control_action.joint_efforts = control_action.joint_efforts - (self.friction_static * torch.tanh(

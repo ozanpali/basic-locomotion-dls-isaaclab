@@ -23,3 +23,5 @@ class IdentifiedActuatorCfg(DCMotorCfg):
     """ (in Rad/s)."""
     friction_dynamic: float = MISSING
     """ (in N-m-s/Rad)."""
+    first_order_delay_filter: float = MISSING
+    """ (in seconds)."""

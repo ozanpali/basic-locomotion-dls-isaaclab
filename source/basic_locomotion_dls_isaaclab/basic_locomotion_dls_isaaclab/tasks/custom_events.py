@@ -58,6 +58,7 @@ def randomize_joint_friction_model(
     asset_cfg: SceneEntityCfg,
     friction_distribution_params: tuple[float, float] | None = None,
     armature_distribution_params: tuple[float, float] | None = None,
+    first_order_delay_filter_distribution_params: tuple[float, float] | None = None,
     operation: Literal["add", "scale", "abs"] = "abs",
     distribution: Literal["uniform", "log_uniform", "gaussian"] = "uniform",
 ):
@@ -105,6 +106,15 @@ def randomize_joint_friction_model(
                 )[env_ids][:, actuator_joint_ids]
                 actuator.armature[env_ids[:, None], actuator_joint_ids] = armature
 
+    if first_order_delay_filter_distribution_params is not None:
+        for actuator in asset.actuators.values():
+            actuator_joint_ids = [joint_id in joint_ids for joint_id in actuator.joint_indices]
+            if sum(actuator_joint_ids) > 0:
+                first_order_delay_filter = actuator.first_order_delay_filter.to(asset.device).clone()
+                first_order_delay_filter = _randomize_prop_by_op(
+                    first_order_delay_filter, first_order_delay_filter_distribution_params, env_ids, torch.arange(first_order_delay_filter.shape[1]), operation=operation, distribution=distribution
+                )[env_ids][:, actuator_joint_ids]
+                actuator.first_order_delay_filter[env_ids[:, None], actuator_joint_ids] = first_order_delay_filter
 
 
 def zero_command_velocity(

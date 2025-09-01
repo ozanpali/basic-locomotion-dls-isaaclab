@@ -17,6 +17,7 @@ damping_mujoco = 14.0 #20.0
 friction_static_mujoco = 0.2
 friction_dynamic_mujoco = 0.6
 armature_mujoco = 0.01
+first_order_delay_filter = 0.9
 
 HYQREAL_HIP_ACTUATOR_CFG = IdentifiedActuatorCfg(
     joint_names_expr=[".*_hip_joint"],
@@ -29,6 +30,7 @@ HYQREAL_HIP_ACTUATOR_CFG = IdentifiedActuatorCfg(
     friction_static=friction_static_mujoco,
     activation_vel=0.1,
     friction_dynamic=friction_dynamic_mujoco,
+    first_order_delay_filter=first_order_delay_filter,
 )
 
 HYQREAL_THIGH_ACTUATOR_CFG = IdentifiedActuatorCfg(
@@ -42,6 +44,7 @@ HYQREAL_THIGH_ACTUATOR_CFG = IdentifiedActuatorCfg(
     friction_static=friction_static_mujoco,
     activation_vel=0.1,
     friction_dynamic=friction_dynamic_mujoco,
+    first_order_delay_filter=first_order_delay_filter,
 )
 
 HYQREAL_CALF_ACTUATOR_CFG = IdentifiedActuatorCfg(
@@ -55,6 +58,7 @@ HYQREAL_CALF_ACTUATOR_CFG = IdentifiedActuatorCfg(
     friction_static=friction_static_mujoco,
     activation_vel=0.1,
     friction_dynamic=friction_dynamic_mujoco,
+    first_order_delay_filter=first_order_delay_filter,
 )
 
 
@@ -87,17 +91,6 @@ HYQREAL_CFG = ArticulationCfg(
         joint_vel={".*": 0.0},
     ),
 
-    #actuators={
-    #    "base_legs": DCMotorCfg(
-    #        joint_names_expr=[".*_hip_joint", ".*_thigh_joint", ".*_calf_joint"],
-    #        effort_limit=44.4,
-    #        saturation_effort=44.4,
-    #        velocity_limit=21.0,
-    #        stiffness=25.0,
-    #        damping=2,
-    #        friction=0.0,
-    #    ),
-    #},
     
     actuators={"hip": HYQREAL_HIP_ACTUATOR_CFG, "thigh": HYQREAL_THIGH_ACTUATOR_CFG,
                "calf": HYQREAL_CALF_ACTUATOR_CFG},
