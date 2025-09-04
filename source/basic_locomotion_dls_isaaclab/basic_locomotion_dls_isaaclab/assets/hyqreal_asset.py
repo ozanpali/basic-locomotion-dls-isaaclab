@@ -4,22 +4,22 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 import isaaclab.sim as sim_utils
-from basic_locomotion_dls_isaaclab.actuators import IdentifiedActuatorCfg
+from basic_locomotion_dls_isaaclab.actuators import IdentifiedActuatorHydraulicCfg
 from isaaclab.assets.articulation import ArticulationCfg
-from isaaclab.actuators import DCMotorCfg
 
 from basic_locomotion_dls_isaaclab.assets import ISAAC_ASSET_DIR
 
 
 # HYQREAL robot configuration from mujoco
-stiffness_mujoco = 175.0 #200.0
-damping_mujoco = 14.0 #20.0
+stiffness_mujoco = 300.0 #200.0
+damping_mujoco = 20.0 #20.0
 friction_static_mujoco = 0.2
 friction_dynamic_mujoco = 0.6
 armature_mujoco = 0.01
-first_order_delay_filter = 0.9
+first_order_delay_filter = 0.1
+second_order_delay_filter = 0.1
 
-HYQREAL_HIP_ACTUATOR_CFG = IdentifiedActuatorCfg(
+HYQREAL_HIP_ACTUATOR_CFG = IdentifiedActuatorHydraulicCfg(
     joint_names_expr=[".*_hip_joint"],
     effort_limit=173.0,
     velocity_limit=21.0,
@@ -31,9 +31,10 @@ HYQREAL_HIP_ACTUATOR_CFG = IdentifiedActuatorCfg(
     activation_vel=0.1,
     friction_dynamic=friction_dynamic_mujoco,
     first_order_delay_filter=first_order_delay_filter,
+    second_order_delay_filter=second_order_delay_filter,
 )
 
-HYQREAL_THIGH_ACTUATOR_CFG = IdentifiedActuatorCfg(
+HYQREAL_THIGH_ACTUATOR_CFG = IdentifiedActuatorHydraulicCfg(
     joint_names_expr=[".*_thigh_joint"],
     effort_limit=208.0,
     velocity_limit=21.0,
@@ -45,9 +46,10 @@ HYQREAL_THIGH_ACTUATOR_CFG = IdentifiedActuatorCfg(
     activation_vel=0.1,
     friction_dynamic=friction_dynamic_mujoco,
     first_order_delay_filter=first_order_delay_filter,
+    second_order_delay_filter=second_order_delay_filter,
 )
 
-HYQREAL_CALF_ACTUATOR_CFG = IdentifiedActuatorCfg(
+HYQREAL_CALF_ACTUATOR_CFG = IdentifiedActuatorHydraulicCfg(
     joint_names_expr=[".*_calf_joint"],
     effort_limit=249.0,
     velocity_limit=21.0,
@@ -59,6 +61,7 @@ HYQREAL_CALF_ACTUATOR_CFG = IdentifiedActuatorCfg(
     activation_vel=0.1,
     friction_dynamic=friction_dynamic_mujoco,
     first_order_delay_filter=first_order_delay_filter,
+    second_order_delay_filter=second_order_delay_filter,
 )
 
 

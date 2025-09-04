@@ -82,13 +82,20 @@ class EventCfg:
     )
 
     scale_all_joint_first_order_delay_filter_model = EventTerm(
-        func=custom_events.randomize_joint_friction_model,
+        func=custom_events.randomize_joint_delay_model,
         mode="startup",
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]), 
-                "first_order_delay_filter_distribution_params": (0.8, 1.0),
+                "first_order_delay_filter_distribution_params": (0.1, 0.3),
                 "operation": "abs"},
     )
     
+    scale_all_joint_second_order_delay_filter_model = EventTerm(
+        func=custom_events.randomize_joint_delay_model,
+        mode="startup",
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]), 
+                "second_order_delay_filter_distribution_params": (0.1, 0.3),
+                "operation": "abs"},
+    )
 
 
     actuator_gains = EventTerm(

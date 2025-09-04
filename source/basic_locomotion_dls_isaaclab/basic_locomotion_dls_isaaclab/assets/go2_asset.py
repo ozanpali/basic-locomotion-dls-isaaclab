@@ -4,9 +4,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 import isaaclab.sim as sim_utils
-from basic_locomotion_dls_isaaclab.actuators import IdentifiedActuatorCfg
+from basic_locomotion_dls_isaaclab.actuators import IdentifiedActuatorElectricCfg
 from isaaclab.assets.articulation import ArticulationCfg
-from isaaclab.actuators import DCMotorCfg
 
 from basic_locomotion_dls_isaaclab.assets import ISAAC_ASSET_DIR
 
@@ -18,7 +17,7 @@ friction_static_mujoco = 0.2
 friction_dynamic_mujoco = 0.6
 armature_mujoco = 0.01
 
-GO2_HIP_ACTUATOR_CFG = IdentifiedActuatorCfg(
+GO2_HIP_ACTUATOR_CFG = IdentifiedActuatorElectricCfg(
     joint_names_expr=[".*_hip_joint"],
     effort_limit=23.7,
     velocity_limit=30.1,
@@ -31,7 +30,7 @@ GO2_HIP_ACTUATOR_CFG = IdentifiedActuatorCfg(
     friction_dynamic=friction_dynamic_mujoco,
 )
 
-GO2_THIGH_ACTUATOR_CFG = IdentifiedActuatorCfg(
+GO2_THIGH_ACTUATOR_CFG = IdentifiedActuatorElectricCfg(
     joint_names_expr=[".*_thigh_joint"],
     effort_limit=23.7,
     velocity_limit=30.1,
@@ -44,7 +43,7 @@ GO2_THIGH_ACTUATOR_CFG = IdentifiedActuatorCfg(
     friction_dynamic=friction_dynamic_mujoco,
 )
 
-GO2_CALF_ACTUATOR_CFG = IdentifiedActuatorCfg(
+GO2_CALF_ACTUATOR_CFG = IdentifiedActuatorElectricCfg(
     joint_names_expr=[".*_calf_joint"],
     effort_limit=45.43,
     velocity_limit=15.7,
