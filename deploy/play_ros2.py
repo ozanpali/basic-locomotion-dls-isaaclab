@@ -6,7 +6,7 @@
 import rclpy 
 from rclpy.node import Node 
 from sensor_msgs.msg import Joy
-from dls2_msgs.msg import BaseStateMsg, BlindStateMsg, ControlSignalMsg, TrajectoryGeneratorMsg
+from dls2_msgs.msg import BaseStateMsg, BlindStateMsg, ImuMsg, ControlSignalMsg, TrajectoryGeneratorMsg
 
 import time
 import numpy as np
@@ -38,10 +38,9 @@ os.system("renice -n -21 -p " + str(pid))
 os.system("echo -20 > /proc/" + str(pid) + "/autogroup")
 #for real time, launch it with chrt -r 99 python3 run_controller.py
 
-USE_MUJOCO_RENDER = False
-USE_MUJOCO_SIMULATION = False
+USE_MUJOCO_RENDER = True
+USE_MUJOCO_SIMULATION = True
 
-USE_SMOOTH_VELOCITY = True
 
 class Basic_Locomotion_DLS_Isaaclab_Node(Node):
     def __init__(self):
@@ -70,6 +69,7 @@ class Basic_Locomotion_DLS_Isaaclab_Node(Node):
         # Subscribers and Publishers
         self.subscription_base_state = self.create_subscription(BaseStateMsg,"/dls2/base_state", self.get_base_state_callback, 1)
         self.subscription_blind_state = self.create_subscription(BlindStateMsg,"/dls2/blind_state", self.get_blind_state_callback, 1)
+        self.subscription_imu = self.create_subscription(ImuMsg,"/dls2/imu", self.get_imu_callback, 1)
         self.subscription_joy = self.create_subscription(Joy,"joy", self.get_joy_callback, 1)
         self.publisher_trajectory_generator = self.create_publisher(TrajectoryGeneratorMsg,"dls2/trajectory_generator", 1)
         self.timer = self.create_timer(1.0/config.RL_FREQ, self.compute_rl_control)
@@ -78,6 +78,7 @@ class Basic_Locomotion_DLS_Isaaclab_Node(Node):
         # Safety check to not do anything until a first base and blind state are received
         self.first_message_base_arrived = False
         self.first_message_joints_arrived = False 
+        self.first_message_imu_arrived = False
 
         # Timing stuff
         self.loop_time = 0.002
@@ -92,6 +93,11 @@ class Basic_Locomotion_DLS_Isaaclab_Node(Node):
         # Blind State
         self.joint_positions = np.zeros(12)
         self.joint_velocities = np.zeros(12)
+
+        # IMU
+        self.imu_linear_acceleration = np.zeros(3)
+        self.imu_angular_velocity = np.zeros(3)
+        self.imu_orientation = np.zeros(4)
 
         
         # Initialization of variables used in the main control loop --------------------------------
@@ -163,6 +169,11 @@ class Basic_Locomotion_DLS_Isaaclab_Node(Node):
 
         self.first_message_joints_arrived = True
         
+    def get_imu_callback(self, msg):
+        # TODO check the frame
+        self.imu_linear_acceleration = np.array(msg.linear_acceleration) 
+        self.imu_angular_velocity = np.array(msg.angular_velocity) 
+        self.imu_orientation = np.array(msg.orientation) 
 
 
     def compute_rl_control(self):
@@ -172,23 +183,31 @@ class Basic_Locomotion_DLS_Isaaclab_Node(Node):
             self.loop_time = (start_time - self.last_start_time)
         self.last_start_time = start_time
         simulation_dt = self.loop_time
+        
 
         # Safety check to not do anything until a first base and blind state are received
-        if(not USE_MUJOCO_SIMULATION and self.first_message_base_arrived==False and self.first_message_joints_arrived==False):
-            return
-
-        old_base_lin_vel = self.env.base_lin_vel(frame='base')
-
-        # Update the mujoco model
         if(not USE_MUJOCO_SIMULATION):
+            if(config.use_imu or config.use_cuncurrent_state_est):
+                if(self.first_message_imu_arrived==False and self.first_message_joints_arrived==False):
+                    return
+            else:
+                if(self.first_message_base_arrived==False and self.first_message_joints_arrived==False):
+                    return
+
+            # Update the mujoco model
+            # Note that in case of IMU or concurrent state estimator, these info below are not used,
+            # In the case we have a state estimator, this is usefull only for debugging visually
             self.env.mjData.qpos[0:3] = copy.deepcopy(self.position)
-            self.env.mjData.qpos[3:7] = copy.deepcopy(self.orientation)
             self.env.mjData.qvel[0:3] = copy.deepcopy(self.linear_velocity)
+            self.env.mjData.qpos[3:7] = copy.deepcopy(self.orientation)
             self.env.mjData.qvel[3:6] = copy.deepcopy(self.angular_velocity)
+            
+            # These info instead are used for sure in all the cases
             self.env.mjData.qpos[7:] = copy.deepcopy(self.joint_positions)
             self.env.mjData.qvel[6:] = copy.deepcopy(self.joint_velocities)
             self.env.mjModel.opt.timestep = simulation_dt
-            mujoco.mj_forward(self.env.mjModel, self.env.mjData)     
+            mujoco.mj_forward(self.env.mjModel, self.env.mjData) 
+            
 
         env = self.env
         locomotion_policy = self.locomotion_policy
@@ -201,8 +220,6 @@ class Basic_Locomotion_DLS_Isaaclab_Node(Node):
         base_quat_wxyz = qpos[3:7]
         base_pos = env.base_pos
 
-        if(USE_SMOOTH_VELOCITY):
-            base_lin_vel = 0.5*base_lin_vel + 0.5*old_base_lin_vel
 
         joints_pos = LegsAttr(*[np.zeros((1, int(env.mjModel.nu/4))) for _ in range(4)])
         joints_pos.FL = qpos[env.legs_qpos_idx.FL]
@@ -245,7 +262,10 @@ class Basic_Locomotion_DLS_Isaaclab_Node(Node):
                         joints_pos=joints_pos, 
                         joints_vel=joints_vel,
                         ref_base_lin_vel=ref_base_lin_vel, 
-                        ref_base_ang_vel=ref_base_ang_vel)
+                        ref_base_ang_vel=ref_base_ang_vel,
+                        imu_linear_acceleration=self.imu_linear_acceleration,
+                        imu_angular_velocity=self.imu_angular_velocity,
+                        imu_orientation=self.imu_orientation)
             
             # Impedence Loop
             Kp = locomotion_policy.Kp_walking
