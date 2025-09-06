@@ -64,7 +64,7 @@ class EventCfg:
     )
     
 
-    scale_all_joint_friction_model = EventTerm(
+    """scale_all_joint_friction_model = EventTerm(
         func=custom_events.randomize_joint_friction_model,
         mode="startup",
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]), 
@@ -79,6 +79,18 @@ class EventCfg:
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]), 
                 "armature_distribution_params": (0.0, 1.0),
                 "operation": "scale"},
+    )"""
+
+    randomize_joint_parameters = EventTerm(
+        func=mdp.randomize_joint_parameters,
+        mode="reset",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]), 
+            "friction_distribution_params": (0.2, 2.0),
+            "armature_distribution_params": (0.0, 1.0),
+            "operation": "scale",
+            "distribution": "uniform",
+        },
     )
 
     scale_all_joint_first_order_delay_filter_model = EventTerm(
@@ -103,8 +115,8 @@ class EventCfg:
     mode="reset",
     params={
         "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
-        "stiffness_distribution_params": (-15.0, 15.0),
-        "damping_distribution_params": (-3.0, 3.0),
+        "stiffness_distribution_params": (-20.0, 20.0),
+        "damping_distribution_params": (-5.0, 5.0),
         "operation": "add",
         "distribution": "uniform",
     },

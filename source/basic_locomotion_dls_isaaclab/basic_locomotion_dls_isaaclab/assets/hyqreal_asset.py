@@ -13,11 +13,25 @@ from basic_locomotion_dls_isaaclab.assets import ISAAC_ASSET_DIR
 # HYQREAL robot configuration from mujoco
 stiffness_mujoco = 300.0 #200.0
 damping_mujoco = 20.0 #20.0
-friction_static_mujoco = 0.2
-friction_dynamic_mujoco = 0.6
 armature_mujoco = 0.01
 first_order_delay_filter = 0.1
 second_order_delay_filter = 0.1
+
+friction_static_mujoco = 0.2 * 0.0
+friction_dynamic_mujoco = 0.6 * 0.0
+activation_vel = 0.1# * 0.0
+
+static_friction_hip = 7.0
+dynamic_friction_hip = 0.3
+viscous_friction_hip = 0.3
+
+static_friction_thigh = 7.0
+dynamic_friction_thigh = 0.3
+viscous_friction_thigh = 0.3
+
+static_friction_calf = 0.5
+dynamic_friction_calf = 0.3
+viscous_friction_calf = 0.3
 
 HYQREAL_HIP_ACTUATOR_CFG = IdentifiedActuatorHydraulicCfg(
     joint_names_expr=[".*_hip_joint"],
@@ -28,10 +42,14 @@ HYQREAL_HIP_ACTUATOR_CFG = IdentifiedActuatorHydraulicCfg(
     damping=damping_mujoco,
     armature=armature_mujoco,
     friction_static=friction_static_mujoco,
-    activation_vel=0.1,
+    activation_vel=activation_vel,
     friction_dynamic=friction_dynamic_mujoco,
     first_order_delay_filter=first_order_delay_filter,
     second_order_delay_filter=second_order_delay_filter,
+
+    friction = static_friction_hip,
+    dynamic_friction = dynamic_friction_hip,
+    viscous_friction = viscous_friction_hip,
 )
 
 HYQREAL_THIGH_ACTUATOR_CFG = IdentifiedActuatorHydraulicCfg(
@@ -47,6 +65,10 @@ HYQREAL_THIGH_ACTUATOR_CFG = IdentifiedActuatorHydraulicCfg(
     friction_dynamic=friction_dynamic_mujoco,
     first_order_delay_filter=first_order_delay_filter,
     second_order_delay_filter=second_order_delay_filter,
+
+    friction = static_friction_thigh,
+    dynamic_friction = dynamic_friction_thigh,
+    viscous_friction = viscous_friction_thigh,
 )
 
 HYQREAL_CALF_ACTUATOR_CFG = IdentifiedActuatorHydraulicCfg(
@@ -62,6 +84,10 @@ HYQREAL_CALF_ACTUATOR_CFG = IdentifiedActuatorHydraulicCfg(
     friction_dynamic=friction_dynamic_mujoco,
     first_order_delay_filter=first_order_delay_filter,
     second_order_delay_filter=second_order_delay_filter,
+
+    friction = static_friction_calf,
+    dynamic_friction = dynamic_friction_calf,
+    viscous_friction = viscous_friction_calf,
 )
 
 
