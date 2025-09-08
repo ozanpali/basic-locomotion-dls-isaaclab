@@ -13,9 +13,24 @@ from basic_locomotion_dls_isaaclab.assets import ISAAC_ASSET_DIR
 # Aliengo robot configuration from mujoco
 stiffness_mujoco = 25.0
 damping_mujoco = 2.0
-friction_static_mujoco = 0.2
-friction_dynamic_mujoco = 0.6
+
 armature_mujoco = 0.01
+
+friction_static_mujoco = 0.2 * 0.0
+friction_dynamic_mujoco = 0.6 * 0.0
+activation_vel = 0.1# * 0.0
+
+static_friction_hip = 0.5
+dynamic_friction_hip = 0.3
+viscous_friction_hip = 0.3
+
+static_friction_thigh = 0.5
+dynamic_friction_thigh = 0.3
+viscous_friction_thigh = 0.3
+
+static_friction_calf = 0.5
+dynamic_friction_calf = 0.3
+viscous_friction_calf = 0.3
 
 GO2_HIP_ACTUATOR_CFG = IdentifiedActuatorElectricCfg(
     joint_names_expr=[".*_hip_joint"],
@@ -26,8 +41,12 @@ GO2_HIP_ACTUATOR_CFG = IdentifiedActuatorElectricCfg(
     damping=damping_mujoco,
     armature=armature_mujoco,
     friction_static=friction_static_mujoco,
-    activation_vel=0.1,
+    activation_vel=activation_vel,
     friction_dynamic=friction_dynamic_mujoco,
+
+    friction = static_friction_hip,
+    dynamic_friction = dynamic_friction_hip,
+    viscous_friction = viscous_friction_hip,
 )
 
 GO2_THIGH_ACTUATOR_CFG = IdentifiedActuatorElectricCfg(
@@ -39,8 +58,12 @@ GO2_THIGH_ACTUATOR_CFG = IdentifiedActuatorElectricCfg(
     damping=damping_mujoco,
     armature=armature_mujoco,
     friction_static=friction_static_mujoco,
-    activation_vel=0.1,
+    activation_vel=activation_vel,
     friction_dynamic=friction_dynamic_mujoco,
+
+    friction = static_friction_thigh,
+    dynamic_friction = dynamic_friction_thigh,
+    viscous_friction = viscous_friction_thigh,
 )
 
 GO2_CALF_ACTUATOR_CFG = IdentifiedActuatorElectricCfg(
@@ -52,8 +75,12 @@ GO2_CALF_ACTUATOR_CFG = IdentifiedActuatorElectricCfg(
     damping=damping_mujoco,
     armature=armature_mujoco,
     friction_static=friction_static_mujoco,
-    activation_vel=0.1,
+    activation_vel=activation_vel,
     friction_dynamic=friction_dynamic_mujoco,
+
+    friction = static_friction_calf,
+    dynamic_friction = dynamic_friction_calf,
+    viscous_friction = viscous_friction_calf,
 )
 
 
