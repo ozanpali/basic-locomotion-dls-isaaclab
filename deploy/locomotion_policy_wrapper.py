@@ -195,7 +195,7 @@ class LocomotionPolicyWrapper:
         if(config.use_cuncurrent_state_est):
             #the bottom element is the newest observation!!
             past_cuncurrent_state_est = self._observation_history_cuncurrent_state_est[1:,:]
-            self._observation_history_cuncurrent_state_est = np.vstack((past_cuncurrent_state_est, obs))
+            self._observation_history_cuncurrent_state_est = np.vstack((past_cuncurrent_state_est, copy.deepcopy(obs)))
             obs_cuncurrent_state_est = self._observation_history_cuncurrent_state_est.flatten()
             # QUERY THE NETOWRK
             base_lin_vel = self._cuncurrent_state_est_network(torch.tensor(obs_cuncurrent_state_est, dtype=torch.float32).unsqueeze(0)).detach().numpy().squeeze()
@@ -205,7 +205,7 @@ class LocomotionPolicyWrapper:
         if(self.use_observation_history):
             #the bottom element is the newest observation!!
             past = self._observation_history[1:,:]
-            self._observation_history = np.vstack((past, obs))
+            self._observation_history = np.vstack((past, copy.deepcopy(obs)))
             obs = self._observation_history.flatten()
 
         

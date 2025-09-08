@@ -38,7 +38,7 @@ os.system("renice -n -21 -p " + str(pid))
 os.system("echo -20 > /proc/" + str(pid) + "/autogroup")
 #for real time, launch it with chrt -r 99 python3 run_controller.py
 
-USE_MUJOCO_RENDER = False
+USE_MUJOCO_RENDER = True
 USE_MUJOCO_SIMULATION = False
 
 
@@ -281,7 +281,17 @@ class Basic_Locomotion_DLS_Isaaclab_Node(Node):
 
 
         else:
-            return
+            #TODO uncomment
+            desired_joint_pos = LegsAttr(*[np.zeros((1, int(env.mjModel.nu/4))) for _ in range(4)])
+            desired_joint_pos.FL = self.stand_up_and_down_actions.FL
+            desired_joint_pos.FR = self.stand_up_and_down_actions.FR
+            desired_joint_pos.RL = self.stand_up_and_down_actions.RL
+            desired_joint_pos.RR = self.stand_up_and_down_actions.RR
+
+            # Impedence Loop
+            Kp = locomotion_policy.Kp_stand_up_and_down
+            Kd = locomotion_policy.Kd_stand_up_and_down
+            #return
 
         
         if USE_MUJOCO_SIMULATION:
@@ -323,7 +333,7 @@ class Basic_Locomotion_DLS_Isaaclab_Node(Node):
 
         trajectory_generator_msg = TrajectoryGeneratorMsg()
         trajectory_generator_msg.joints_position = np.concatenate([desired_joint_pos.FL, desired_joint_pos.FR, desired_joint_pos.RL, desired_joint_pos.RR], axis=0).flatten()
-        
+
         desired_joint_vel = LegsAttr(*[np.zeros((1, int(env.mjModel.nu/4))) for _ in range(4)])
         trajectory_generator_msg.joints_velocity = np.concatenate([desired_joint_vel.FL, desired_joint_vel.FR, desired_joint_vel.RL, desired_joint_vel.RR], axis=0).flatten()
 
