@@ -147,17 +147,13 @@ class LocomotionPolicyWrapper:
         # Update Observation ----------------------        
         if(config.use_imu or config.use_cuncurrent_state_est):
             base_projected_gravity = self._get_projected_gravity(imu_orientation)
-            if(config.use_imu):
-                base_vel = imu_linear_acceleration
-                base_ang_vel = imu_angular_velocity
-            else:
-                base_vel = base_lin_vel
-                base_ang_vel = base_ang_vel
+            base_vel = imu_linear_acceleration
+            base_ang_vel = imu_angular_velocity
         else:
             base_projected_gravity = self._get_projected_gravity(base_quat_wxyz)
             base_vel = base_lin_vel
             base_ang_vel = base_ang_vel
-        
+
 
         # Get the reference base velocity in the world frame
         ref_base_lin_vel_h = heading_orientation_SO3.T@ref_base_lin_vel
@@ -198,10 +194,9 @@ class LocomotionPolicyWrapper:
             self._observation_history_cuncurrent_state_est = np.vstack((past_cuncurrent_state_est, copy.deepcopy(obs)))
             obs_cuncurrent_state_est = self._observation_history_cuncurrent_state_est.flatten()
             # QUERY THE NETOWRK
-            base_lin_vel = self._cuncurrent_state_est_network(torch.tensor(obs_cuncurrent_state_est, dtype=torch.float32).unsqueeze(0)).detach().numpy().squeeze()
-            obs[0:3] = base_lin_vel
-        
-        
+            base_lin_vel_predicted = self._cuncurrent_state_est_network(torch.tensor(obs_cuncurrent_state_est, dtype=torch.float32).unsqueeze(0)).detach().numpy().squeeze()
+            obs[0:3] = base_lin_vel_predicted
+            
         if(self.use_observation_history):
             #the bottom element is the newest observation!!
             past = self._observation_history[1:,:]
