@@ -38,8 +38,8 @@ os.system("renice -n -21 -p " + str(pid))
 os.system("echo -20 > /proc/" + str(pid) + "/autogroup")
 #for real time, launch it with chrt -r 99 python3 run_controller.py
 
-USE_MUJOCO_RENDER = True
-USE_MUJOCO_SIMULATION = True
+USE_MUJOCO_RENDER = False
+USE_MUJOCO_SIMULATION = False
 
 
 class Basic_Locomotion_DLS_Isaaclab_Node(Node):
@@ -143,7 +143,6 @@ class Basic_Locomotion_DLS_Isaaclab_Node(Node):
 
 
 
-
     def get_base_state_callback(self, msg):
         
         self.position = np.array(msg.position) #world frame
@@ -161,19 +160,23 @@ class Basic_Locomotion_DLS_Isaaclab_Node(Node):
         self.joint_positions = np.array(msg.joints_position)
         self.joint_velocities = np.array(msg.joints_velocity)
 
-        # Fix convention DLS2
-        self.joint_positions[0] = -self.joint_positions[0]
-        self.joint_positions[6] = -self.joint_positions[6]
-        self.joint_velocities[0] = -self.joint_velocities[0]
-        self.joint_velocities[6] = -self.joint_velocities[6]
+        if(config.robot == "aliengo"):
+            # Fix convention DLS2
+            self.joint_positions[0] = -self.joint_positions[0]
+            self.joint_positions[6] = -self.joint_positions[6]
+            self.joint_velocities[0] = -self.joint_velocities[0]
+            self.joint_velocities[6] = -self.joint_velocities[6]
 
         self.first_message_joints_arrived = True
+     
         
     def get_imu_callback(self, msg):
         # TODO check the frame
         self.imu_linear_acceleration = np.array(msg.linear_acceleration) 
         self.imu_angular_velocity = np.array(msg.angular_velocity) 
         self.imu_orientation = np.array(msg.orientation) 
+
+        self.first_message_imu_arrived = True
 
 
     def compute_rl_control(self):
@@ -188,19 +191,24 @@ class Basic_Locomotion_DLS_Isaaclab_Node(Node):
         # Safety check to not do anything until a first base and blind state are received
         if(not USE_MUJOCO_SIMULATION):
             if(config.use_imu or config.use_cuncurrent_state_est):
-                if(self.first_message_imu_arrived==False and self.first_message_joints_arrived==False):
+                if(self.first_message_imu_arrived==False or self.first_message_joints_arrived==False):
                     return
             else:
-                if(self.first_message_base_arrived==False and self.first_message_joints_arrived==False):
+                if(self.first_message_base_arrived==False or self.first_message_joints_arrived==False):
                     return
-
+            
             # Update the mujoco model
             # Note that in case of IMU or concurrent state estimator, these info below are not used,
             # In the case we have a state estimator, this is usefull only for debugging visually
             self.env.mjData.qpos[0:3] = copy.deepcopy(self.position)
             self.env.mjData.qvel[0:3] = copy.deepcopy(self.linear_velocity)
-            self.env.mjData.qpos[3:7] = copy.deepcopy(self.orientation)
-            self.env.mjData.qvel[3:6] = copy.deepcopy(self.angular_velocity)
+
+            if(config.use_imu or config.use_cuncurrent_state_est):
+                self.env.mjData.qpos[3:7] = copy.deepcopy(self.imu_orientation)
+                self.env.mjData.qvel[3:6] = copy.deepcopy(self.imu_angular_velocity)
+            else:
+                self.env.mjData.qpos[3:7] = copy.deepcopy(self.orientation)
+                self.env.mjData.qvel[3:6] = copy.deepcopy(self.angular_velocity)
             
             # These info instead are used for sure in all the cases
             self.env.mjData.qpos[7:] = copy.deepcopy(self.joint_positions)
@@ -308,10 +316,10 @@ class Basic_Locomotion_DLS_Isaaclab_Node(Node):
                 self.env.step(action=action)
 
         
-
-        # Fix convention DLS2 and send PD target
-        desired_joint_pos.FL[0] = -desired_joint_pos.FL[0]
-        desired_joint_pos.RL[0] = -desired_joint_pos.RL[0] 
+        if(config.robot == "aliengo"):
+            # Fix convention DLS2 and send PD target
+            desired_joint_pos.FL[0] = -desired_joint_pos.FL[0]
+            desired_joint_pos.RL[0] = -desired_joint_pos.RL[0] 
 
         trajectory_generator_msg = TrajectoryGeneratorMsg()
         trajectory_generator_msg.joints_position = np.concatenate([desired_joint_pos.FL, desired_joint_pos.FR, desired_joint_pos.RL, desired_joint_pos.RR], axis=0).flatten()
@@ -319,8 +327,8 @@ class Basic_Locomotion_DLS_Isaaclab_Node(Node):
         desired_joint_vel = LegsAttr(*[np.zeros((1, int(env.mjModel.nu/4))) for _ in range(4)])
         trajectory_generator_msg.joints_velocity = np.concatenate([desired_joint_vel.FL, desired_joint_vel.FR, desired_joint_vel.RL, desired_joint_vel.RR], axis=0).flatten()
 
-        #trajectory_generator_msg.kp = np.ones(12)*Kp
-        #trajectory_generator_msg.kd = np.ones(12)*Kd
+        trajectory_generator_msg.kp = np.ones(12)*Kp
+        trajectory_generator_msg.kd = np.ones(12)*Kd
         self.publisher_trajectory_generator.publish(trajectory_generator_msg)
         
         
