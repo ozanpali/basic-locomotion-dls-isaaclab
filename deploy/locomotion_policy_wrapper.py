@@ -197,6 +197,7 @@ class LocomotionPolicyWrapper:
             base_lin_vel_predicted = self._cuncurrent_state_est_network(torch.tensor(obs_cuncurrent_state_est, dtype=torch.float32).unsqueeze(0)).detach().numpy().squeeze()
             obs[0:3] = base_lin_vel_predicted
             
+            
         if(self.use_observation_history):
             #the bottom element is the newest observation!!
             past = self._observation_history[1:,:]
