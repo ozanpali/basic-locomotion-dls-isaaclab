@@ -51,5 +51,5 @@ RUN cd Quadruped-PyMPC && pip install -e .
 RUN echo 'conda activate isaaclab_env' >> /root/.bashrc
 
 # Set the working directory and source the bashrc file
-WORKDIR /home
+WORKDIR /work/gturrisi
 RUN source /root/.bashrc
