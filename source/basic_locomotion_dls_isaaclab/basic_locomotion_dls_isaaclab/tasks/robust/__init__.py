@@ -21,7 +21,7 @@ from .locomotion_env import LocomotionEnv
 from .locomotion_env import AliengoFlatEnvCfg, AliengoRoughVisionEnvCfg, AliengoRoughBlindEnvCfg
 
 gym.register(
-    id="Locomotion-Aliengo-Flat",
+    id="Robust-Aliengo-Flat",
     entry_point=LocomotionEnv,
     disable_env_checker=True,
     kwargs={
@@ -31,7 +31,7 @@ gym.register(
 )
 
 gym.register(
-    id="Locomotion-Aliengo-Rough-Blind",
+    id="Robust-Aliengo-Rough-Blind",
     entry_point=LocomotionEnv,
     disable_env_checker=True,
     kwargs={
@@ -41,7 +41,7 @@ gym.register(
 )
 
 gym.register(
-    id="Locomotion-Aliengo-Rough-Vision",
+    id="Robust-Aliengo-Rough-Vision",
     entry_point=LocomotionEnv,
     disable_env_checker=True,
     kwargs={
@@ -54,7 +54,7 @@ gym.register(
 from .locomotion_env import Go2FlatEnvCfg, Go2RoughVisionEnvCfg, Go2RoughBlindEnvCfg
 
 gym.register(
-    id="Locomotion-Go2-Flat",
+    id="Robust-Go2-Flat",
     entry_point=LocomotionEnv,
     disable_env_checker=True,
     kwargs={
@@ -64,7 +64,7 @@ gym.register(
 )
 
 gym.register(
-    id="Locomotion-Go2-Rough-Blind",
+    id="Robust-Go2-Rough-Blind",
     entry_point=LocomotionEnv,
     disable_env_checker=True,
     kwargs={
@@ -74,7 +74,7 @@ gym.register(
 )
 
 gym.register(
-    id="Locomotion-Go2-Rough-Vision",
+    id="Robust-Go2-Rough-Vision",
     entry_point=LocomotionEnv,
     disable_env_checker=True,
     kwargs={
@@ -88,7 +88,7 @@ gym.register(
 from .locomotion_env import B2FlatEnvCfg, B2RoughVisionEnvCfg, B2RoughBlindEnvCfg
 
 gym.register(
-    id="Locomotion-B2-Flat",
+    id="Robust-B2-Flat",
     entry_point=LocomotionEnv,
     disable_env_checker=True,
     kwargs={
@@ -98,7 +98,7 @@ gym.register(
 )
 
 gym.register(
-    id="Locomotion-B2-Rough-Blind",
+    id="Robust-B2-Rough-Blind",
     entry_point=LocomotionEnv,
     disable_env_checker=True,
     kwargs={
@@ -108,7 +108,7 @@ gym.register(
 )
 
 gym.register(
-    id="Locomotion-B2-Rough-Vision",
+    id="Robust-B2-Rough-Vision",
     entry_point=LocomotionEnv,
     disable_env_checker=True,
     kwargs={
@@ -121,7 +121,7 @@ gym.register(
 from .locomotion_env import HyQRealFlatEnvCfg, HyQRealRoughVisionEnvCfg, HyQRealRoughBlindEnvCfg
 
 gym.register(
-    id="Locomotion-HyQReal-Flat",
+    id="Robust-HyQReal-Flat",
     entry_point=LocomotionEnv,
     disable_env_checker=True,
     kwargs={
@@ -131,7 +131,7 @@ gym.register(
 )
 
 gym.register(
-    id="Locomotion-HyQReal-Rough-Blind",
+    id="Robust-HyQReal-Rough-Blind",
     entry_point=LocomotionEnv,
     disable_env_checker=True,
     kwargs={
@@ -141,7 +141,7 @@ gym.register(
 )
 
 gym.register(
-    id="Locomotion-HyQReal-Rough-Vision",
+    id="Robust-HyQReal-Rough-Vision",
     entry_point=LocomotionEnv,
     disable_env_checker=True,
     kwargs={
