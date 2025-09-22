@@ -138,6 +138,82 @@ class EventCfg:
         interval_range_s=(19.0, 19.0),
     )"""
 
+    # Per-joint torque scaling (12 events)
+    torque_scale_FL_hip = EventTerm(
+        func=custom_events.scale_joint_torque,
+        mode="interval",
+        interval_range_s=(5.0, 10.0),
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=["FL_hip_joint"]), "scale": 0.7},
+    )
+    torque_scale_FR_hip = EventTerm(
+        func=custom_events.scale_joint_torque,
+        mode="interval",
+        interval_range_s=(5.0, 10.0),
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=["FR_hip_joint"]), "scale": 0.7},
+    )
+    torque_scale_RL_hip = EventTerm(
+        func=custom_events.scale_joint_torque,
+        mode="interval",
+        interval_range_s=(5.0, 10.0),
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=["RL_hip_joint"]), "scale": 0.7},
+    )
+    torque_scale_RR_hip = EventTerm(
+        func=custom_events.scale_joint_torque,
+        mode="interval",
+        interval_range_s=(5.0, 10.0),
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=["RR_hip_joint"]), "scale": 0.7},
+    )
+
+    torque_scale_FL_thigh = EventTerm(
+        func=custom_events.scale_joint_torque,
+        mode="interval",
+        interval_range_s=(5.0, 10.0),
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=["FL_thigh_joint"]), "scale": 0.7},
+    )
+    torque_scale_FR_thigh = EventTerm(
+        func=custom_events.scale_joint_torque,
+        mode="interval",
+        interval_range_s=(5.0, 10.0),
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=["FR_thigh_joint"]), "scale": 0.7},
+    )
+    torque_scale_RL_thigh = EventTerm(
+        func=custom_events.scale_joint_torque,
+        mode="interval",
+        interval_range_s=(5.0, 10.0),
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=["RL_thigh_joint"]), "scale": 0.7},
+    )
+    torque_scale_RR_thigh = EventTerm(
+        func=custom_events.scale_joint_torque,
+        mode="interval",
+        interval_range_s=(5.0, 10.0),
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=["RR_thigh_joint"]), "scale": 0.7},
+    )
+
+    torque_scale_FL_calf = EventTerm(
+        func=custom_events.scale_joint_torque,
+        mode="interval",
+        interval_range_s=(5.0, 10.0),
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=["FL_calf_joint"]), "scale": 0.7},
+    )
+    torque_scale_FR_calf = EventTerm(
+        func=custom_events.scale_joint_torque,
+        mode="interval",
+        interval_range_s=(5.0, 10.0),
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=["FR_calf_joint"]), "scale": 0.7},
+    )
+    torque_scale_RL_calf = EventTerm(
+        func=custom_events.scale_joint_torque,
+        mode="interval",
+        interval_range_s=(5.0, 10.0),
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=["RL_calf_joint"]), "scale": 0.7},
+    )
+    torque_scale_RR_calf = EventTerm(
+        func=custom_events.scale_joint_torque,
+        mode="interval",
+        interval_range_s=(5.0, 10.0),
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=["RR_calf_joint"]), "scale": 0.7},
+    )
+
     """# reset command velocity
     resample_command_velocity = EventTerm(
         func=custom_events.resample_command_velocity,
