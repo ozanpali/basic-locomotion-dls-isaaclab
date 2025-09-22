@@ -467,8 +467,8 @@ class LocomotionEnv(DirectRLEnv):
         feet_height_clearance = feet_height_clearance_FL + feet_height_clearance_FR + feet_height_clearance_RL + feet_height_clearance_RR
 
         # feet height clearance standard
-        #foot_velocity_tanh = torch.tanh(2.0 * torch.norm(self._robot.data.body_lin_vel_w[:, self._feet_ids_robot, :2], dim=2))
-        #feet_height_clearance = torch.exp(-torch.sum(feet_z_target_error * foot_velocity_tanh, dim=1)/ 0.01) * should_move
+        foot_velocity_tanh = torch.tanh(2.0 * torch.norm(self._robot.data.body_lin_vel_w[:, self._feet_ids_robot, :2], dim=2))
+        feet_height_clearance = torch.exp(-torch.sum(feet_z_target_error * foot_velocity_tanh, dim=1)/ 0.01) * should_move
 
 
         # feet to com distance
