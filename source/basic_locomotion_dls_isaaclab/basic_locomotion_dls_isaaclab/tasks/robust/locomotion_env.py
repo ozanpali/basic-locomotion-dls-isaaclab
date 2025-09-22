@@ -115,6 +115,7 @@ class LocomotionEnv(DirectRLEnv):
                 "joints_energy_l1",
                 
                 "feet_air_time",
+                "feet_air_time_FL_failure",
                 "feet_height_clearance",
                 "feet_height_clearance_mujoco",
                 "feet_slide",
@@ -399,9 +400,24 @@ class LocomotionEnv(DirectRLEnv):
         # feet airtime
         first_contact = self._contact_sensor.compute_first_contact(self.step_dt)[:, self._feet_ids]
         last_air_time = self._contact_sensor.data.last_air_time[:, self._feet_ids]
+
         feet_air_time = torch.sum((last_air_time - 0.5) * first_contact, dim=1) * (
             torch.norm(self._commands[:, :2], dim=1) > 0.1
         )
+
+        # --- FL-failure-specific airtime reward ---
+        # Exclude FL (index 0) from generic airtime accumulation
+        active_feet_excluding_FL = [1, 2, 3]
+        feet_air_time_excluding_FL = torch.sum(
+            (last_air_time[:, active_feet_excluding_FL] - 0.5) * first_contact[:, active_feet_excluding_FL], dim=1
+        ) * (torch.norm(self._commands[:, :2], dim=1) > 0.1)
+        # Contact flags (reuse forces tensor). Threshold > 1.0 indicates contact.
+        contacts_foot = self._contact_sensor.data.net_forces_w_history[:, :, self._feet_ids, :].norm(dim=-1).max(dim=1)[0] > 1.0
+        fl_in_air = (~contacts_foot[:, 0]).float()
+        fl_contact = contacts_foot[:, 0].float()
+        fl_air_reward = 10.0 * fl_in_air
+        fl_penalty = -10.0 * fl_contact
+        feet_air_time_FL_failure = feet_air_time_excluding_FL + fl_air_reward + fl_penalty
 
 
         # feet slide
@@ -509,6 +525,7 @@ class LocomotionEnv(DirectRLEnv):
             "feet_to_base_distance_l2": feet_to_base_distance * self.cfg.feet_to_base_distance_reward_scale * self.step_dt,
             "feet_to_hip_distance_l2": feet_to_hip_distance * self.cfg.feet_to_hip_distance_reward_scale * self.step_dt,
             "feet_vertical_surface_contacts": feet_vertical_surface_contacts * self.cfg.feet_vertical_surface_contacts_reward_scale * self.step_dt,
+            "feet_air_time_FL_failure": feet_air_time_FL_failure * self.cfg.feet_air_time_reward_scale * self.step_dt,
         }
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
         
