@@ -114,7 +114,7 @@ class LocomotionEnv(DirectRLEnv):
                 "joints_torques_l2",
                 "joints_energy_l1",
                 
-                "feet_air_time",
+                #"feet_air_time",
                 "feet_air_time_FL_failure",
                 "feet_height_clearance",
                 "feet_height_clearance_mujoco",
@@ -518,7 +518,7 @@ class LocomotionEnv(DirectRLEnv):
             "joints_torques_l2": joints_torques * self.cfg.joints_torque_reward_scale * self.step_dt,
             "joints_energy_l1": joints_energy * self.cfg.joints_energy_reward_scale * self.step_dt,
 
-            "feet_air_time": feet_air_time * self.cfg.feet_air_time_reward_scale * self.step_dt,
+            #"feet_air_time": feet_air_time * self.cfg.feet_air_time_reward_scale * self.step_dt,
             "feet_height_clearance": feet_height_clearance * self.cfg.feet_height_clearance_reward_scale * self.step_dt,
             "feet_height_clearance_mujoco": feet_height_clearance_mujoco * self.cfg.feet_height_clearance_mujoco_reward_scale * self.step_dt,
             "feet_slide": feet_slide * self.cfg.feet_slide_reward_scale * self.step_dt,
