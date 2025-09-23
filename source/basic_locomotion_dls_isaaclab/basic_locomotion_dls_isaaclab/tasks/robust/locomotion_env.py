@@ -416,8 +416,8 @@ class LocomotionEnv(DirectRLEnv):
         fl_in_air = (~contacts_foot[:, 0]).float()
         fl_contact = contacts_foot[:, 0].float()
         # Reduce coefficients to avoid overly aggressive FL leg lift
-        fl_air_reward = 0.5 * fl_in_air
-        fl_penalty = -0.5 * fl_contact
+        fl_air_reward = 0.8 * fl_in_air
+        fl_penalty = -0.8 * fl_contact
         feet_air_time_FL_failure = feet_air_time_excluding_FL + fl_air_reward + fl_penalty
 
 
