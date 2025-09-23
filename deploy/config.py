@@ -4,11 +4,13 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(dir_path+"/../")
 sys.path.append(dir_path+"/../scripts/rsl_rl")
 
-robot = 'go2'  # 'aliengo', 'go1', 'go2', 'b2', 'hyqreal1', 'hyqreal2', 'mini_cheetah' 
+robot = 'aliengo'  # 'aliengo', 'go1', 'go2', 'b2', 'hyqreal1', 'hyqreal2', 'mini_cheetah' 
 scene = 'random_boxes'  # flat, random_boxes, random_pyramids, perlin
 
 #policy_path = "/home/iit.local/gturrisi/isaaclab_ws_home/basic-locomotion-dls-isaaclab/tested_policies/hyqreal/2025-07-23_09-19-46_8k_128_128_128_hyq/exported/policy.onnx"
 policy_path = dir_path + "/../tested_policies/" + robot + "/2025-09-07_19-13-16_go2_cuncurrent_se" + "/exported/policy.onnx"
+policy_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-09-22_19-10-57_FLAir/exported/policy.onnx"
+
 
 # ----------------------------------------------------------------------------------------------------------------
 if(robot == "aliengo"):
@@ -62,5 +64,5 @@ observation_space = 48  # Number of observations in the RL policy
 
 use_imu = False
 use_rma = False
-use_cuncurrent_state_est = True
+use_cuncurrent_state_est = False
 cuncurrent_state_est_network_path = dir_path + "/../tested_policies/" + robot + "/2025-09-07_19-13-16_go2_cuncurrent_se" + "/exported/cuncurrent_state_estimator.pth"

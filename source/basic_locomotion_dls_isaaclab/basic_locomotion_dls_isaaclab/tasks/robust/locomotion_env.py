@@ -114,7 +114,7 @@ class LocomotionEnv(DirectRLEnv):
                 "joints_torques_l2",
                 "joints_energy_l1",
                 
-                "feet_air_time",
+                #"feet_air_time",
                 "feet_air_time_FL_failure",
                 "feet_height_clearance",
                 "feet_height_clearance_mujoco",
@@ -415,8 +415,9 @@ class LocomotionEnv(DirectRLEnv):
         contacts_foot = self._contact_sensor.data.net_forces_w_history[:, :, self._feet_ids, :].norm(dim=-1).max(dim=1)[0] > 1.0
         fl_in_air = (~contacts_foot[:, 0]).float()
         fl_contact = contacts_foot[:, 0].float()
-        fl_air_reward = 10.0 * fl_in_air
-        fl_penalty = -10.0 * fl_contact
+        # Reduce coefficients to avoid overly aggressive FL leg lift
+        fl_air_reward = 0.2 * fl_in_air
+        fl_penalty = -0.2 * fl_contact
         feet_air_time_FL_failure = feet_air_time_excluding_FL + fl_air_reward + fl_penalty
 
 
@@ -517,7 +518,7 @@ class LocomotionEnv(DirectRLEnv):
             "joints_torques_l2": joints_torques * self.cfg.joints_torque_reward_scale * self.step_dt,
             "joints_energy_l1": joints_energy * self.cfg.joints_energy_reward_scale * self.step_dt,
 
-            "feet_air_time": feet_air_time * self.cfg.feet_air_time_reward_scale * self.step_dt,
+            #"feet_air_time": feet_air_time * self.cfg.feet_air_time_reward_scale * self.step_dt,
             "feet_height_clearance": feet_height_clearance * self.cfg.feet_height_clearance_reward_scale * self.step_dt,
             "feet_height_clearance_mujoco": feet_height_clearance_mujoco * self.cfg.feet_height_clearance_mujoco_reward_scale * self.step_dt,
             "feet_slide": feet_slide * self.cfg.feet_slide_reward_scale * self.step_dt,

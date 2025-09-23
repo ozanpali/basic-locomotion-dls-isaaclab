@@ -119,12 +119,13 @@ class EventCfg:
         interval_range_s=(11.0, 11.0),
     )"""
 
+    """
     # Per-joint torque scaling (12 events)
     torque_scale_FL_hip = EventTerm(
         func=custom_events.scale_joint_torque,
         mode="interval",
-        interval_range_s=(5.0, 10.0),
-        params={"asset_cfg": SceneEntityCfg("robot", joint_names=["FL_hip_joint"]), "scale": 0.7},
+        interval_range_s=(5.0, 15.0),
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=["FL_hip_joint"]), "scale": 0.3},
     )
     torque_scale_FR_hip = EventTerm(
         func=custom_events.scale_joint_torque,
@@ -194,6 +195,7 @@ class EventCfg:
         interval_range_s=(5.0, 10.0),
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=["RR_calf_joint"]), "scale": 0.7},
     )
+    """
 
 
 
@@ -343,7 +345,7 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     )
 
     # Desired gait
-    desired_gait = "trot" #crawl, pace, multigait
+    desired_gait = "crawl" #trot, crawl, pace, multigait
 
     # Desired tracking variables
     desired_base_height = 0.35
