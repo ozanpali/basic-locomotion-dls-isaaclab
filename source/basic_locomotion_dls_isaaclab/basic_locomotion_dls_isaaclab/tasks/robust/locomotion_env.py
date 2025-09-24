@@ -55,7 +55,7 @@ class LocomotionEnv(DirectRLEnv):
         
         # Periodic gait
         if(cfg.desired_gait == "trot"):
-            self._step_freq = 1.4
+            self._step_freq = 1.4 #1.4
             self._duty_factor = 0.65
             self._phase_offset = torch.tensor([0.0, 0.5, 0.5, 0.0], device=self.device).repeat(self.num_envs,1)
             self._velocity_gait_multiplier = 1.0
@@ -115,6 +115,7 @@ class LocomotionEnv(DirectRLEnv):
                 "joints_energy_l1",
                 
                 "feet_air_time",
+                #"feet_air_time_FL_failure",
                 "feet_height_clearance",
                 "feet_height_clearance_mujoco",
                 "feet_slide",
@@ -122,6 +123,7 @@ class LocomotionEnv(DirectRLEnv):
                 "feet_to_base_distance_l2",
                 "feet_to_hip_distance_l2",
                 "feet_vertical_surface_contacts",
+                "front_left_always_swing",
             ]
         }
         # Get specific body indices
@@ -397,18 +399,30 @@ class LocomotionEnv(DirectRLEnv):
 
 
         # feet airtime
-        first_contact = self._contact_sensor.compute_first_contact(self.step_dt)[:, self._feet_ids]
-        last_air_time = self._contact_sensor.data.last_air_time[:, self._feet_ids]
+        first_contact_all = self._contact_sensor.compute_first_contact(self.step_dt)[:, self._feet_ids]
+        last_air_time_all = self._contact_sensor.data.last_air_time[:, self._feet_ids]
+        # Exclude Front-Left leg (index 0) from airtime computation
+        first_contact = first_contact_all[:, 1:]
+        last_air_time = last_air_time_all[:, 1:]
+
         feet_air_time = torch.sum((last_air_time - 0.5) * first_contact, dim=1) * (
             torch.norm(self._commands[:, :2], dim=1) > 0.1
         )
 
 
+
         # feet slide
         contacts_foot = self._contact_sensor.data.net_forces_w_history[:, :, self._feet_ids, :].norm(dim=-1).max(dim=1)[0] > 1.0
         body_vel = self._robot.data.body_lin_vel_w[:, self._feet_ids_robot, :2]
-        feet_slide = torch.sum(body_vel.norm(dim=-1) * contacts_foot, dim=1)
+        # Exclude Front-Left leg (index 0) from slide computation
+        body_speed = body_vel.norm(dim=-1)
+        feet_slide = torch.sum(body_speed[:, 1:] * contacts_foot[:, 1:], dim=1)
         feet_slide = torch.exp(-feet_slide / 0.1)
+
+        # Reward to encourage Front-Left leg to always be in swing (no contact)
+        current_contacts_now = self._contact_sensor.data.net_forces_w[:, self._feet_ids, :].norm(dim=-1) > 1.0
+        fl_in_contact = current_contacts_now[:, 0]
+        front_left_always_swing = (~fl_in_contact).float()
 
 
         # feet periodical contacts suggestion
@@ -509,6 +523,9 @@ class LocomotionEnv(DirectRLEnv):
             "feet_to_base_distance_l2": feet_to_base_distance * self.cfg.feet_to_base_distance_reward_scale * self.step_dt,
             "feet_to_hip_distance_l2": feet_to_hip_distance * self.cfg.feet_to_hip_distance_reward_scale * self.step_dt,
             "feet_vertical_surface_contacts": feet_vertical_surface_contacts * self.cfg.feet_vertical_surface_contacts_reward_scale * self.step_dt,
+            # Encourage Front-Left leg to stay off the ground (always swinging)
+            "front_left_always_swing": front_left_always_swing * getattr(self.cfg, "front_left_swing_reward_scale", 1.0) * self.step_dt,
+            #"feet_air_time_FL_failure": feet_air_time_FL_failure * self.cfg.feet_air_time_reward_scale * self.step_dt,
         }
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
         
@@ -546,67 +563,73 @@ class LocomotionEnv(DirectRLEnv):
 
 
     def _reset_idx(self, env_ids: torch.Tensor | None):
-        if env_ids is None or len(env_ids) == self.num_envs:
-            env_ids = self._robot._ALL_INDICES
+        # Normalize env_ids to a tensor of indices
+        env_ids_t: torch.Tensor
+        if isinstance(env_ids, torch.Tensor):
+            env_ids_t = env_ids
+        else:
+            env_ids_t = self._robot._ALL_INDICES
+        # If resetting all envs, use ALL_INDICES explicitly
+        if env_ids is None or (isinstance(env_ids, torch.Tensor) and env_ids.numel() == self.num_envs):
+            env_ids_t = self._robot._ALL_INDICES
 
-        if(self._terrain.cfg.terrain_generator is not None and self._terrain.cfg.terrain_generator.curriculum == True):
-            # Curriculum based on the distance the robot walked
-            distance = torch.norm(self._robot.data.root_state_w[env_ids, :2] - self._terrain.env_origins[env_ids, :2], dim=1)
-            # robots that walked far enough progress to harder terrains
+        # Terrain curriculum update based on progress
+        if self._terrain.cfg.terrain_generator is not None and self._terrain.cfg.terrain_generator.curriculum:
+            distance = torch.norm(
+                self._robot.data.root_state_w[env_ids_t, :2] - self._terrain.env_origins[env_ids_t, :2], dim=1
+            )
             move_up = distance > self._terrain.cfg.terrain_generator.size[0] / 2
-            # robots that walked less than half of their required distance go to simpler terrains
-            move_down = distance < torch.norm(self._commands[env_ids, :2], dim=1) * self.max_episode_length_s * 0.5
+            move_down = distance < torch.norm(self._commands[env_ids_t, :2], dim=1) * self.max_episode_length_s * 0.5
             move_down *= ~move_up
-            # update terrain levels
-            self._terrain.update_env_origins(env_ids, move_up, move_down)
+            self._terrain.update_env_origins(env_ids_t, move_up, move_down)
 
-        self._robot.reset(env_ids)
-        super()._reset_idx(env_ids)
-        if len(env_ids) == self.num_envs: 
-            # Spread out the resets to avoid spikes in training when many environments reset at a similar time
-            self.episode_length_buf[:] = torch.randint_like(self.episode_length_buf, high=int(self.max_episode_length))
-        self._actions[env_ids] = 0.0
-        self._previous_actions[env_ids] = 0.0
-        self._previous_previous_actions[env_ids] = 0.0
-        
+        # Reset robot and env bookkeeping
+        self._robot.reset(env_ids_t)
+        super()._reset_idx(env_ids_t)
+        if env_ids_t.numel() == self.num_envs:
+            self.episode_length_buf[:] = torch.randint_like(
+                self.episode_length_buf, high=int(self.max_episode_length)
+            )
+        self._actions[env_ids_t] = 0.0
+        self._previous_actions[env_ids_t] = 0.0
+        self._previous_previous_actions[env_ids_t] = 0.0
+
         # Sample new commands
-        self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-1.0, 1.0)
-        self._commands[env_ids, 0] *= 0.5 * self._velocity_gait_multiplier
-        self._commands[env_ids, 1] *= 0.25 
-        self._commands[env_ids, 2] *= 0.3 
+        self._commands[env_ids_t] = torch.zeros_like(self._commands[env_ids_t]).uniform_(-1.0, 1.0)
+        self._commands[env_ids_t, 0] *= 0.5 * self._velocity_gait_multiplier
+        self._commands[env_ids_t, 1] *= 0.25
+        self._commands[env_ids_t, 2] *= 0.3
 
-        # Reset swing peak
-        self._swing_peak[env_ids] = torch.tensor([0.0, 0.0, 0.0, 0.0], device=self.device)
-        
-        # Reset contact periodic
-        self._phase_signal[env_ids] = self._phase_offset[env_ids].clone()# + self.step_dt * self._step_freq * torch.rand(env_ids.shape[0], 1, device=self.device)*10.
-        self._phase_signal[env_ids] = self._phase_signal[env_ids]  % 1.0
+        # Reset swing peak and contact phase signal
+        self._swing_peak[env_ids_t] = torch.tensor([0.0, 0.0, 0.0, 0.0], device=self.device)
+        self._phase_signal[env_ids_t] = self._phase_offset[env_ids_t].clone()
+        self._phase_signal[env_ids_t] = self._phase_signal[env_ids_t] % 1.0
 
         # Reset robot state
-        joint_pos = self._robot.data.default_joint_pos[env_ids]
-        joint_vel = self._robot.data.default_joint_vel[env_ids]
-        default_root_state = self._robot.data.default_root_state[env_ids]
-        default_root_state[:, :3] += self._terrain.env_origins[env_ids]
-        default_root_state[:, 3:7] = math_utils.random_yaw_orientation(env_ids.shape[0], device=self.device)
-        self._robot.write_root_pose_to_sim(default_root_state[:, :7], env_ids)
-        self._robot.write_root_velocity_to_sim(default_root_state[:, 7:], env_ids)
-        self._robot.write_joint_state_to_sim(joint_pos, joint_vel, None, env_ids)
-        
+        joint_pos = self._robot.data.default_joint_pos[env_ids_t]
+        joint_vel = self._robot.data.default_joint_vel[env_ids_t]
+        default_root_state = self._robot.data.default_root_state[env_ids_t]
+        default_root_state[:, :3] += self._terrain.env_origins[env_ids_t]
+        default_root_state[:, 3:7] = math_utils.random_yaw_orientation(int(env_ids_t.numel()), device=self.device)
+        self._robot.write_root_pose_to_sim(default_root_state[:, :7], env_ids_t)
+        self._robot.write_root_velocity_to_sim(default_root_state[:, 7:], env_ids_t)
+        self._robot.write_joint_state_to_sim(joint_pos, joint_vel, None, env_ids_t)
+
         # Logging
         extras = dict()
         for key in self._episode_sums.keys():
-            episodic_sum_avg = torch.mean(self._episode_sums[key][env_ids])
+            episodic_sum_avg = torch.mean(self._episode_sums[key][env_ids_t])
             extras["Episode_Reward/" + key] = episodic_sum_avg / self.max_episode_length_s
-            self._episode_sums[key][env_ids] = 0.0
+            self._episode_sums[key][env_ids_t] = 0.0
         self.extras["log"] = dict()
         self.extras["log"].update(extras)
         extras = dict()
-        extras["Episode_Termination/base_contact"] = torch.count_nonzero(self.reset_terminated[env_ids]).item()
-        extras["Episode_Termination/time_out"] = torch.count_nonzero(self.reset_time_outs[env_ids]).item()
-        
-        if(self._terrain.cfg.terrain_generator is not None and self._terrain.cfg.terrain_generator.curriculum == True):
+        extras["Episode_Termination/base_contact"] = torch.count_nonzero(self.reset_terminated[env_ids_t]).item()
+        extras["Episode_Termination/time_out"] = torch.count_nonzero(self.reset_time_outs[env_ids_t]).item()
+
+        if self._terrain.cfg.terrain_generator is not None and self._terrain.cfg.terrain_generator.curriculum:
             extras["Episode_Curriculum/terrain_levels"] = torch.mean(self._terrain.terrain_levels.float())
-        
+
         self.extras["log"].update(extras)
 
 
