@@ -13,6 +13,8 @@ policy_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs
 policy_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-09-24_15-40-49_newtripodtryfromgiulio/exported/policy.onnx"
 #freq 1 is bad
 policy_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-09-24_16-28-30_Originalfromgiulio_freq1/exported/policy.onnx"
+#freq 2 is bad
+policy_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-09-24_17-30-38_Originalfromgiulio_freq2/exported/policy.onnx"
 
 # ----------------------------------------------------------------------------------------------------------------
 if(robot == "aliengo"):
