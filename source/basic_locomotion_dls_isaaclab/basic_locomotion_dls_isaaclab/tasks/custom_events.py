@@ -177,3 +177,79 @@ def resample_command_velocity(
     env._commands[env_ids, 0] *= 0.5 
     env._commands[env_ids, 1] *= 0.25 
     env._commands[env_ids, 2] *= 0.3 
+
+
+def scale_joint_torque(
+    env: "ManagerBasedEnv",
+    env_ids: torch.Tensor | None,
+    asset_cfg: SceneEntityCfg,
+    scale: float = 1.0,
+):
+    """
+    Scale the applied effort (torque) for selected joints by a multiplicative factor.
+
+    Notes
+    - This does NOT modify stiffness or damping; it multiplies the final joint efforts.
+    - Implemented via runtime monkey-patching of actuator compute() to apply a per-joint scale tensor.
+    - Safe to call repeatedly; patching occurs only once per actuator instance.
+    - Use with mode="interval" to enable this scaling at scheduled times. Call again with scale=1.0 to reset.
+    """
+    # extract the used quantities (to enable type-hinting)
+    asset: Articulation = env.scene[asset_cfg.name]
+
+    # resolve environment ids
+    if env_ids is None:
+        env_ids = torch.arange(env.scene.num_envs, device=asset.device)
+
+    # resolve joint indices (list or slice)
+    if asset_cfg.joint_ids == slice(None):
+        joint_ids = slice(None)
+    else:
+        joint_ids = torch.tensor(asset_cfg.joint_ids, dtype=torch.int, device=asset.device)
+
+    # helper: ensure actuator has torque_scale tensor and patch compute once
+    def _ensure_patch_and_scale(actuator):
+        # Create per-joint, per-env torque scale map if missing
+        if not hasattr(actuator, "torque_scale"):
+            num_envs = env.scene.num_envs
+            num_joints = len(actuator.joint_indices)
+            actuator.torque_scale = torch.ones(
+                (num_envs, num_joints), dtype=torch.float, device=asset.device
+            )
+
+        # Monkey-patch compute once to apply scaling after base compute
+        if not hasattr(actuator, "_torque_scale_patched") or actuator._torque_scale_patched is False:
+            actuator._orig_compute_for_torque_scale = actuator.compute
+
+            def _compute_with_scale(*args, _self=actuator, **kwargs):
+                ca = _self._orig_compute_for_torque_scale(*args, **kwargs)
+                # Ensure torque_scale shape matches
+                if hasattr(_self, "torque_scale") and getattr(ca, "joint_efforts", None) is not None:
+                    # Multiply per-env and per-joint
+                    ca.joint_efforts = ca.joint_efforts * _self.torque_scale
+                return ca
+
+            actuator.compute = _compute_with_scale
+            actuator._torque_scale_patched = True
+
+    # Apply scale for the selected joints within each actuator group
+    for actuator in asset.actuators.values():
+        # map the selected joint_ids into this actuator's local joint set
+        if isinstance(joint_ids, slice):
+            actuator_joint_mask = [True] * len(actuator.joint_indices)
+        else:
+            selected_ids = set(int(x) for x in joint_ids.view(-1).tolist())
+            actuator_joint_mask = [int(jid) in selected_ids for jid in actuator.joint_indices]
+        if sum(actuator_joint_mask) == 0:
+            continue
+
+        _ensure_patch_and_scale(actuator)
+
+        # prepare indexing shapes
+        if env_ids != slice(None):
+            env_index = env_ids[:, None]
+        else:
+            env_index = slice(None)
+
+        # update the scale for the targeted joints and environments
+        actuator.torque_scale[env_index, actuator_joint_mask] = float(scale)
