@@ -87,7 +87,7 @@ class FlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         reward_scale=0.1,
     )
 
-    # Symmetry Related Stuff
+    # Symmetry Related Stuff - Actor Critic
     history_length = 5
     obs_space_names_actor = [
             "base_lin_vel:base",
@@ -100,6 +100,8 @@ class FlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
             "clock_data",
         ]*int(history_length)
     obs_space_names_critic = obs_space_names_actor
+    
+    # Symmetry Related Stuff -  Asymmetric Critic
     """obs_space_names_critic += ["position_gains", 
             "velocity_gains",
             "friction_static",
@@ -162,7 +164,7 @@ class RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         reward_scale=1.0,
     )
 
-    # Symmetry Related Stuff
+    # Symmetry Related Stuff - Actor Critic
     history_length = 5
     obs_space_names_actor = [
             "base_lin_vel:base",
@@ -174,6 +176,13 @@ class RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
             "actions",
             "clock_data",
         ]*int(history_length)
+
+    #obs_space_names_actor += ["heightmap:rows4xcols4"]
+    obs_space_names_actor += ["position_gains"]
+    obs_space_names_actor += ["velocity_gains"]
+
+
+    # Symmetry Related Stuff -  Asymmetric Critic
     obs_space_names_critic = obs_space_names_actor
     """obs_space_names_critic += ["position_gains", 
             "velocity_gains",
@@ -181,7 +190,6 @@ class RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
             "friction_dynamic",
             "armature"
         ]"""
-    #obs_space_names_actor += "heightmap:rows4xcols4"
 
     morphologycal_symmetries_cfg = MorphologycalSymmetriesCfg(
         obs_space_names_actor = obs_space_names_actor,

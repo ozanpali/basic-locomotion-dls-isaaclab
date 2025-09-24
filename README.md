@@ -111,6 +111,12 @@ python scripts/rsl_rl/play.py --task=Locomotion-Aliengo-Rough-Blind --num_envs=1
 ```
 
 
+- If you have speed problem in training, may be due to cylinder collision. Then add
+
+```bash
+--kit_args="--/physics/collisionApproximateCylinders=true"
+```
+
 ### Run Hyperparameter Search
 
 ```bash
