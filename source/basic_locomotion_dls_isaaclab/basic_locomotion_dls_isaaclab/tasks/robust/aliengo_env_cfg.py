@@ -345,7 +345,7 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     )
 
     # Desired gait
-    desired_gait = "crawl" #trot, crawl, pace, multigait
+    desired_gait = "trot" #trot, crawl, pace, multigait
 
     # Desired tracking variables
     desired_base_height = 0.35
