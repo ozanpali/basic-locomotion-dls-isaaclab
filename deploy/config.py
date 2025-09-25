@@ -27,6 +27,9 @@ policy_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs
 policy_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-09-24_14-17-14_FLAir10_alsoStdAirtime_slide_Stepfreq1.4/exported/policy.onnx"
 policy_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-09-24_14-42-46_Standart_freq1.4/exported/policy.onnx"
 
+policy_path = dir_path + "/../tested_policies/" + robot + "/8k_128_128_128_aliengo_stop_and_go_correct_offset" + "/exported/policy.onnx"
+#policy_path = dir_path + "/../tested_policies/" + robot + "/2025-09-07_19-13-16_go2_cuncurrent_se" + "/exported/policy.onnx"
+
 # ----------------------------------------------------------------------------------------------------------------
 if(robot == "aliengo"):
     Kp_walking = 25.
