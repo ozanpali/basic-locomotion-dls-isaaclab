@@ -741,14 +741,14 @@ class LocomotionEnv(DirectRLEnv):
             obs_rma = outputs_rma
 
         # Train at some interval
-        if num_episode_from_start % self.cfg.cuncurrent_state_est_ep_saving_interval == 0 and num_episode_from_start > self.cfg.rma_ep_saving_interval - 1:  # Adjust the interval as needed
+        if num_episode_from_start % self.cfg.rma_ep_saving_interval == 0 and num_episode_from_start > self.cfg.rma_ep_saving_interval - 1:  # Adjust the interval as needed
             self._rma_network.train_network(batch_size=self.cfg.rma_batch_size, 
                                             epochs=self.cfg.rma_train_epochs, 
                                             learning_rate=self.cfg.rma_lr, 
                                             device=self.device)
         if num_episode_from_start == num_final_episode_from_start - 10:
             # Save the network
-            self._cuncurrent_state_est_network.save_network("cuncurrent_state_estimator.pth", self.device)
+            self._rma_network.save_network("rma.pth", self.device)
         
         return obs_rma
 
