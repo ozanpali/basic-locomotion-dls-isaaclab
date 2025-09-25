@@ -84,13 +84,20 @@ class LocomotionEnv(DirectRLEnv):
             self._rma_network = SimpleNN(cfg.rma_observation_space, cfg.rma_output_space)
             self._rma_network.to(self.device)
             self._observation_history_rma = torch.zeros(self.num_envs, cfg.history_length, cfg.single_rma_observation_space, device=self.device)
+            if self.cfg.observation_noise_model:
+                self._observation_noise_model_rma: NoiseModel = self.cfg.observation_noise_model.class_type(
+                    self.cfg.observation_noise_model, num_envs=self.num_envs, device=self.device
+                )
 
         # Learned State Estimator
         if(cfg.use_cuncurrent_state_est == True):
             self._cuncurrent_state_est_network = SimpleNN(cfg.cuncurrent_state_est_observation_space, cfg.cuncurrent_state_est_output_space)
             self._cuncurrent_state_est_network.to(self.device)
             self._observation_history_cuncurrent_state_est = torch.zeros(self.num_envs, cfg.history_length, cfg.single_cuncurrent_state_est_observation_space, device=self.device)
-
+            if self.cfg.observation_noise_model:
+                self._observation_noise_model_cuncurrent_state_est: NoiseModel = self.cfg.observation_noise_model.class_type(
+                    self.cfg.observation_noise_model, num_envs=self.num_envs, device=self.device
+                )
 
         # Logging
         self._episode_sums = {
@@ -288,7 +295,7 @@ class LocomotionEnv(DirectRLEnv):
             )
             observations["amp"] = obs_amp
 
-        
+
         return observations
 
 
@@ -582,6 +589,15 @@ class LocomotionEnv(DirectRLEnv):
         self._phase_signal[env_ids] = self._phase_offset[env_ids].clone()# + self.step_dt * self._step_freq * torch.rand(env_ids.shape[0], 1, device=self.device)*10.
         self._phase_signal[env_ids] = self._phase_signal[env_ids]  % 1.0
 
+        # Reset noise
+        if(self.cfg.use_cuncurrent_state_est):
+            if self.cfg.observation_noise_model:
+                self._observation_noise_model_cuncurrent_state_est.reset(env_ids)
+        
+        if(self.cfg.use_rma):
+            if self.cfg.observation_noise_model:
+                self._observation_noise_model_rma.reset(env_ids)
+
         # Reset robot state
         joint_pos = self._robot.data.default_joint_pos[env_ids]
         joint_vel = self._robot.data.default_joint_vel[env_ids]
@@ -656,7 +672,7 @@ class LocomotionEnv(DirectRLEnv):
         # Add noise to the observation - this is usually done in direct_rl.py in IsaacLab, but 
         # the obs of cuncurrent SE does not pass from there - its prediciton yes instead!
         if self.cfg.observation_noise_model:          
-            obs_cuncurrent_state_est = self._observation_noise_model(obs_cuncurrent_state_est)   
+            obs_cuncurrent_state_est = self._observation_noise_model_cuncurrent_state_est(obs_cuncurrent_state_est)   
 
         # Saving data
         output_cuncurrent_state_est = self._robot.data.root_lin_vel_b
@@ -709,7 +725,7 @@ class LocomotionEnv(DirectRLEnv):
         # Add noise to the observation - this is usually done in direct_rl.py in IsaacLab, but 
         # the obs of cuncurrent SE does not pass from there - its prediciton yes instead!
         if self.cfg.observation_noise_model:          
-            obs = self._observation_noise_model(obs.clone())  
+            obs = self._observation_noise_model_rma(obs.clone())  
         
         outputs_rma = self._get_privileged_observation()
 
@@ -725,14 +741,14 @@ class LocomotionEnv(DirectRLEnv):
             obs_rma = outputs_rma
 
         # Train at some interval
-        if num_episode_from_start % self.cfg.cuncurrent_state_est_ep_saving_interval == 0 and num_episode_from_start > self.cfg.rma_ep_saving_interval - 1:  # Adjust the interval as needed
+        if num_episode_from_start % self.cfg.rma_ep_saving_interval == 0 and num_episode_from_start > self.cfg.rma_ep_saving_interval - 1:  # Adjust the interval as needed
             self._rma_network.train_network(batch_size=self.cfg.rma_batch_size, 
-                                            epochs=self.cfg.rma_rma_train_epochs, 
+                                            epochs=self.cfg.rma_train_epochs, 
                                             learning_rate=self.cfg.rma_lr, 
                                             device=self.device)
         if num_episode_from_start == num_final_episode_from_start - 10:
             # Save the network
-            self._cuncurrent_state_est_network.save_network("cuncurrent_state_estimator.pth", self.device)
+            self._rma_network.save_network("rma.pth", self.device)
         
         return obs_rma
 
@@ -773,8 +789,9 @@ class LocomotionEnv(DirectRLEnv):
                             hip_stiffness/default_stiffness, thigh_stiffness/default_stiffness, calf_stiffness/default_stiffness, #P gain
                             hip_damping/default_damping, thigh_damping/default_damping, calf_damping/default_damping, #D gain
                             #masses, inertias,
-                            hip_static_friction, thigh_static_friction, calf_static_friction,  
-                            hip_dynamic_friction, thigh_dynamic_friction, calf_dynamic_friction, 
-                            hip_armature, thigh_armature, calf_armature) 
+                            #hip_static_friction, thigh_static_friction, calf_static_friction,  
+                            #hip_dynamic_friction, thigh_dynamic_friction, calf_dynamic_friction, 
+                            #hip_armature, thigh_armature, calf_armature
+                            ) 
                         , dim=-1)
         return obs_privileged
