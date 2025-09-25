@@ -11,8 +11,16 @@ class CustomDataset(Dataset):
 
     def add_sample(self, input_data, label):
         # There is a problem! we append (num_envs, features) as one element inside the list, not N!
-        self.data.append(input_data.detach().cpu())
-        self.labels.append(label.detach().cpu())
+
+        # Save only random 128 element from the input_data and label
+        random_idx = random.sample(range(input_data.size(0)), min(128, input_data.size(0)))
+        input_data_cpu = input_data[random_idx].clone().detach().cpu()
+        label_cpu = label[random_idx].clone().detach().cpu()
+
+        #input_data_cpu = input_data.clone().detach().cpu()
+        #label_cpu = label.clone().detach().cpu()
+        self.data.append(input_data_cpu)
+        self.labels.append(label_cpu)
 
         # Check if the buffer exceeds the maximum size
         if self.max_size is not None and len(self.data) > self.max_size:
@@ -21,18 +29,50 @@ class CustomDataset(Dataset):
             del self.data[idx_to_remove]
             del self.labels[idx_to_remove]
 
-        """# Check if the buffer exceeds the maximum size
-        if self.max_size is not None and len(self.data) > self.max_size:
-            # Remove a random sample to maintain the buffer size
-            idx_to_remove = torch.randint(0, len(self.data), (1,), device=self.device).item()
-            del self.data[idx_to_remove]
-            del self.labels[idx_to_remove]"""
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
         return self.data[idx], self.labels[idx]
+
+"""
+class CustomDataset(Dataset):
+    def __init__(self, max_size=None):
+        self.data = None  # Will store as a single tensor
+        self.labels = None
+        self.max_size = max_size
+        self.current_size = 0
+
+    def add_sample(self, input_data, label):
+        input_cpu = input_data.detach().cpu()
+        label_cpu = label.detach().cpu()
+        
+        if self.data is None:
+            # Initialize tensors
+            self.data = input_cpu
+            self.labels = label_cpu
+        else:
+            # Concatenate new data
+            self.data = torch.cat([self.data, input_cpu], dim=0)
+            self.labels = torch.cat([self.labels, label_cpu], dim=0)
+        
+        self.current_size = self.data.size(0)
+        
+        # Handle max_size constraint
+        if self.max_size is not None and self.current_size > self.max_size:
+            # Keep random subset
+            indices = torch.randperm(self.current_size)[:self.max_size]
+            self.data = self.data[indices]
+            self.labels = self.labels[indices]
+            self.current_size = self.max_size
+
+    def __len__(self):
+        return self.current_size if self.data is not None else 0
+
+    def __getitem__(self, idx):
+        return self.data[idx], self.labels[idx]
+"""
 
 
 class SimpleNN(torch.nn.Module):
@@ -42,7 +82,7 @@ class SimpleNN(torch.nn.Module):
         self.fc2 = torch.nn.Linear(128, 64)
         self.fc3 = torch.nn.Linear(64, out_features)
 
-        self.dataset = CustomDataset(max_size=1000)
+        self.dataset = CustomDataset(max_size=10000)
 
 
     def forward(self, x):
