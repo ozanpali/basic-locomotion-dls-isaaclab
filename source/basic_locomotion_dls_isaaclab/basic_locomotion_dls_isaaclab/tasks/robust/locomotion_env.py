@@ -123,7 +123,7 @@ class LocomotionEnv(DirectRLEnv):
                 "feet_to_base_distance_l2",
                 "feet_to_hip_distance_l2",
                 "feet_vertical_surface_contacts",
-                "front_left_always_swing",
+                #front_left_always_swing",
             ]
         }
         # Get specific body indices
@@ -414,23 +414,32 @@ class LocomotionEnv(DirectRLEnv):
             torch.norm(self._commands[:, :2], dim=1) > 0.1
         )
 
+        # Different air time thresholds for different legs
+        # FL (index 0) and RR (index 3): 0.1
+        # FR (index 1) and RL (index 2): 0.7
+        #air_time_thresholds = torch.tensor([0.5, 0.5, 0.5, 0.5], device=self.device)  # FL, FR, RL, RR
+        #air_time_thresholds = air_time_thresholds.unsqueeze(0).expand(self.num_envs, -1)
+        
+        #feet_air_time = torch.sum((last_air_time - air_time_thresholds) * first_contact, dim=1) * (
+        #    torch.norm(self._commands[:, :2], dim=1) > 0.1
+        #)
 
 
         # feet slide
         contacts_foot = self._contact_sensor.data.net_forces_w_history[:, :, self._feet_ids, :].norm(dim=-1).max(dim=1)[0] > 1.0
         body_vel = self._robot.data.body_lin_vel_w[:, self._feet_ids_robot, :2]
-        #feet_slide = torch.sum(body_vel.norm(dim=-1) * contacts_foot, dim=1)
-        #feet_slide = torch.exp(-feet_slide / 0.1)
-
-        # Exclude Front-Left leg (index 0) from slide computation
-        body_speed = body_vel.norm(dim=-1)
-        feet_slide = torch.sum(body_speed[:, 1:] * contacts_foot[:, 1:], dim=1)
+        feet_slide = torch.sum(body_vel.norm(dim=-1) * contacts_foot, dim=1)
         feet_slide = torch.exp(-feet_slide / 0.1)
 
-        # Reward to encourage Front-Left leg to always be in swing (no contact)
+        # Exclude Front-Left leg (index 0) from slide computation
+        #body_speed = body_vel.norm(dim=-1)
+        #feet_slide = torch.sum(body_speed[:, 1:] * contacts_foot[:, 1:], dim=1)
+        #feet_slide = torch.exp(-feet_slide / 0.1)
+
+        """# Reward to encourage Front-Left leg to always be in swing (no contact)
         current_contacts_now = self._contact_sensor.data.net_forces_w[:, self._feet_ids, :].norm(dim=-1) > 1.0
         fl_in_contact = current_contacts_now[:, 0]
-        front_left_always_swing = (~fl_in_contact).float()
+        front_left_always_swing = (~fl_in_contact).float()"""
 
 
         # feet periodical contacts suggestion
@@ -458,6 +467,7 @@ class LocomotionEnv(DirectRLEnv):
         feet_height_clearance_mujoco_RL = torch.exp(-feet_z_target_error_mujoco[:,2]/ 0.01) * should_move * ~contact_periodic_on[:,2] #first_contact[:,2]
         feet_height_clearance_mujoco_RR = torch.exp(-feet_z_target_error_mujoco[:,3]/ 0.01) * should_move * ~contact_periodic_on[:,3] #first_contact[:,3]
         feet_height_clearance_mujoco = feet_height_clearance_mujoco_FL + feet_height_clearance_mujoco_FR + feet_height_clearance_mujoco_RL + feet_height_clearance_mujoco_RR
+        
         #self._swing_peak *= ~is_contact # reset if the foot is in contact
         self._swing_peak *= ~contact_periodic_on # reset if the foot is in contact periodic phase
 
@@ -532,7 +542,7 @@ class LocomotionEnv(DirectRLEnv):
             "feet_to_hip_distance_l2": feet_to_hip_distance * self.cfg.feet_to_hip_distance_reward_scale * self.step_dt,
             "feet_vertical_surface_contacts": feet_vertical_surface_contacts * self.cfg.feet_vertical_surface_contacts_reward_scale * self.step_dt,
             # Encourage Front-Left leg to stay off the ground (always swinging)
-            "front_left_always_swing": front_left_always_swing * getattr(self.cfg, "front_left_swing_reward_scale", 1.0) * self.step_dt,
+            #"front_left_always_swing": front_left_always_swing * getattr(self.cfg, "front_left_swing_reward_scale", 1.0) * self.step_dt,
             #"feet_air_time_FL_failure": feet_air_time_FL_failure * self.cfg.feet_air_time_reward_scale * self.step_dt,
         }
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
