@@ -59,27 +59,14 @@ class LocomotionPolicyWrapper:
         self.use_clock_signal = config.training_env["use_clock_signal"]
 
 
-        desired_gait = "trot"  # trot, crawl, pace
-        if(desired_gait == "trot"):
-            self.step_freq = 1.4
-            self.duty_factor = 0.65
-            self.phase_offset = np.array([0.0, 0.5, 0.5, 0.0])
-            self._velocity_gait_multiplier = 1.0
-        elif(desired_gait == "crawl"):
-            self.step_freq = 0.5
-            self.duty_factor = 0.8
-            self.phase_offset = np.array([0.0, 0.5, 0.75, 0.25])
-            self.velocity_gait_multiplier = 0.5
-        elif(desired_gait == "pace"):
-            self.step_freq = 1.4
-            self.duty_factor = 0.7
-            self.phase_offset = np.array([0.8, 0.3, 0.8, 0.3])
-            self.velocity_gait_multiplier = 1.0
+        self.step_freq = 1.4
+        self.duty_factor = 0.65
+        self.phase_offset = np.array([0.0, 0.5, 0.5, 0.0])
         self.phase_signal = self.phase_offset
 
         self.desired_clip_actions = config.training_env["desired_clip_actions"]
 
-        self.use_action_filter = True #TODO fix
+        self.use_filter_actions = config.training_env["use_filter_actions"]
 
 
         self.use_observation_history = config.training_env["use_observation_history"]
@@ -227,7 +214,7 @@ class LocomotionPolicyWrapper:
         
 
         # Action Filtering
-        if(self.use_action_filter):
+        if(self.use_filter_actions):
             alpha = 0.8
             past_rl_actions_temp = self.past_rl_actions.copy()
             self.past_rl_actions = rl_action_temp.copy()

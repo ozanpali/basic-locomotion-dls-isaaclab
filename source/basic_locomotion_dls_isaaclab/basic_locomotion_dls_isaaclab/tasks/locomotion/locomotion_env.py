@@ -54,24 +54,9 @@ class LocomotionEnv(DirectRLEnv):
         self._desired_hip_offset = torch.tensor([-self.cfg.desired_hip_offset, self.cfg.desired_hip_offset, -self.cfg.desired_hip_offset, self.cfg.desired_hip_offset], device=self.device)
         
         # Periodic gait
-        if(cfg.desired_gait == "trot"):
-            self._step_freq = 1.4
-            self._duty_factor = 0.65
-            self._phase_offset = torch.tensor([0.0, 0.5, 0.5, 0.0], device=self.device).repeat(self.num_envs,1)
-            self._velocity_gait_multiplier = 1.0
-        elif(cfg.desired_gait == "crawl"):
-            self._step_freq = 0.5
-            self._duty_factor = 0.8
-            self._phase_offset = torch.tensor([0.0, 0.5, 0.75, 0.25], device=self.device).repeat(self.num_envs,1)
-            self._velocity_gait_multiplier = 0.5
-        elif(cfg.desired_gait == "pace"):
-            self._step_freq = 1.4
-            self._duty_factor = 0.7
-            self._phase_offset = torch.tensor([0.8, 0.3, 0.8, 0.3], device=self.device).repeat(self.num_envs,1)
-            self._velocity_gait_multiplier = 1.0
-        elif(cfg.desired_gait == "multigait"):
-            #TODO: implement multigait
-            raise NotImplementedError("Multigait not implemented yet")
+        self._step_freq = 1.4
+        self._duty_factor = 0.65
+        self._phase_offset = torch.tensor([0.0, 0.5, 0.5, 0.0], device=self.device).repeat(self.num_envs,1)
         self._phase_signal = self._phase_offset.clone()# + self.step_dt * self._step_freq * torch.rand(self.num_envs, 1, device=self.device)*10.
         self._phase_signal = self._phase_signal % 1.0
 
