@@ -67,7 +67,8 @@ class Basic_Locomotion_DLS_Isaaclab_Node():
         # Subscribers and Publishers
         self.subscription_state = rospy.Subscriber("/rl/rl_signal_in", rl_signal_in, self.get_state_callback, tcp_nodelay=True, queue_size=1)
         self.publisher = rospy.Publisher('/rl/rl_signal_out', rl_signal_out, queue_size=1)
-        self.timer = rospy.Timer(rospy.Duration(1.0/config.RL_FREQ), self.compute_rl_control)
+        RL_FREQ = 1./(config.training_env["sim"]["dt"]*config.training_env["decimation"])  # Hz, frequency of the RL controller
+        self.timer = rospy.Timer(rospy.Duration(1.0/RL_FREQ), self.compute_rl_control)
 
         # Safety check to not do anything until a first base and blind state are received
         self.first_message_base_arrived = False
