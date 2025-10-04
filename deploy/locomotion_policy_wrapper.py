@@ -77,8 +77,6 @@ class LocomotionPolicyWrapper:
         self._observation_history = np.zeros((self.history_length, single_observation_space), dtype=np.float32)
 
         self.use_vision = config.use_vision
-        if(self.use_vision):
-            self.observation_space = 235
 
         # RMA
         if(config.training_env["use_rma"] == True):
