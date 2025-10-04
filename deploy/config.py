@@ -31,8 +31,8 @@ elif(robot == "hyqreal2"):
     Kp_walking = 175.
     Kd_walking = 20.
 
-    Kp_stand_up_and_down = 25.
-    Kd_stand_up_and_down = 2.
+    Kp_stand_up_and_down = 175.
+    Kd_stand_up_and_down = 20.
 else:
     raise ValueError(f"Robot {robot} not supported")
 
@@ -41,8 +41,8 @@ else:
 policy_folder_path = dir_path + "/../tested_policies/" + robot + "/8k_128_128_128_aliengo_stop_and_go_correct_offset"
 #policy_folder_path = dir_path + "/../tested_policies/" + robot + "/2025-09-07_19-13-16_go2_cuncurrent_se"
 
-cuncurrent_state_est_network_path = policy_folder_path + "/exported/cuncurrent_state_estimator.pth"
-rma_network_path = policy_folder_path + "/exported/rma.pth"
+cuncurrent_state_est_network = policy_folder_path + "/exported/cuncurrent_state_estimator.pth"
+rma_network = policy_folder_path + "/exported/rma.pth"
 
 # Load specific training parameters
 import yaml 

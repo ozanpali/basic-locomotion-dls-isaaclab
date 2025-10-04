@@ -85,7 +85,7 @@ class LocomotionPolicyWrapper:
 
         # Learned State Estimator
         if(config.training_env["use_cuncurrent_state_est"] == True):
-            self._cuncurrent_state_est_network = load_network(config.cuncurrent_state_est_network_path, device='cpu')
+            self._cuncurrent_state_est_network = load_network(config.cuncurrent_state_est_network, device='cpu')
             self._observation_history_cuncurrent_state_est = np.zeros((self.history_length, single_observation_space), dtype=np.float32)
 
 
