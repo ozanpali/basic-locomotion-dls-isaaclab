@@ -30,7 +30,7 @@ from supervised_learning_networks import load_network
 class LocomotionPolicyWrapper:
     def __init__(self, env):
 
-        self.policy = ort.InferenceSession(config.policy_path)
+        self.policy = ort.InferenceSession(config.policy_folder_path + "/exported/policy.onnx")
         self.Kp_walking = config.Kp_walking
         self.Kd_walking = config.Kd_walking
         self.Kp_stand_up_and_down = config.Kp_stand_up_and_down
@@ -57,8 +57,7 @@ class LocomotionPolicyWrapper:
         self.observation_space = config.observation_space
 
         self.use_clock_signal = config.use_clock_signal
-        if(self.use_clock_signal):
-            self.observation_space += 4
+
 
         desired_gait = "trot"  # trot, crawl, pace
         if(desired_gait == "trot"):
