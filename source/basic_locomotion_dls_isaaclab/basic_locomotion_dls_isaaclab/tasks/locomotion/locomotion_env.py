@@ -54,9 +54,9 @@ class LocomotionEnv(DirectRLEnv):
         self._desired_hip_offset = torch.tensor([-self.cfg.desired_hip_offset, self.cfg.desired_hip_offset, -self.cfg.desired_hip_offset, self.cfg.desired_hip_offset], device=self.device)
         
         # Periodic gait
-        self._step_freq = 1.4
-        self._duty_factor = 0.65
-        self._phase_offset = torch.tensor([0.0, 0.5, 0.5, 0.0], device=self.device).repeat(self.num_envs,1)
+        self._step_freq = torch.tensor(self.cfg.desired_step_freq, device=self.device)
+        self._duty_factor = torch.tensor(self.cfg.desired_duty_factor, device=self.device)
+        self._phase_offset = torch.tensor(self.cfg.desired_phase_offset, device=self.device).repeat(self.num_envs,1)
         self._phase_signal = self._phase_offset.clone()# + self.step_dt * self._step_freq * torch.rand(self.num_envs, 1, device=self.device)*10.
         self._phase_signal = self._phase_signal % 1.0
 
