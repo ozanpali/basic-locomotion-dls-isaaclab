@@ -158,7 +158,7 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
 
     use_imu = False
 
-    use_cuncurrent_state_est = True
+    use_cuncurrent_state_est = False
     if(use_cuncurrent_state_est):
         cuncurrent_state_est_output_space = 3 #lin_vel_b
         single_cuncurrent_state_est_observation_space = single_observation_space
@@ -168,7 +168,7 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
         cuncurrent_state_est_lr = 1e-3
         cuncurrent_state_est_ep_saving_interval = 1000
 
-    use_rma = True
+    use_rma = False
     if(use_rma):
         rma_output_space = 12 # P gain
         rma_output_space += 12 # D gain 
