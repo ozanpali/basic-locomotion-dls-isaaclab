@@ -563,7 +563,7 @@ class LocomotionEnv(DirectRLEnv):
         
         # Sample new commands
         self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-1.0, 1.0)
-        self._commands[env_ids, 0] *= 0.5 * self._velocity_gait_multiplier
+        self._commands[env_ids, 0] *= 0.5
         self._commands[env_ids, 1] *= 0.25 
         self._commands[env_ids, 2] *= 0.3 
 
@@ -615,7 +615,7 @@ class LocomotionEnv(DirectRLEnv):
     def _get_new_random_commands(self):
         resample_time = self.episode_length_buf == self.max_episode_length - 200
         commands_resample = torch.zeros_like(self._commands).uniform_(-1.0, 1.0)
-        commands_resample[:, 0] *= 0.5 * self._velocity_gait_multiplier
+        commands_resample[:, 0] *= 0.5
         commands_resample[:, 1] *= 0.25 
         commands_resample[:, 2] *= 0.3 
         self._commands[:, :3] = self._commands[:, :3] * ~resample_time.unsqueeze(1).expand(-1, 3) + commands_resample * resample_time.unsqueeze(1).expand(-1, 3)
