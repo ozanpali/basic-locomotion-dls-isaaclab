@@ -72,7 +72,8 @@ class Basic_Locomotion_DLS_Isaaclab_Node(Node):
         self.subscription_imu = self.create_subscription(ImuMsg,"/dls2/imu", self.get_imu_callback, 1)
         self.subscription_joy = self.create_subscription(Joy,"joy", self.get_joy_callback, 1)
         self.publisher_trajectory_generator = self.create_publisher(TrajectoryGeneratorMsg,"dls2/trajectory_generator", 1)
-        self.timer = self.create_timer(1.0/config.RL_FREQ, self.compute_rl_control)
+        RL_FREQ = 1./(config.training_env["sim"]["dt"]*config.training_env["decimation"])  # Hz, frequency of the RL controller
+        self.timer = self.create_timer(RL_FREQ, self.compute_rl_control)
 
 
         # Safety check to not do anything until a first base and blind state are received
@@ -190,7 +191,7 @@ class Basic_Locomotion_DLS_Isaaclab_Node(Node):
 
         # Safety check to not do anything until a first base and blind state are received
         if(not USE_MUJOCO_SIMULATION):
-            if(config.use_imu or config.use_cuncurrent_state_est):
+            if(config.training_env["use_imu"] or config.training_env["use_cuncurrent_state_est"]):
                 if(self.first_message_imu_arrived==False or self.first_message_joints_arrived==False):
                     return
             else:
@@ -203,7 +204,7 @@ class Basic_Locomotion_DLS_Isaaclab_Node(Node):
             self.env.mjData.qpos[0:3] = copy.deepcopy(self.position)
             self.env.mjData.qvel[0:3] = copy.deepcopy(self.linear_velocity)
 
-            if(config.use_imu or config.use_cuncurrent_state_est):
+            if(config.training_env["use_imu"] or config.training_env["use_cuncurrent_state_est"]):
                 self.env.mjData.qpos[3:7] = copy.deepcopy(self.imu_orientation)
                 self.env.mjData.qvel[3:6] = copy.deepcopy(self.imu_angular_velocity)
             else:

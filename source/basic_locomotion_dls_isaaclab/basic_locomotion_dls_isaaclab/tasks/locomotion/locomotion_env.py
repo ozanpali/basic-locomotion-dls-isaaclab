@@ -49,29 +49,15 @@ class LocomotionEnv(DirectRLEnv):
 
         # Swing peak
         self._swing_peak = torch.tensor([0.0, 0.0, 0.0, 0.0], device=self.device).repeat(self.num_envs,1)
+        self._swing_peak_periodic = torch.tensor([0.0, 0.0, 0.0, 0.0], device=self.device).repeat(self.num_envs,1)
         
         # Desired Hip Offset
         self._desired_hip_offset = torch.tensor([-self.cfg.desired_hip_offset, self.cfg.desired_hip_offset, -self.cfg.desired_hip_offset, self.cfg.desired_hip_offset], device=self.device)
         
         # Periodic gait
-        if(cfg.desired_gait == "trot"):
-            self._step_freq = 1.4
-            self._duty_factor = 0.65
-            self._phase_offset = torch.tensor([0.0, 0.5, 0.5, 0.0], device=self.device).repeat(self.num_envs,1)
-            self._velocity_gait_multiplier = 1.0
-        elif(cfg.desired_gait == "crawl"):
-            self._step_freq = 0.5
-            self._duty_factor = 0.8
-            self._phase_offset = torch.tensor([0.0, 0.5, 0.75, 0.25], device=self.device).repeat(self.num_envs,1)
-            self._velocity_gait_multiplier = 0.5
-        elif(cfg.desired_gait == "pace"):
-            self._step_freq = 1.4
-            self._duty_factor = 0.7
-            self._phase_offset = torch.tensor([0.8, 0.3, 0.8, 0.3], device=self.device).repeat(self.num_envs,1)
-            self._velocity_gait_multiplier = 1.0
-        elif(cfg.desired_gait == "multigait"):
-            #TODO: implement multigait
-            raise NotImplementedError("Multigait not implemented yet")
+        self._step_freq = torch.tensor(self.cfg.desired_step_freq, device=self.device)
+        self._duty_factor = torch.tensor(self.cfg.desired_duty_factor, device=self.device)
+        self._phase_offset = torch.tensor(self.cfg.desired_phase_offset, device=self.device).repeat(self.num_envs,1)
         self._phase_signal = self._phase_offset.clone()# + self.step_dt * self._step_freq * torch.rand(self.num_envs, 1, device=self.device)*10.
         self._phase_signal = self._phase_signal % 1.0
 
@@ -122,7 +108,9 @@ class LocomotionEnv(DirectRLEnv):
                 "joints_energy_l1",
                 
                 "feet_air_time",
+                "feet_height_clearance_periodic",
                 "feet_height_clearance",
+                "feet_height_clearance_mujoco_periodic",
                 "feet_height_clearance_mujoco",
                 "feet_slide",
                 "feet_contact_suggestion",
@@ -433,33 +421,33 @@ class LocomotionEnv(DirectRLEnv):
         first_contact = self._contact_sensor.compute_first_contact(self.step_dt)[:, self._feet_ids]
         net_contact_forces = self._contact_sensor.data.net_forces_w_history
         is_contact = (torch.max(torch.norm(net_contact_forces[:, :, self._feet_ids], dim=-1), dim=1)[0] > 1.0)
+        target_height = self.cfg.desired_feet_height + torch.cat((mean_height_ray_front.unsqueeze(1).expand(-1, 2), mean_height_ray_back.unsqueeze(1).expand(-1, 2)), dim=1)
+
+        self._swing_peak *= ~is_contact # reset if the foot is in contact
         self._swing_peak = torch.max(self._swing_peak, self._robot.data.body_pos_w[:, self._feet_ids_robot, 2].clone()) 
-        #target_height = self.cfg.desired_feet_height + mean_height_ray.unsqueeze(1).expand(-1, 4)
-        #feet_height_clearance_mujoco = torch.sum(torch.square(self._swing_peak / target_height - 1.0) *  first_contact, dim=-1)
-        feet_z_target_error_mujoco = self.cfg.desired_feet_height + torch.cat((mean_height_ray_front.unsqueeze(1).expand(-1, 2), mean_height_ray_back.unsqueeze(1).expand(-1, 2)), dim=1) - self._swing_peak
-        feet_z_target_error_mujoco = torch.clamp(feet_z_target_error_mujoco, min=.0, max=self.cfg.desired_feet_height)
-        feet_height_clearance_mujoco_FL = torch.exp(-feet_z_target_error_mujoco[:,0]/ 0.01) * should_move * ~contact_periodic_on[:,0] #first_contact[:,0]
-        feet_height_clearance_mujoco_FR = torch.exp(-feet_z_target_error_mujoco[:,1]/ 0.01) * should_move * ~contact_periodic_on[:,1] #first_contact[:,1]
-        feet_height_clearance_mujoco_RL = torch.exp(-feet_z_target_error_mujoco[:,2]/ 0.01) * should_move * ~contact_periodic_on[:,2] #first_contact[:,2]
-        feet_height_clearance_mujoco_RR = torch.exp(-feet_z_target_error_mujoco[:,3]/ 0.01) * should_move * ~contact_periodic_on[:,3] #first_contact[:,3]
-        feet_height_clearance_mujoco = feet_height_clearance_mujoco_FL + feet_height_clearance_mujoco_FR + feet_height_clearance_mujoco_RL + feet_height_clearance_mujoco_RR
-        #self._swing_peak *= ~is_contact # reset if the foot is in contact
-        self._swing_peak *= ~contact_periodic_on # reset if the foot is in contact periodic phase
+        feet_height_clearance_mujoco = torch.sum(torch.square(self._swing_peak / target_height - 1.0) *  first_contact, dim=-1)
+
+        # feet height clearance mujoco periodic
+        self._swing_peak_periodic *= ~contact_periodic_on # reset if the foot is in contact periodic phase
+        self._swing_peak_periodic = torch.max(self._swing_peak_periodic, self._robot.data.body_pos_w[:, self._feet_ids_robot, 2].clone())
+        feet_height_clearance_mujoco_periodic = torch.sum(torch.square(self._swing_peak_periodic / target_height - 1.0) *  first_contact, dim=-1) 
+        
+
 
         # feet height clearance periodic
         feet_z_target_error = self.cfg.desired_feet_height + torch.cat((mean_height_ray_front.unsqueeze(1).expand(-1, 2), mean_height_ray_back.unsqueeze(1).expand(-1, 2)), dim=1) - self._robot.data.body_pos_w[:, self._feet_ids_robot, 2]
-        #feet_z_target_error = self.cfg.desired_feet_height + torch.cat((mean_height_ray_front.unsqueeze(1).expand(-1, 2), mean_height_ray_back.unsqueeze(1).expand(-1, 2)), dim=1) - self._swing_peak
         feet_z_target_error = torch.clamp(feet_z_target_error, min=.0, max=self.cfg.desired_feet_height)
  
-        feet_height_clearance_FL = torch.exp(-feet_z_target_error[:,0]/ 0.01) * should_move * ~contact_periodic_on[:,0]
-        feet_height_clearance_FR = torch.exp(-feet_z_target_error[:,1]/ 0.01) * should_move * ~contact_periodic_on[:,1]
-        feet_height_clearance_RL = torch.exp(-feet_z_target_error[:,2]/ 0.01) * should_move * ~contact_periodic_on[:,2]
-        feet_height_clearance_RR = torch.exp(-feet_z_target_error[:,3]/ 0.01) * should_move * ~contact_periodic_on[:,3]
-        feet_height_clearance = feet_height_clearance_FL + feet_height_clearance_FR + feet_height_clearance_RL + feet_height_clearance_RR
+        feet_height_clearance_periodic_FL = torch.exp(-feet_z_target_error[:,0]/ 0.01) * should_move * ~contact_periodic_on[:,0]
+        feet_height_clearance_periodic_FR = torch.exp(-feet_z_target_error[:,1]/ 0.01) * should_move * ~contact_periodic_on[:,1]
+        feet_height_clearance_periodic_RL = torch.exp(-feet_z_target_error[:,2]/ 0.01) * should_move * ~contact_periodic_on[:,2]
+        feet_height_clearance_periodic_RR = torch.exp(-feet_z_target_error[:,3]/ 0.01) * should_move * ~contact_periodic_on[:,3]
+        feet_height_clearance_periodic = feet_height_clearance_periodic_FL + feet_height_clearance_periodic_FR
+        feet_height_clearance_periodic += feet_height_clearance_periodic_RL + feet_height_clearance_periodic_RR
 
         # feet height clearance standard
-        #foot_velocity_tanh = torch.tanh(2.0 * torch.norm(self._robot.data.body_lin_vel_w[:, self._feet_ids_robot, :2], dim=2))
-        #feet_height_clearance = torch.exp(-torch.sum(feet_z_target_error * foot_velocity_tanh, dim=1)/ 0.01) * should_move
+        foot_velocity_tanh = torch.tanh(2.0 * torch.norm(self._robot.data.body_lin_vel_w[:, self._feet_ids_robot, :2], dim=2))
+        feet_height_clearance = torch.exp(-torch.sum(feet_z_target_error * foot_velocity_tanh, dim=1)/ 0.01) * should_move
 
 
         # feet to com distance
@@ -509,8 +497,12 @@ class LocomotionEnv(DirectRLEnv):
             "joints_energy_l1": joints_energy * self.cfg.joints_energy_reward_scale * self.step_dt,
 
             "feet_air_time": feet_air_time * self.cfg.feet_air_time_reward_scale * self.step_dt,
+            
             "feet_height_clearance": feet_height_clearance * self.cfg.feet_height_clearance_reward_scale * self.step_dt,
+            "feet_height_clearance_periodic": feet_height_clearance_periodic * self.cfg.feet_height_clearance_periodic_reward_scale * self.step_dt,
             "feet_height_clearance_mujoco": feet_height_clearance_mujoco * self.cfg.feet_height_clearance_mujoco_reward_scale * self.step_dt,
+            "feet_height_clearance_mujoco_periodic": feet_height_clearance_mujoco_periodic * self.cfg.feet_height_clearance_mujoco_periodic_reward_scale * self.step_dt,
+            
             "feet_slide": feet_slide * self.cfg.feet_slide_reward_scale * self.step_dt,
             "feet_contact_suggestion": feet_contact_suggestion * self.cfg.feet_contact_suggestion_reward_scale * self.step_dt,
             "feet_to_base_distance_l2": feet_to_base_distance * self.cfg.feet_to_base_distance_reward_scale * self.step_dt,
@@ -578,12 +570,13 @@ class LocomotionEnv(DirectRLEnv):
         
         # Sample new commands
         self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-1.0, 1.0)
-        self._commands[env_ids, 0] *= 0.5 * self._velocity_gait_multiplier
+        self._commands[env_ids, 0] *= 0.5
         self._commands[env_ids, 1] *= 0.25 
         self._commands[env_ids, 2] *= 0.3 
 
         # Reset swing peak
         self._swing_peak[env_ids] = torch.tensor([0.0, 0.0, 0.0, 0.0], device=self.device)
+        self._swing_peak_periodic[env_ids] = torch.tensor([0.0, 0.0, 0.0, 0.0], device=self.device)
         
         # Reset contact periodic
         self._phase_signal[env_ids] = self._phase_offset[env_ids].clone()# + self.step_dt * self._step_freq * torch.rand(env_ids.shape[0], 1, device=self.device)*10.
@@ -628,16 +621,29 @@ class LocomotionEnv(DirectRLEnv):
 
 
     def _get_new_random_commands(self):
+        
+        # Change direction while moving
         resample_time = self.episode_length_buf == self.max_episode_length - 200
         commands_resample = torch.zeros_like(self._commands).uniform_(-1.0, 1.0)
-        commands_resample[:, 0] *= 0.5 * self._velocity_gait_multiplier
+        commands_resample[:, 0] *= 0.5
         commands_resample[:, 1] *= 0.25 
         commands_resample[:, 2] *= 0.3 
         self._commands[:, :3] = self._commands[:, :3] * ~resample_time.unsqueeze(1).expand(-1, 3) + commands_resample * resample_time.unsqueeze(1).expand(-1, 3)
 
         # Stop
-        rest_time = self.episode_length_buf >= self.max_episode_length - 50
-        self._commands[:, :3] *= ~rest_time.unsqueeze(1).expand(-1, 3)        
+        rest_time = torch.logical_and(
+            self.episode_length_buf >= self.max_episode_length - 100,
+            self.episode_length_buf < self.max_episode_length - 50
+        )
+        self._commands[:, :3] *= ~rest_time.unsqueeze(1).expand(-1, 3)
+
+        # Move again
+        resample_time_2 = self.episode_length_buf == self.max_episode_length - 50
+        commands_resample_2 = torch.zeros_like(self._commands).uniform_(-1.0, 1.0)
+        commands_resample_2[:, 0] *= 0.5
+        commands_resample_2[:, 1] *= 0.25 
+        commands_resample_2[:, 2] *= 0.3 
+        self._commands[:, :3] = self._commands[:, :3] * ~resample_time_2.unsqueeze(1).expand(-1, 3) + commands_resample_2 * resample_time_2.unsqueeze(1).expand(-1, 3)        
 
         # Took some envs, and put to zero the vel
         if self.num_envs > 100:
@@ -785,9 +791,39 @@ class LocomotionEnv(DirectRLEnv):
         default_damping = asset.data.default_joint_damping[0][0]
 
 
+        # height error
+        height_data_scanner = self._height_scanner.data.ray_hits_w[..., 2]
+        height_data_scanner = torch.nan_to_num(height_data_scanner, nan=0.0, posinf=1.0, neginf=-1.0)
+        height_data_scanner = torch.clip(height_data_scanner, min=-5, max=5) # Handle inf values
+        mean_height_ray = torch.mean(height_data_scanner, dim=1)
+        height_error = torch.abs(self.cfg.desired_base_height + mean_height_ray - self._robot.data.root_state_w[:, 2])
+
+
+        # terrain orientation
+        height_map_resolution = self._height_scanner.cfg.pattern_cfg.resolution
+        height_map_x_points = int(round(self._height_scanner.cfg.pattern_cfg.size[0] / height_map_resolution)) + 1
+        height_map_y_points = int(round(self._height_scanner.cfg.pattern_cfg.size[1] / height_map_resolution))
+        distance_between_front_and_back = (height_map_x_points/2)* height_map_resolution
+
+        cols_back = torch.arange(0, height_data_scanner.shape[1], height_map_x_points).unsqueeze(1) + torch.arange(int(height_map_x_points/2))
+        cols_back = cols_back.flatten().to(height_data_scanner.device)
+        selected_height_data_back = height_data_scanner[:, cols_back]
+
+        cols_front = torch.arange(int(height_map_x_points/2), height_data_scanner.shape[1], height_map_x_points).unsqueeze(1) + torch.arange(int(height_map_x_points/2))
+        cols_front = cols_front.flatten().to(height_data_scanner.device)
+        selected_height_data_front = height_data_scanner[:, cols_front]
+
+        mean_height_ray_front = torch.mean(selected_height_data_front, dim=1)
+        mean_height_ray_back = torch.mean(selected_height_data_back, dim=1)
+        delta_z = mean_height_ray_front - mean_height_ray_back
+        delta_s = torch.tensor(distance_between_front_and_back).to(self.device)
+        terrain_pitch = -torch.atan2(delta_z, delta_s)
+
         obs_privileged = torch.cat(( 
-                            hip_stiffness/default_stiffness, thigh_stiffness/default_stiffness, calf_stiffness/default_stiffness, #P gain
-                            hip_damping/default_damping, thigh_damping/default_damping, calf_damping/default_damping, #D gain
+                            #hip_stiffness/default_stiffness, thigh_stiffness/default_stiffness, calf_stiffness/default_stiffness, #P gain
+                            #hip_damping/default_damping, thigh_damping/default_damping, calf_damping/default_damping, #D gain
+                            height_error.unsqueeze(1),
+                            terrain_pitch.unsqueeze(1),
                             #masses, inertias,
                             #hip_static_friction, thigh_static_friction, calf_static_friction,  
                             #hip_dynamic_friction, thigh_dynamic_friction, calf_dynamic_friction, 

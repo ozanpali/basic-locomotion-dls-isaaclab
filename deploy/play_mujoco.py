@@ -51,9 +51,9 @@ if __name__ == '__main__':
     locomotion_policy = LocomotionPolicyWrapper(env=env)
 
     if(locomotion_policy.use_vision):
-        resolution_heightmap = config.resolution_heightmap
-        num_rows_heightmap = round(config.size_x_heightmap/resolution_heightmap) + 1
-        num_cols_heightmap = round(config.size_y_heightmap/resolution_heightmap) + 1
+        resolution_heightmap = config.training_env["height_scanner"]["pattern_cfg"]["resolution"]
+        num_rows_heightmap = round(config.training_env["height_scanner"]["pattern_cfg"]["size"][0]/resolution_heightmap) + 1
+        num_cols_heightmap = round(config.training_env["height_scanner"]["pattern_cfg"]["size"][1]/resolution_heightmap) + 1
         heightmap = HeightMap(num_rows=num_rows_heightmap, num_cols=num_cols_heightmap, dist_x=resolution_heightmap, dist_y=resolution_heightmap, mj_model=env.mjModel, mj_data=env.mjData)     
     
 
@@ -72,8 +72,8 @@ if __name__ == '__main__':
         heading_orientation_SO3 = env.heading_orientation_SO3
         base_quat_wxyz = qpos[3:7]
         base_pos = env.base_pos
-        
-        if(config.use_imu or config.use_cuncurrent_state_est):
+
+        if(config.training_env["use_imu"] or config.training_env["use_cuncurrent_state_est"]):
             imu_linear_acceleration = env.mjData.sensordata[0:3]
             imu_angular_velocity = env.mjData.sensordata[3:6]
             imu_orientation = env.mjData.sensordata[9:13]
