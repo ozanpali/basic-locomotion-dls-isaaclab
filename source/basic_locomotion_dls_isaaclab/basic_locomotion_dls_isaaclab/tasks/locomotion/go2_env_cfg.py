@@ -168,7 +168,7 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
         cuncurrent_state_est_lr = 1e-3
         cuncurrent_state_est_ep_saving_interval = 1000
 
-    use_rma = True
+    use_rma = False
     if(use_rma):
         rma_output_space = 12 # P gain
         rma_output_space += 12 # D gain 
@@ -188,18 +188,19 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
 
     
     # asymmetric ppo
-    use_asymmetric_ppo = False
+    use_asymmetric_ppo = True
     if(use_asymmetric_ppo):
         state_space = observation_space
-        state_space += 12 # P gain
-        state_space += 12 # D gain
+        #state_space += 12 # P gain
+        #state_space += 12 # D gain
         #state_space += 1*17 # mass*num_bodies
         #state_space += 1*17 # inertia*num_bodies
         #state_space += 1 # wrench
-        state_space += 12 # friction static
-        state_space += 12 # friction dynamic
-        state_space += 12 # armature
+        #state_space += 12 # friction static
+        #state_space += 12 # friction dynamic
+        #state_space += 12 # armature
         #state_space += 1 # restitution
+        state_space += 2 #base pitch and height
 
     use_amp = False
 
@@ -280,15 +281,17 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
         prim_path="/World/envs/env_.*/Robot/.*", history_length=3, update_period=0.005, track_air_time=True
     )
 
-    # Desired gait
-    desired_gait = "trot" #crawl, pace, multigait
-
     # Desired tracking variables
     desired_base_height = 0.30
     desired_feet_height = 0.05
 
     # Desired clip actions
     desired_clip_actions = 3.0
+
+    # Desired step freq and duty factor (if periodic gait is used)
+    desired_step_freq = 1.4
+    desired_duty_factor = 0.65
+    desired_phase_offset = [0.0, 0.5, 0.5, 0.0] #FL, FR, RL, RR
     
     # Tracking reward scale
     lin_vel_reward_scale = 2.0
@@ -314,8 +317,13 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
 
     # Feet reward scale
     feet_air_time_reward_scale = 0.5 * 0.0 * (1-use_amp)
-    feet_height_clearance_reward_scale = 0.25 * (1-use_amp)# * 0.0  
-    feet_height_clearance_mujoco_reward_scale = 0.25 * 0.0 * (1-use_amp)
+    
+    feet_height_clearance_reward_scale = 0.25 * (1-use_amp) * 0.0  
+    feet_height_clearance_periodic_reward_scale = 0.25 * (1-use_amp)
+    
+    feet_height_clearance_mujoco_reward_scale = 0.25 * (1-use_amp) * 0.0
+    feet_height_clearance_mujoco_periodic_reward_scale = 0.25 * (1-use_amp) * 0.0
+    
     feet_slide_reward_scale = -0.25 * 0.0 * (1-use_amp)
     feet_contact_suggestion_reward_scale =  0.25 * (1-use_amp)
     feet_to_base_distance_reward_scale = 0.25 * 0.0 * (1-use_amp)

@@ -30,17 +30,17 @@ from supervised_learning_networks import load_network
 class LocomotionPolicyWrapper:
     def __init__(self, env):
 
-        self.policy = ort.InferenceSession(config.policy_path)
+        self.policy = ort.InferenceSession(config.policy_folder_path + "/exported/policy.onnx")
         self.Kp_walking = config.Kp_walking
         self.Kd_walking = config.Kd_walking
         self.Kp_stand_up_and_down = config.Kp_stand_up_and_down
         self.Kd_stand_up_and_down = config.Kd_stand_up_and_down
 
-        self.RL_FREQ = config.RL_FREQ
+        self.RL_FREQ = 1./(config.training_env["sim"]["dt"]*config.training_env["decimation"])  # Hz, frequency of the RL controller
 
 
         # RL controller initialization -------------------------------------------------------------
-        self.action_scale = config.action_scale
+        self.action_scale = config.training_env["action_scale"]
         self.rl_actions = LegsAttr(*[np.zeros((1, int(env.mjModel.nu/4))) for _ in range(4)])
         self.past_rl_actions = np.zeros(env.mjModel.nu)
         
@@ -54,54 +54,38 @@ class LocomotionPolicyWrapper:
         self.default_joint_pos.RR = standUp_qpos[16:19]
 
         # Observation space initialization -------------------------------------------------------
-        self.observation_space = config.observation_space
+        self.observation_space = config.training_env["single_observation_space"]
 
-        self.use_clock_signal = config.use_clock_signal
-        if(self.use_clock_signal):
-            self.observation_space += 4
+        self.use_clock_signal = config.training_env["use_clock_signal"]
 
-        desired_gait = "trot"  # trot, crawl, pace
-        if(desired_gait == "trot"):
-            self.step_freq = 1.4
-            self.duty_factor = 0.65
-            self.phase_offset = np.array([0.0, 0.5, 0.5, 0.0])
-            self._velocity_gait_multiplier = 1.0
-        elif(desired_gait == "crawl"):
-            self.step_freq = 0.5
-            self.duty_factor = 0.8
-            self.phase_offset = np.array([0.0, 0.5, 0.75, 0.25])
-            self.velocity_gait_multiplier = 0.5
-        elif(desired_gait == "pace"):
-            self.step_freq = 1.4
-            self.duty_factor = 0.7
-            self.phase_offset = np.array([0.8, 0.3, 0.8, 0.3])
-            self.velocity_gait_multiplier = 1.0
+
+        self.step_freq = 1.4
+        self.duty_factor = 0.65
+        self.phase_offset = np.array([0.0, 0.5, 0.5, 0.0])
         self.phase_signal = self.phase_offset
 
-        self.desired_clip_actions = config.clip_actions
+        self.desired_clip_actions = config.training_env["desired_clip_actions"]
 
-        self.use_action_filter = config.use_clip_actions
+        self.use_filter_actions = config.training_env["use_filter_actions"]
 
 
-        self.use_observation_history = config.use_observation_history
-        self.history_length = config.history_length
+        self.use_observation_history = config.training_env["use_observation_history"]
+        self.history_length = config.training_env["history_length"]
         if(self.use_observation_history):
             self.observation_space = self.observation_space * self.history_length
         single_observation_space = int(self.observation_space/self.history_length)
         self._observation_history = np.zeros((self.history_length, single_observation_space), dtype=np.float32)
 
         self.use_vision = config.use_vision
-        if(self.use_vision):
-            self.observation_space = 235
 
         # RMA
-        if(config.use_rma == True):
+        if(config.training_env["use_rma"] == True):
             self._rma_network = load_network(config.rma_network_path, device='cpu')
             self._observation_history_rma = np.zeros((self.history_length, single_observation_space), dtype=np.float32)
 
         # Learned State Estimator
-        if(config.use_cuncurrent_state_est == True):
-            self._cuncurrent_state_est_network = load_network(config.cuncurrent_state_est_network_path, device='cpu')
+        if(config.training_env["use_cuncurrent_state_est"] == True):
+            self._cuncurrent_state_est_network = load_network(config.cuncurrent_state_est_network, device='cpu')
             self._observation_history_cuncurrent_state_est = np.zeros((self.history_length, single_observation_space), dtype=np.float32)
 
 
@@ -145,7 +129,7 @@ class LocomotionPolicyWrapper:
             heightmap_data=None):
 
         # Update Observation ----------------------        
-        if(config.use_imu or config.use_cuncurrent_state_est):
+        if(config.training_env["use_imu"] or config.training_env["use_cuncurrent_state_est"]):
             base_projected_gravity = self._get_projected_gravity(imu_orientation)
             base_vel = imu_linear_acceleration
             base_ang_vel = imu_angular_velocity
@@ -187,8 +171,8 @@ class LocomotionPolicyWrapper:
             if(np.linalg.norm(commands) < 0.01):
                 obs[48:52] = -1.0
 
-        
-        if(config.use_cuncurrent_state_est):
+
+        if(config.training_env["use_cuncurrent_state_est"] == True):
             #the bottom element is the newest observation!!
             past_cuncurrent_state_est = self._observation_history_cuncurrent_state_est[1:,:]
             self._observation_history_cuncurrent_state_est = np.vstack((past_cuncurrent_state_est, copy.deepcopy(obs)))
@@ -228,7 +212,7 @@ class LocomotionPolicyWrapper:
         
 
         # Action Filtering
-        if(self.use_action_filter):
+        if(self.use_filter_actions):
             alpha = 0.8
             past_rl_actions_temp = self.past_rl_actions.copy()
             self.past_rl_actions = rl_action_temp.copy()

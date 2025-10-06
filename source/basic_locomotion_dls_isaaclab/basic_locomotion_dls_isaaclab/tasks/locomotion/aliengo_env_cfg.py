@@ -266,8 +266,6 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
         prim_path="/World/envs/env_.*/Robot/.*", history_length=3, update_period=0.005, track_air_time=True
     )
 
-    # Desired gait
-    desired_gait = "trot" #crawl, pace, multigait
 
     # Desired tracking variables
     desired_base_height = 0.35
@@ -275,6 +273,11 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
 
     # Desired clip actions
     desired_clip_actions = 3.0
+
+    # Desired step freq and duty factor (if periodic gait is used)
+    desired_step_freq = 1.4
+    desired_duty_factor = 0.65
+    desired_phase_offset = [0.0, 0.5, 0.5, 0.0] #FL, FR, RL, RR
     
     # Tracking reward scale
     lin_vel_reward_scale = 2.0
@@ -300,8 +303,13 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
 
     # Feet reward scale
     feet_air_time_reward_scale = 0.5 * 0.0 * (1-use_amp)
-    feet_height_clearance_reward_scale = 0.25 * (1-use_amp)# * 0.0  
-    feet_height_clearance_mujoco_reward_scale = 0.25 * 0.0 * (1-use_amp)
+
+    feet_height_clearance_reward_scale = 0.25 * (1-use_amp) * 0.0  
+    feet_height_clearance_periodic_reward_scale = 0.25 * (1-use_amp)
+    
+    feet_height_clearance_mujoco_reward_scale = 0.25 * (1-use_amp) * 0.0
+    feet_height_clearance_mujoco_periodic_reward_scale = 0.25 * (1-use_amp) * 0.0
+    
     feet_slide_reward_scale = -0.25 * 0.0 * (1-use_amp)
     feet_contact_suggestion_reward_scale =  0.25 * (1-use_amp)
     feet_to_base_distance_reward_scale = 0.25 * 0.0 * (1-use_amp)
