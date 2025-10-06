@@ -158,7 +158,7 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
 
     use_imu = False
 
-    use_cuncurrent_state_est = False
+    use_cuncurrent_state_est = True
     if(use_cuncurrent_state_est):
         cuncurrent_state_est_output_space = 3 #lin_vel_b
         single_cuncurrent_state_est_observation_space = single_observation_space
@@ -188,18 +188,19 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
 
     
     # asymmetric ppo
-    use_asymmetric_ppo = False
+    use_asymmetric_ppo = True
     if(use_asymmetric_ppo):
         state_space = observation_space
-        state_space += 12 # P gain
-        state_space += 12 # D gain
+        #state_space += 12 # P gain
+        #state_space += 12 # D gain
         #state_space += 1*17 # mass*num_bodies
         #state_space += 1*17 # inertia*num_bodies
         #state_space += 1 # wrench
-        state_space += 12 # friction static
-        state_space += 12 # friction dynamic
-        state_space += 12 # armature
+        #state_space += 12 # friction static
+        #state_space += 12 # friction dynamic
+        #state_space += 12 # armature
         #state_space += 1 # restitution
+        state_space += 2 #base pitch and height
 
     use_amp = False
 
@@ -316,8 +317,13 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
 
     # Feet reward scale
     feet_air_time_reward_scale = 0.5 * 0.0 * (1-use_amp)
-    feet_height_clearance_reward_scale = 0.25 * (1-use_amp)# * 0.0  
-    feet_height_clearance_mujoco_reward_scale = 0.25 * 0.0 * (1-use_amp)
+    
+    feet_height_clearance_reward_scale = 0.25 * (1-use_amp) * 0.0  
+    feet_height_clearance_periodic_reward_scale = 0.25 * (1-use_amp)
+    
+    feet_height_clearance_mujoco_reward_scale = 0.25 * (1-use_amp) * 0.0
+    feet_height_clearance_mujoco_periodic_reward_scale = 0.25 * (1-use_amp) * 0.0
+    
     feet_slide_reward_scale = -0.25 * 0.0 * (1-use_amp)
     feet_contact_suggestion_reward_scale =  0.25 * (1-use_amp)
     feet_to_base_distance_reward_scale = 0.25 * 0.0 * (1-use_amp)

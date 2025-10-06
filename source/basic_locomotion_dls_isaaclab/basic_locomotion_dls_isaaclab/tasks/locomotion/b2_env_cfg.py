@@ -296,8 +296,13 @@ class B2FlatEnvCfg(DirectRLEnvCfg):
 
     # Feet reward scale
     feet_air_time_reward_scale = 0.5 * 0.0 * (1-use_amp)
-    feet_height_clearance_reward_scale = 0.25 * (1-use_amp)# * 0.0  
-    feet_height_clearance_mujoco_reward_scale = 0.25 * 0.0 * (1-use_amp)
+
+    feet_height_clearance_reward_scale = 0.25 * (1-use_amp) * 0.0  
+    feet_height_clearance_periodic_reward_scale = 0.25 * (1-use_amp)
+    
+    feet_height_clearance_mujoco_reward_scale = 0.25 * (1-use_amp) * 0.0
+    feet_height_clearance_mujoco_periodic_reward_scale = 0.25 * (1-use_amp) * 0.0
+
     feet_slide_reward_scale = -0.25 * 0.0 * (1-use_amp)
     feet_contact_suggestion_reward_scale =  0.25 * (1-use_amp)
     feet_to_base_distance_reward_scale = 0.25 * 0.0 * (1-use_amp)
