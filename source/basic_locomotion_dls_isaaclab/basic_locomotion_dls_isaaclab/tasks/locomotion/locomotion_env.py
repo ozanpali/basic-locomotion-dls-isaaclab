@@ -698,7 +698,6 @@ class LocomotionEnv(DirectRLEnv):
             self._cuncurrent_state_est_network.train_network(batch_size=self.cfg.cuncurrent_state_est_batch_size, 
                                                             epochs=self.cfg.cuncurrent_state_est_train_epochs, 
                                                             learning_rate=self.cfg.cuncurrent_state_est_lr, device=self.device)
-        if num_episode_from_start == num_final_episode_from_start - 10:
             # Save the network
             self._cuncurrent_state_est_network.save_network("cuncurrent_state_estimator.pth", self.device)    
 
@@ -752,7 +751,6 @@ class LocomotionEnv(DirectRLEnv):
                                             epochs=self.cfg.rma_train_epochs, 
                                             learning_rate=self.cfg.rma_lr, 
                                             device=self.device)
-        if num_episode_from_start == num_final_episode_from_start - 10:
             # Save the network
             self._rma_network.save_network("rma.pth", self.device)
         
