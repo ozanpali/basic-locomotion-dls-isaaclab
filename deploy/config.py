@@ -61,6 +61,7 @@ policy_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs
 """
 policy_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-09-28_14-18-09_4Leg_0.5FLRR_0.5FRRL_addedmujoco_heighclearancedefault/exported/policy.onnx"
 policy_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-09-28_14-58-54_4Leg_stdairtime_addedmujoco_heighclearancedefault/exported/policy.onnx"
+policy_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-07_22-33-53_pullcheck_justclearance/exported/policy.onnx"
 
 # ----------------------------------------------------------------------------------------------------------------
 if(robot == "aliengo"):
