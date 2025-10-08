@@ -73,7 +73,7 @@ class Basic_Locomotion_DLS_Isaaclab_Node(Node):
         self.subscription_joy = self.create_subscription(Joy,"joy", self.get_joy_callback, 1)
         self.publisher_trajectory_generator = self.create_publisher(TrajectoryGeneratorMsg,"dls2/trajectory_generator", 1)
         RL_FREQ = 1./(config.training_env["sim"]["dt"]*config.training_env["decimation"])  # Hz, frequency of the RL controller
-        self.timer = self.create_timer(RL_FREQ, self.compute_rl_control)
+        self.timer = self.create_timer(1.0/RL_FREQ, self.compute_rl_control)
 
 
         # Safety check to not do anything until a first base and blind state are received
