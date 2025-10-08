@@ -421,17 +421,31 @@ class LocomotionEnv(DirectRLEnv):
         first_contact = self._contact_sensor.compute_first_contact(self.step_dt)[:, self._feet_ids]
         net_contact_forces = self._contact_sensor.data.net_forces_w_history
         is_contact = (torch.max(torch.norm(net_contact_forces[:, :, self._feet_ids], dim=-1), dim=1)[0] > 1.0)
-        target_height = self.cfg.desired_feet_height + torch.cat((mean_height_ray_front.unsqueeze(1).expand(-1, 2), mean_height_ray_back.unsqueeze(1).expand(-1, 2)), dim=1)
+        #target_height = self.cfg.desired_feet_height + torch.cat((mean_height_ray_front.unsqueeze(1).expand(-1, 2), mean_height_ray_back.unsqueeze(1).expand(-1, 2)), dim=1)
+        feet_z_target_error_mujoco = self.cfg.desired_feet_height + torch.cat((mean_height_ray_front.unsqueeze(1).expand(-1, 2), mean_height_ray_back.unsqueeze(1).expand(-1, 2)), dim=1) - self._robot.data.body_pos_w[:, self._feet_ids_robot, 2]
+        feet_z_target_error_mujoco = torch.clamp(feet_z_target_error_mujoco, min=.0, max=self.cfg.desired_feet_height)
+ 
 
         self._swing_peak *= ~is_contact # reset if the foot is in contact
         self._swing_peak = torch.max(self._swing_peak, self._robot.data.body_pos_w[:, self._feet_ids_robot, 2].clone()) 
-        feet_height_clearance_mujoco = torch.sum(torch.square(self._swing_peak / target_height - 1.0) *  first_contact, dim=-1)
+        feet_height_clearance_mujoco_FL = torch.exp(-feet_z_target_error_mujoco[:,0]/ 0.01) * should_move
+        feet_height_clearance_mujoco_FR = torch.exp(-feet_z_target_error_mujoco[:,1]/ 0.01) * should_move
+        feet_height_clearance_mujoco_RL = torch.exp(-feet_z_target_error_mujoco[:,2]/ 0.01) * should_move
+        feet_height_clearance_mujoco_RR = torch.exp(-feet_z_target_error_mujoco[:,3]/ 0.01) * should_move
+        #feet_height_clearance_mujoco = torch.sum(torch.square(self._swing_peak / target_height - 1.0) *  first_contact, dim=-1)
+        feet_height_clearance_mujoco = feet_height_clearance_mujoco_FL + feet_height_clearance_mujoco_FR
+        feet_height_clearance_mujoco += feet_height_clearance_mujoco_RL + feet_height_clearance_mujoco_RR
 
         # feet height clearance mujoco periodic
         self._swing_peak_periodic *= ~contact_periodic_on # reset if the foot is in contact periodic phase
         self._swing_peak_periodic = torch.max(self._swing_peak_periodic, self._robot.data.body_pos_w[:, self._feet_ids_robot, 2].clone())
-        feet_height_clearance_mujoco_periodic = torch.sum(torch.square(self._swing_peak_periodic / target_height - 1.0) *  first_contact, dim=-1) 
-        
+        feet_height_clearance_mujoco_periodic_FL = torch.exp(-feet_z_target_error_mujoco[:,0]/ 0.01) * should_move
+        feet_height_clearance_mujoco_periodic_FR = torch.exp(-feet_z_target_error_mujoco[:,1]/ 0.01) * should_move
+        feet_height_clearance_mujoco_periodic_RL = torch.exp(-feet_z_target_error_mujoco[:,2]/ 0.01) * should_move
+        feet_height_clearance_mujoco_periodic_RR = torch.exp(-feet_z_target_error_mujoco[:,3]/ 0.01) * should_move
+        #feet_height_clearance_mujoco_periodic = torch.sum(torch.square(self._swing_peak_periodic / target_height - 1.0) *  first_contact, dim=-1) 
+        feet_height_clearance_mujoco_periodic = feet_height_clearance_mujoco_periodic_FL + feet_height_clearance_mujoco_periodic_FR
+        feet_height_clearance_mujoco_periodic += feet_height_clearance_mujoco_periodic_RL + feet_height_clearance_mujoco_periodic_RR
 
 
         # feet height clearance periodic
@@ -688,7 +702,8 @@ class LocomotionEnv(DirectRLEnv):
         num_episode_from_start = self.common_step_counter / 24. #self.max_episode_length #HACK this should be taken from rsl rl
         num_final_episode_from_start = 8000.
         if num_episode_from_start > self.cfg.cuncurrent_state_est_ep_saving_interval:
-            prediction_cuncurrent_state_est = self._cuncurrent_state_est_network(obs_cuncurrent_state_est)
+            with torch.no_grad(): 
+                prediction_cuncurrent_state_est = self._cuncurrent_state_est_network(obs_cuncurrent_state_est)
             linear_velocity_b = prediction_cuncurrent_state_est[:, :3]
         else:
             linear_velocity_b = self._robot.data.root_lin_vel_b
@@ -698,7 +713,6 @@ class LocomotionEnv(DirectRLEnv):
             self._cuncurrent_state_est_network.train_network(batch_size=self.cfg.cuncurrent_state_est_batch_size, 
                                                             epochs=self.cfg.cuncurrent_state_est_train_epochs, 
                                                             learning_rate=self.cfg.cuncurrent_state_est_lr, device=self.device)
-        if num_episode_from_start == num_final_episode_from_start - 10:
             # Save the network
             self._cuncurrent_state_est_network.save_network("cuncurrent_state_estimator.pth", self.device)    
 
@@ -741,7 +755,8 @@ class LocomotionEnv(DirectRLEnv):
         num_episode_from_start = self.common_step_counter / 24. #self.max_episode_length #HACK this should be taken from rsl rl
         num_final_episode_from_start = 8000.
         if num_episode_from_start > self.cfg.rma_ep_saving_interval:
-            prediction_rma = self._rma_network(obs)
+            with torch.no_grad(): 
+                prediction_rma = self._rma_network(obs)
             obs_rma = prediction_rma
         else:
             obs_rma = outputs_rma
@@ -752,7 +767,6 @@ class LocomotionEnv(DirectRLEnv):
                                             epochs=self.cfg.rma_train_epochs, 
                                             learning_rate=self.cfg.rma_lr, 
                                             device=self.device)
-        if num_episode_from_start == num_final_episode_from_start - 10:
             # Save the network
             self._rma_network.save_network("rma.pth", self.device)
         
