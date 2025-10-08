@@ -135,7 +135,7 @@ class Basic_Locomotion_DLS_Isaaclab_Node(Node):
         #self.env._ref_base_lin_vel_H[1] = msg.axes[0]/3.5  # Left/Right
         #self.env._ref_base_ang_yaw_dot = msg.axes[3]/2.  # Yaw
 
-        filter_joystick = 0.9
+        filter_joystick = 0.7
         self.env._ref_base_lin_vel_H[0] = self.env._ref_base_lin_vel_H[0]*filter_joystick + (msg.axes[1]/3.5)*(1-filter_joystick)  # Forward/Backward
         self.env._ref_base_lin_vel_H[1] = self.env._ref_base_lin_vel_H[1]*filter_joystick + (msg.axes[0]/3.5)*(1-filter_joystick)  # Left/Right
         self.env._ref_base_ang_yaw_dot = self.env._ref_base_ang_yaw_dot*filter_joystick + (msg.axes[3]/2.)*(1-filter_joystick)  # Yaw
