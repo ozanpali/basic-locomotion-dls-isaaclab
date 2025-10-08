@@ -117,7 +117,13 @@ class LocomotionEnv(DirectRLEnv):
                 "feet_to_base_distance_l2",
                 "feet_to_hip_distance_l2",
                 "feet_vertical_surface_contacts",
-                #front_left_always_swing",
+                #"fl_height_maintenance",
+                #"front_left_always_swing",
+                #"fl_calf_bend_reward",
+                #"feet_air_time_FL",
+                #"feet_air_time_FR",
+                #"feet_air_time_RL",
+                #"feet_air_time_RR",
             ]
         }
         # Get specific body indices
@@ -389,34 +395,59 @@ class LocomotionEnv(DirectRLEnv):
         # calf position
         calf_joints_position = self._robot.data.joint_pos[:,8:12]
         calf_joints_position_error = torch.square(calf_joints_position - self._robot.data.default_joint_pos[:,8:12])
+        #### 3 legs
+        # Create custom target positions with FL calf at -2.5 instead of default
+        #calf_target_positions = self._robot.data.default_joint_pos[:,8:12].clone()
+        #calf_target_positions[:, 0] = -2.5  # FL calf (index 0 of calf slice, index 8 overall)
+        #calf_joints_position_error = torch.square(calf_joints_position - calf_target_positions)
+        ####
         calf_joints_position_reward = torch.sum(calf_joints_position_error,dim=1)
 
 
         # feet airtime
         first_contact = self._contact_sensor.compute_first_contact(self.step_dt)[:, self._feet_ids]
         last_air_time = self._contact_sensor.data.last_air_time[:, self._feet_ids]
-
-
-        #if front left leg is going to be excluded
+        #### 3 legs
+        # If front left leg is going to be excluded
         #first_contact_all = self._contact_sensor.compute_first_contact(self.step_dt)[:, self._feet_ids]
         #last_air_time_all = self._contact_sensor.data.last_air_time[:, self._feet_ids]
         # Exclude Front-Left leg (index 0) from airtime computation
         #first_contact = first_contact_all[:, 1:]
         #last_air_time = last_air_time_all[:, 1:]
-
-        feet_air_time = torch.sum((last_air_time - 0.2) * first_contact, dim=1) * (
+        ####
+        feet_air_time = torch.sum((last_air_time - 0.5) * first_contact, dim=1) * (
             torch.norm(self._commands[:, :2], dim=1) > 0.1
         )
 
-        # Different air time thresholds for different legs
-        # FL (index 0) and RR (index 3): 0.1
-        # FR (index 1) and RL (index 2): 0.7
-        #air_time_thresholds = torch.tensor([0.5, 0.5, 0.5, 0.5], device=self.device)  # FL, FR, RL, RR
-        #air_time_thresholds = air_time_thresholds.unsqueeze(0).expand(self.num_envs, -1)
+        #### 3 legs
+        # Individual leg air time computation with separate thresholds for each leg
+        # This allows fine-grained control over each leg's swing behavior
         
-        #feet_air_time = torch.sum((last_air_time - air_time_thresholds) * first_contact, dim=1) * (
-        #    torch.norm(self._commands[:, :2], dim=1) > 0.1
-        #)
+        # Define individual thresholds for each leg (FL, FR, RL, RR)
+        # You can adjust these values to create different gait patterns
+        #fl_threshold = 0.5   # Front Left - moderate air time
+        #fr_threshold = 0.5   # Front Right - longer air time  
+        #rl_threshold = 0.5   # Rear Left - longer air time
+        #rr_threshold = 0.5   # Rear Right - moderate air time
+        
+        # Movement condition - only apply air time rewards when robot is commanded to move
+        #movement_condition = (torch.norm(self._commands[:, :2], dim=1) > 0.1)
+        
+        # Front Left (FL) leg air time - index 0
+        #feet_air_time_FL = ((last_air_time[:, 0] - fl_threshold) * first_contact[:, 0]) * movement_condition
+        # Front Left (FL) leg air time - index 0 (always positive reward for infinite air time)
+        #fl_threshold = 0.0  # Set to 0 so FL always gets positive reward
+        #feet_air_time_FL = torch.ones_like(movement_condition, dtype=torch.float32) * movement_condition  # Always positive when moving
+        
+        # Front Right (FR) leg air time - index 1
+        #feet_air_time_FR = ((last_air_time[:, 1] - fr_threshold) * first_contact[:, 1]) * movement_condition
+        
+        # Rear Left (RL) leg air time - index 2
+        #feet_air_time_RL = ((last_air_time[:, 2] - rl_threshold) * first_contact[:, 2]) * movement_condition
+        
+        # Rear Right (RR) leg air time - index 3
+        #feet_air_time_RR = ((last_air_time[:, 3] - rr_threshold) * first_contact[:, 3]) * movement_condition
+        ####
 
 
         # feet slide
@@ -435,6 +466,30 @@ class LocomotionEnv(DirectRLEnv):
         fl_in_contact = current_contacts_now[:, 0]
         front_left_always_swing = (~fl_in_contact).float()"""
 
+        #### 3 legs
+        # FL Calf Bend Reward - reward more bent FL calf joint (more negative angle)
+        # FL calf joint target is -2.5 radians. More bent means more negative.
+        #fl_calf_pos = self._robot.data.joint_pos[:, 8]  # FL_calf_joint (index 8)
+        #target_pos = -2.5
+        #bend_amount = -(fl_calf_pos - target_pos)  # Positive when more bent than target
+        #bend_amount_clamped = torch.clamp(bend_amount, 0.0, 1.5)  # Max 1.5 rad more bent
+        #fl_calf_bend_reward = torch.exp(2.0 * bend_amount_clamped) - 1.0  # Exponential growth
+        ####
+
+        #### 3 legs
+        # FL Height Maintenance Reward - keeps FL leg at desired height always
+        # Get FL leg current height (index 0)
+        #fl_current_height = self._robot.data.body_pos_w[:, self._feet_ids_robot[0], 2]
+        # Get standard/default FL leg height when robot is in default standing position
+        #fl_default_height = self._robot.data.default_root_state[0, 2] - 0.4  # Approximate standard foot height relative to base
+        # Define desired height above standard position (configurable)
+        #fl_desired_height_above_standard = getattr(self.cfg, "fl_desired_height_above_standard", 0.20)  # Default 20cm above standard
+        #fl_target_height = fl_default_height + fl_desired_height_above_standard
+        # Compute height error
+        #fl_height_error = torch.abs(fl_current_height - fl_target_height)
+        # Exponential reward (higher reward when closer to target height)
+        #fl_height_maintenance = torch.exp(-fl_height_error / 0.02)  # Sensitive to 2cm deviations"""
+        ####
 
         # feet periodical contacts suggestion
         should_move = torch.norm(self._commands[:, :3], dim=1) > 0.01
@@ -451,17 +506,31 @@ class LocomotionEnv(DirectRLEnv):
         first_contact = self._contact_sensor.compute_first_contact(self.step_dt)[:, self._feet_ids]
         net_contact_forces = self._contact_sensor.data.net_forces_w_history
         is_contact = (torch.max(torch.norm(net_contact_forces[:, :, self._feet_ids], dim=-1), dim=1)[0] > 1.0)
-        target_height = self.cfg.desired_feet_height + torch.cat((mean_height_ray_front.unsqueeze(1).expand(-1, 2), mean_height_ray_back.unsqueeze(1).expand(-1, 2)), dim=1)
+        #target_height = self.cfg.desired_feet_height + torch.cat((mean_height_ray_front.unsqueeze(1).expand(-1, 2), mean_height_ray_back.unsqueeze(1).expand(-1, 2)), dim=1)
+        feet_z_target_error_mujoco = self.cfg.desired_feet_height + torch.cat((mean_height_ray_front.unsqueeze(1).expand(-1, 2), mean_height_ray_back.unsqueeze(1).expand(-1, 2)), dim=1) - self._robot.data.body_pos_w[:, self._feet_ids_robot, 2]
+        feet_z_target_error_mujoco = torch.clamp(feet_z_target_error_mujoco, min=.0, max=self.cfg.desired_feet_height)
+ 
 
         self._swing_peak *= ~is_contact # reset if the foot is in contact
         self._swing_peak = torch.max(self._swing_peak, self._robot.data.body_pos_w[:, self._feet_ids_robot, 2].clone()) 
-        feet_height_clearance_mujoco = torch.sum(torch.square(self._swing_peak / target_height - 1.0) *  first_contact, dim=-1)
+        feet_height_clearance_mujoco_FL = torch.exp(-feet_z_target_error_mujoco[:,0]/ 0.01) * should_move
+        feet_height_clearance_mujoco_FR = torch.exp(-feet_z_target_error_mujoco[:,1]/ 0.01) * should_move
+        feet_height_clearance_mujoco_RL = torch.exp(-feet_z_target_error_mujoco[:,2]/ 0.01) * should_move
+        feet_height_clearance_mujoco_RR = torch.exp(-feet_z_target_error_mujoco[:,3]/ 0.01) * should_move
+        #feet_height_clearance_mujoco = torch.sum(torch.square(self._swing_peak / target_height - 1.0) *  first_contact, dim=-1)
+        feet_height_clearance_mujoco = feet_height_clearance_mujoco_FL + feet_height_clearance_mujoco_FR
+        feet_height_clearance_mujoco += feet_height_clearance_mujoco_RL + feet_height_clearance_mujoco_RR
 
         # feet height clearance mujoco periodic
         self._swing_peak_periodic *= ~contact_periodic_on # reset if the foot is in contact periodic phase
         self._swing_peak_periodic = torch.max(self._swing_peak_periodic, self._robot.data.body_pos_w[:, self._feet_ids_robot, 2].clone())
-        feet_height_clearance_mujoco_periodic = torch.sum(torch.square(self._swing_peak_periodic / target_height - 1.0) *  first_contact, dim=-1) 
-        
+        feet_height_clearance_mujoco_periodic_FL = torch.exp(-feet_z_target_error_mujoco[:,0]/ 0.01) * should_move
+        feet_height_clearance_mujoco_periodic_FR = torch.exp(-feet_z_target_error_mujoco[:,1]/ 0.01) * should_move
+        feet_height_clearance_mujoco_periodic_RL = torch.exp(-feet_z_target_error_mujoco[:,2]/ 0.01) * should_move
+        feet_height_clearance_mujoco_periodic_RR = torch.exp(-feet_z_target_error_mujoco[:,3]/ 0.01) * should_move
+        #feet_height_clearance_mujoco_periodic = torch.sum(torch.square(self._swing_peak_periodic / target_height - 1.0) *  first_contact, dim=-1) 
+        feet_height_clearance_mujoco_periodic = feet_height_clearance_mujoco_periodic_FL + feet_height_clearance_mujoco_periodic_FR
+        feet_height_clearance_mujoco_periodic += feet_height_clearance_mujoco_periodic_RL + feet_height_clearance_mujoco_periodic_RR
 
 
         # feet height clearance periodic
@@ -538,9 +607,13 @@ class LocomotionEnv(DirectRLEnv):
             "feet_to_base_distance_l2": feet_to_base_distance * self.cfg.feet_to_base_distance_reward_scale * self.step_dt,
             "feet_to_hip_distance_l2": feet_to_hip_distance * self.cfg.feet_to_hip_distance_reward_scale * self.step_dt,
             "feet_vertical_surface_contacts": feet_vertical_surface_contacts * self.cfg.feet_vertical_surface_contacts_reward_scale * self.step_dt,
-            # Encourage Front-Left leg to stay off the ground (always swinging)
+            #"fl_height_maintenance": fl_height_maintenance * self.cfg.fl_height_maintenance_reward_scale * self.step_dt,
             #"front_left_always_swing": front_left_always_swing * getattr(self.cfg, "front_left_swing_reward_scale", 1.0) * self.step_dt,
-            #"feet_air_time_FL_failure": feet_air_time_FL_failure * self.cfg.feet_air_time_reward_scale * self.step_dt,
+            #"fl_calf_bend_reward": fl_calf_bend_reward * self.cfg.fl_calf_bend_reward_scale * self.step_dt,
+            #"feet_air_time_FL": feet_air_time_FL * self.cfg.feet_air_time_reward_scale * self.step_dt,
+            #"feet_air_time_FR": feet_air_time_FR * self.cfg.feet_air_time_reward_scale * self.step_dt,
+            #"feet_air_time_RL": feet_air_time_RL * self.cfg.feet_air_time_reward_scale * self.step_dt,
+            #"feet_air_time_RR": feet_air_time_RR * self.cfg.feet_air_time_reward_scale * self.step_dt,
         }
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
         
@@ -677,7 +750,7 @@ class LocomotionEnv(DirectRLEnv):
         commands_resample_2[:, 1] *= 0.25 
         commands_resample_2[:, 2] *= 0.3 
         self._commands[:, :3] = self._commands[:, :3] * ~resample_time_2.unsqueeze(1).expand(-1, 3) + commands_resample_2 * resample_time_2.unsqueeze(1).expand(-1, 3)        
-        
+
         # Took some envs, and put to zero the vel
         if self.num_envs > 100:
             num_fixed_envs = 100
@@ -721,7 +794,8 @@ class LocomotionEnv(DirectRLEnv):
         num_episode_from_start = self.common_step_counter / 24. #self.max_episode_length #HACK this should be taken from rsl rl
         num_final_episode_from_start = 8000.
         if num_episode_from_start > self.cfg.cuncurrent_state_est_ep_saving_interval:
-            prediction_cuncurrent_state_est = self._cuncurrent_state_est_network(obs_cuncurrent_state_est)
+            with torch.no_grad(): 
+                prediction_cuncurrent_state_est = self._cuncurrent_state_est_network(obs_cuncurrent_state_est)
             linear_velocity_b = prediction_cuncurrent_state_est[:, :3]
         else:
             linear_velocity_b = self._robot.data.root_lin_vel_b
@@ -731,7 +805,6 @@ class LocomotionEnv(DirectRLEnv):
             self._cuncurrent_state_est_network.train_network(batch_size=self.cfg.cuncurrent_state_est_batch_size, 
                                                             epochs=self.cfg.cuncurrent_state_est_train_epochs, 
                                                             learning_rate=self.cfg.cuncurrent_state_est_lr, device=self.device)
-        if num_episode_from_start == num_final_episode_from_start - 10:
             # Save the network
             self._cuncurrent_state_est_network.save_network("cuncurrent_state_estimator.pth", self.device)    
 
@@ -774,7 +847,8 @@ class LocomotionEnv(DirectRLEnv):
         num_episode_from_start = self.common_step_counter / 24. #self.max_episode_length #HACK this should be taken from rsl rl
         num_final_episode_from_start = 8000.
         if num_episode_from_start > self.cfg.rma_ep_saving_interval:
-            prediction_rma = self._rma_network(obs)
+            with torch.no_grad(): 
+                prediction_rma = self._rma_network(obs)
             obs_rma = prediction_rma
         else:
             obs_rma = outputs_rma
@@ -785,7 +859,6 @@ class LocomotionEnv(DirectRLEnv):
                                             epochs=self.cfg.rma_train_epochs, 
                                             learning_rate=self.cfg.rma_lr, 
                                             device=self.device)
-        if num_episode_from_start == num_final_episode_from_start - 10:
             # Save the network
             self._rma_network.save_network("rma.pth", self.device)
         
