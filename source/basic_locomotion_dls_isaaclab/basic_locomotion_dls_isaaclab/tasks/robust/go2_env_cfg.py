@@ -65,7 +65,7 @@ class EventCfg:
     )
     
 
-    scale_all_joint_friction_model = EventTerm(
+    """scale_all_joint_friction_model = EventTerm(
         func=custom_events.randomize_joint_friction_model,
         mode="startup",
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]), 
@@ -80,9 +80,20 @@ class EventCfg:
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]), 
                 "armature_distribution_params": (0.0, 1.0),
                 "operation": "scale"},
-    )
+    )"""
     
 
+    randomize_joint_parameters = EventTerm(
+        func=mdp.randomize_joint_parameters,
+        mode="reset",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]), 
+            "friction_distribution_params": (0.2, 2.0),
+            "armature_distribution_params": (0.0, 1.0),
+            "operation": "scale",
+            "distribution": "uniform",
+        },
+    )
 
     actuator_gains = EventTerm(
     func=mdp.randomize_actuator_gains,
@@ -227,8 +238,8 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
         cuncurrent_state_est_output_space = 3 #lin_vel_b
         single_cuncurrent_state_est_observation_space = single_observation_space
         cuncurrent_state_est_observation_space = observation_space
-        cuncurrent_state_est_batch_size = 8
-        cuncurrent_state_est_train_epochs = 500
+        cuncurrent_state_est_batch_size = 512
+        cuncurrent_state_est_train_epochs = 1000
         cuncurrent_state_est_lr = 1e-3
         cuncurrent_state_est_ep_saving_interval = 1000
 
@@ -236,34 +247,35 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
     if(use_rma):
         rma_output_space = 12 # P gain
         rma_output_space += 12 # D gain 
-        rma_output_space += 12 # friction static
-        rma_output_space += 12 # friction dynamic
-        rma_output_space += 12 # armature
+        #rma_output_space += 12 # friction static
+        #rma_output_space += 12 # friction dynamic
+        #rma_output_space += 12 # armature
         single_rma_observation_space = single_observation_space
         rma_observation_space = observation_space
         observation_space += rma_output_space
-        rma_batch_size = 32
-        rma_train_epochs = 500
+        rma_batch_size = 512
+        rma_train_epochs = 1000
         rma_lr = 1e-3
         rma_ep_saving_interval = 1000
         
-
+    
     use_filter_actions = True
 
     
     # asymmetric ppo
-    use_asymmetric_ppo = False
+    use_asymmetric_ppo = True
     if(use_asymmetric_ppo):
         state_space = observation_space
-        state_space += 12 # P gain
-        state_space += 12 # D gain
+        #state_space += 12 # P gain
+        #state_space += 12 # D gain
         #state_space += 1*17 # mass*num_bodies
         #state_space += 1*17 # inertia*num_bodies
         #state_space += 1 # wrench
-        state_space += 12 # friction static
-        state_space += 12 # friction dynamic
-        state_space += 12 # armature
+        #state_space += 12 # friction static
+        #state_space += 12 # friction dynamic
+        #state_space += 12 # armature
         #state_space += 1 # restitution
+        state_space += 2 #base pitch and height
 
     use_amp = False
 
@@ -344,15 +356,17 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
         prim_path="/World/envs/env_.*/Robot/.*", history_length=3, update_period=0.005, track_air_time=True
     )
 
-    # Desired gait
-    desired_gait = "trot" #crawl, pace, multigait
-
     # Desired tracking variables
     desired_base_height = 0.30
     desired_feet_height = 0.05
 
     # Desired clip actions
     desired_clip_actions = 3.0
+
+    # Desired step freq and duty factor (if periodic gait is used)
+    desired_step_freq = 1.4
+    desired_duty_factor = 0.65
+    desired_phase_offset = [0.0, 0.5, 0.5, 0.0] #FL, FR, RL, RR
     
     # Tracking reward scale
     lin_vel_reward_scale = 2.0
@@ -378,8 +392,13 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
 
     # Feet reward scale
     feet_air_time_reward_scale = 0.5 * 0.0 * (1-use_amp)
-    feet_height_clearance_reward_scale = 0.25 * (1-use_amp)# * 0.0  
-    feet_height_clearance_mujoco_reward_scale = 0.25 * 0.0 * (1-use_amp)
+    
+    feet_height_clearance_reward_scale = 0.25 * (1-use_amp) * 0.0  
+    feet_height_clearance_periodic_reward_scale = 0.25 * (1-use_amp)
+    
+    feet_height_clearance_mujoco_reward_scale = 0.25 * (1-use_amp) * 0.0
+    feet_height_clearance_mujoco_periodic_reward_scale = 0.25 * (1-use_amp) * 0.0
+    
     feet_slide_reward_scale = -0.25 * 0.0 * (1-use_amp)
     feet_contact_suggestion_reward_scale =  0.25 * (1-use_amp)
     feet_to_base_distance_reward_scale = 0.25 * 0.0 * (1-use_amp)
