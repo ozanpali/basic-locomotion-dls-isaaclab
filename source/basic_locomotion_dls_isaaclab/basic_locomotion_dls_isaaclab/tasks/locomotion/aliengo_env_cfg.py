@@ -82,7 +82,17 @@ class EventCfg:
                 "operation": "scale"},
     )
     
-
+    """randomize_joint_parameters = EventTerm(
+        func=mdp.randomize_joint_parameters,
+        mode="reset",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]), 
+            "friction_distribution_params": (0.2, 2.0),
+            "armature_distribution_params": (0.0, 1.0),
+            "operation": "scale",
+            "distribution": "uniform",
+        },
+    )"""
 
     actuator_gains = EventTerm(
     func=mdp.randomize_actuator_gains,
@@ -154,8 +164,8 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
         cuncurrent_state_est_output_space = 3 #lin_vel_b
         single_cuncurrent_state_est_observation_space = single_observation_space
         cuncurrent_state_est_observation_space = observation_space
-        cuncurrent_state_est_batch_size = 32
-        cuncurrent_state_est_train_epochs = 500
+        cuncurrent_state_est_batch_size = 512
+        cuncurrent_state_est_train_epochs = 1000
         cuncurrent_state_est_lr = 1e-3
         cuncurrent_state_est_ep_saving_interval = 1000
 
@@ -163,14 +173,14 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     if(use_rma):
         rma_output_space = 12 # P gain
         rma_output_space += 12 # D gain 
-        rma_output_space += 12 # friction static
-        rma_output_space += 12 # friction dynamic
-        rma_output_space += 12 # armature
+        #rma_output_space += 12 # friction static
+        #rma_output_space += 12 # friction dynamic
+        #rma_output_space += 12 # armature
         single_rma_observation_space = single_observation_space
         rma_observation_space = observation_space
         observation_space += rma_output_space
-        rma_batch_size = 32
-        rma_train_epochs = 500
+        rma_batch_size = 512
+        rma_train_epochs = 1000
         rma_lr = 1e-3
         rma_ep_saving_interval = 1000
         
@@ -179,18 +189,19 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
 
     
     # asymmetric ppo
-    use_asymmetric_ppo = False
+    use_asymmetric_ppo = True
     if(use_asymmetric_ppo):
         state_space = observation_space
-        state_space += 12 # P gain
-        state_space += 12 # D gain
+        #state_space += 12 # P gain
+        #state_space += 12 # D gain
         #state_space += 1*17 # mass*num_bodies
         #state_space += 1*17 # inertia*num_bodies
         #state_space += 1 # wrench
-        state_space += 12 # friction static
-        state_space += 12 # friction dynamic
-        state_space += 12 # armature
+        #state_space += 12 # friction static
+        #state_space += 12 # friction dynamic
+        #state_space += 12 # armature
         #state_space += 1 # restitution
+        state_space += 2 #base pitch and height
 
     use_amp = False
 

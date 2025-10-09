@@ -6,17 +6,17 @@
 
 # Overview
 
-This repository is about basic RL quadruped locomotion tasks within the robots available at DLS on IsaacLab, with sim-to-sim and sim-to-real scripts. 
+This repository provides basic reinforcement learning implementations for quadruped locomotion in IsaacLab. It includes support for different robots available at DLS, along with scripts for both sim-to-sim and sim-to-real transfer.
 
 Features:
 - [Cuncurrent State Estimator](https://arxiv.org/pdf/2202.05481)
 - [Rapid Motor Adaptation](https://arxiv.org/pdf/2107.04034)
-- [Morphologycal Symmetries](https://arxiv.org/pdf/2403.17320) 
-- [Adversarial Motion Priors](https://arxiv.org/pdf/2104.02180)
+- [Morphological Symmetries](https://arxiv.org/pdf/2403.17320) 
+- [Adversarial Motion Priors](https://arxiv.org/pdf/2104.02180) (big thanks to [Giuseppe L'erario](https://github.com/Giulero) and [Giulio Romualdi](https://github.com/giulioromualdi))
 - Sim-to-Sim in [Mujoco](https://github.com/google-deepmind/mujoco)
 - Sim-to-Real in ROS1 and ROS2
 
-A list of robots available and envs are described below:
+A list of robots and environments available are described below:
 
 | Robot Model         | Environment Name (ID)                                      |
 |---------------------|------------------------------------------------------------|
@@ -28,7 +28,7 @@ A list of robots available and envs are described below:
 
 ## Citing this work
 
-If you find the work useful and you adopt [Morphologycal Symmetries](https://arxiv.org/pdf/2403.17320), please consider citing one of our works:
+If you find the work useful and you adopt [Morphological Symmetries](https://arxiv.org/pdf/2403.17320), please consider citing one of our works:
 
 #### [Leveraging Symmetry in RL-based Legged Locomotion Control (IROS-2024)](https://arxiv.org/pdf/2403.17320)
 
@@ -79,7 +79,7 @@ sudo apt install git-lfs
 python -m pip install -e source/basic_locomotion_dls_isaaclab
 ```
 
-5. If you want to play with [Morphologycal Symmetries](https://arxiv.org/pdf/2403.17320), install the repo [morphosymm-rl](https://github.com/iit-DLSLab/morphosymm-rl)
+5. If you want to play with [Morphological Symmetries](https://arxiv.org/pdf/2403.17320), install the repo [morphosymm-rl](https://github.com/iit-DLSLab/morphosymm-rl)
 
 6. If you want to play with [Adversarial Motion Priors](https://arxiv.org/pdf/2104.02180), install the repo [amp-rsl-rl](https://github.com/ami-iit/amp-rsl-rl) from the [AMI](https://github.com/ami-iit) research lab.
 

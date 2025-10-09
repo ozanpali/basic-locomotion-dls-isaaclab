@@ -75,15 +75,15 @@ policy_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs
 
 # ----------------------------------------------------------------------------------------------------------------
 if(robot == "aliengo"):
-    Kp_walking = 25.
-    Kd_walking = 2.
+    Kp_walking = 21.5
+    Kd_walking = 3.5
 
     Kp_stand_up_and_down = 25.
     Kd_stand_up_and_down = 2.
 
 elif(robot == "go2"):
-    Kp_walking = 25.
-    Kd_walking = 2.
+    Kp_walking = 21.5
+    Kd_walking = 3.5
 
     Kp_stand_up_and_down = 25.
     Kd_stand_up_and_down = 2.
@@ -141,6 +141,8 @@ policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaacl
 
 
 
+policy_folder_path = dir_path + "/../tested_policies/" + robot + "/aliengo_stop_and_go_correct_offset"
+#policy_folder_path = dir_path + "/../tested_policies/" + robot + "/go2_5asymm"
 
 cuncurrent_state_est_network = policy_folder_path + "/exported/cuncurrent_state_estimator.pth"
 rma_network = policy_folder_path + "/exported/rma.pth"

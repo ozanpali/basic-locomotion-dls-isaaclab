@@ -16,21 +16,21 @@ damping_mujoco = 2.0
 
 armature_mujoco = 0.01
 
-friction_static_mujoco = 0.2 * 0.0
-friction_dynamic_mujoco = 0.6 * 0.0
+friction_static_mujoco = 0.2# * 0.0
+friction_dynamic_mujoco = 0.6# * 0.0
 activation_vel = 0.1# * 0.0
 
-static_friction_hip = 0.5
-dynamic_friction_hip = 0.3
-viscous_friction_hip = 0.3
+static_friction_hip = 0.5 * 0.0
+dynamic_friction_hip = 0.3 * 0.0
+viscous_friction_hip = 0.3 * 0.0
 
-static_friction_thigh = 0.5
-dynamic_friction_thigh = 0.3
-viscous_friction_thigh = 0.3
+static_friction_thigh = 0.5 * 0.0
+dynamic_friction_thigh = 0.3 * 0.0
+viscous_friction_thigh = 0.3 * 0.0
 
-static_friction_calf = 0.5
-dynamic_friction_calf = 0.3
-viscous_friction_calf = 0.3
+static_friction_calf = 0.5 * 0.0
+dynamic_friction_calf = 0.3 * 0.0
+viscous_friction_calf = 0.3 * 0.0
 
 GO2_HIP_ACTUATOR_CFG = IdentifiedActuatorElectricCfg(
     joint_names_expr=[".*_hip_joint"],

@@ -70,10 +70,13 @@ class Basic_Locomotion_DLS_Isaaclab_Node(Node):
         self.subscription_base_state = self.create_subscription(BaseStateMsg,"/dls2/base_state", self.get_base_state_callback, 1)
         self.subscription_blind_state = self.create_subscription(BlindStateMsg,"/dls2/blind_state", self.get_blind_state_callback, 1)
         self.subscription_imu = self.create_subscription(ImuMsg,"/dls2/imu", self.get_imu_callback, 1)
+        
         self.subscription_joy = self.create_subscription(Joy,"joy", self.get_joy_callback, 1)
+        self.last_joy_time = None
+        
         self.publisher_trajectory_generator = self.create_publisher(TrajectoryGeneratorMsg,"dls2/trajectory_generator", 1)
         RL_FREQ = 1./(config.training_env["sim"]["dt"]*config.training_env["decimation"])  # Hz, frequency of the RL controller
-        self.timer = self.create_timer(RL_FREQ, self.compute_rl_control)
+        self.timer = self.create_timer(1.0/RL_FREQ, self.compute_rl_control)
 
 
         # Safety check to not do anything until a first base and blind state are received
@@ -128,9 +131,16 @@ class Basic_Locomotion_DLS_Isaaclab_Node(Node):
         Callback function to handle joystick input. Joystick used is a 
         8Bitdi Ultimate 2C Wireless Controller.
         """
-        self.env._ref_base_lin_vel_H[0] = msg.axes[1]/3.5  # Forward/Backward
-        self.env._ref_base_lin_vel_H[1] = msg.axes[0]/3.5  # Left/Right
-        self.env._ref_base_ang_yaw_dot = msg.axes[3]/2.  # Yaw
+        #self.env._ref_base_lin_vel_H[0] = msg.axes[1]/3.5  # Forward/Backward
+        #self.env._ref_base_lin_vel_H[1] = msg.axes[0]/3.5  # Left/Right
+        #self.env._ref_base_ang_yaw_dot = msg.axes[3]/2.  # Yaw
+
+        filter_joystick = 0.7
+        self.env._ref_base_lin_vel_H[0] = self.env._ref_base_lin_vel_H[0]*filter_joystick + (msg.axes[1]/3.5)*(1-filter_joystick)  # Forward/Backward
+        self.env._ref_base_lin_vel_H[1] = self.env._ref_base_lin_vel_H[1]*filter_joystick + (msg.axes[0]/3.5)*(1-filter_joystick)  # Left/Right
+        self.env._ref_base_ang_yaw_dot = self.env._ref_base_ang_yaw_dot*filter_joystick + (msg.axes[3]/2.)*(1-filter_joystick)  # Yaw
+
+        self.last_joy_time = time.time()
 
 
         #kill the node if the button is pressed
@@ -216,6 +226,14 @@ class Basic_Locomotion_DLS_Isaaclab_Node(Node):
             self.env.mjData.qvel[6:] = copy.deepcopy(self.joint_velocities)
             self.env.mjModel.opt.timestep = simulation_dt
             mujoco.mj_forward(self.env.mjModel, self.env.mjData) 
+        
+        # Safety check for joystick timeout
+        if(self.last_joy_time is not None and time.time() - self.last_joy_time > 1.0):
+            self.env._ref_base_lin_vel_H[0] = 0.0
+            self.env._ref_base_lin_vel_H[1] = 0.0
+            self.env._ref_base_ang_yaw_dot = 0.0
+            print("Joystick timeout, stopping the robot")
+            self.last_joy_time = None
             
 
         env = self.env

@@ -17,6 +17,18 @@ friction_static_mujoco = 0.2
 friction_dynamic_mujoco = 0.6
 armature_mujoco = 0.01
 
+static_friction_hip = 0.5 * 0.0
+dynamic_friction_hip = 0.3 * 0.0
+viscous_friction_hip = 0.3 * 0.0
+
+static_friction_thigh = 0.5 * 0.0
+dynamic_friction_thigh = 0.3 * 0.0
+viscous_friction_thigh = 0.3 * 0.0
+
+static_friction_calf = 0.5 * 0.0
+dynamic_friction_calf = 0.3 * 0.0
+viscous_friction_calf = 0.3 * 0.0
+
 ALIENGO_HIP_ACTUATOR_CFG = IdentifiedActuatorElectricCfg(
     joint_names_expr=[".*_hip_joint"],
     effort_limit=44.4,
@@ -28,6 +40,10 @@ ALIENGO_HIP_ACTUATOR_CFG = IdentifiedActuatorElectricCfg(
     friction_static=friction_static_mujoco,
     activation_vel=0.1,
     friction_dynamic=friction_dynamic_mujoco,
+
+    friction = static_friction_hip,
+    dynamic_friction = dynamic_friction_hip,
+    viscous_friction = viscous_friction_hip,
 )
 
 ALIENGO_THIGH_ACTUATOR_CFG = IdentifiedActuatorElectricCfg(
@@ -41,6 +57,10 @@ ALIENGO_THIGH_ACTUATOR_CFG = IdentifiedActuatorElectricCfg(
     friction_static=friction_static_mujoco,
     activation_vel=0.1,
     friction_dynamic=friction_dynamic_mujoco,
+
+    friction = static_friction_thigh,
+    dynamic_friction = dynamic_friction_thigh,
+    viscous_friction = viscous_friction_thigh,
 )
 
 ALIENGO_CALF_ACTUATOR_CFG = IdentifiedActuatorElectricCfg(
@@ -54,6 +74,10 @@ ALIENGO_CALF_ACTUATOR_CFG = IdentifiedActuatorElectricCfg(
     friction_static=friction_static_mujoco,
     activation_vel=0.1,
     friction_dynamic=friction_dynamic_mujoco,
+
+    friction = static_friction_calf,
+    dynamic_friction = dynamic_friction_calf,
+    viscous_friction = viscous_friction_calf,
 )
 
 

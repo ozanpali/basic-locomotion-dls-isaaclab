@@ -82,7 +82,7 @@ class SimpleNN(torch.nn.Module):
         self.fc2 = torch.nn.Linear(128, 64)
         self.fc3 = torch.nn.Linear(64, out_features)
 
-        self.dataset = CustomDataset(max_size=10000)
+        self.dataset = CustomDataset(max_size=20000)
 
 
     def forward(self, x):
@@ -124,6 +124,8 @@ class SimpleNN(torch.nn.Module):
                         optimizer.step()
     
                     print(f"Epoch {epoch + 1}/{epochs}, Loss: {loss.item()}")
+        self.eval()
+        print("Training complete. Model set to evaluation mode.")
 
 
     def save_network(self, filepath, device='cpu'):
@@ -133,7 +135,7 @@ class SimpleNN(torch.nn.Module):
         
         # Move model to CPU for saving (optional, saves GPU memory)
         original_device = next(self.parameters()).device
-        self.cpu()
+        #self.cpu()
         
         # Save the state dict
         torch.save({
@@ -145,7 +147,7 @@ class SimpleNN(torch.nn.Module):
         print(f"Network saved to {filepath}")
         
         # Move model back to original device
-        self.to(original_device)
+        #self.to(original_device)
 
 
 def load_network(filepath, device='cpu'):

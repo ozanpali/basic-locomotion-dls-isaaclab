@@ -709,7 +709,9 @@ class LocomotionEnv(DirectRLEnv):
             linear_velocity_b = self._robot.data.root_lin_vel_b
 
         # Train at some interval
-        if num_episode_from_start % self.cfg.cuncurrent_state_est_ep_saving_interval == 0 and num_episode_from_start > self.cfg.cuncurrent_state_est_ep_saving_interval - 1:  # Adjust the interval as needed
+        if (num_episode_from_start % self.cfg.cuncurrent_state_est_ep_saving_interval == 0 and 
+            num_episode_from_start > self.cfg.cuncurrent_state_est_ep_saving_interval - 1 and 
+                num_episode_from_start < num_final_episode_from_start - 500):  # Adjust the interval as needed
             self._cuncurrent_state_est_network.train_network(batch_size=self.cfg.cuncurrent_state_est_batch_size, 
                                                             epochs=self.cfg.cuncurrent_state_est_train_epochs, 
                                                             learning_rate=self.cfg.cuncurrent_state_est_lr, device=self.device)
@@ -762,7 +764,9 @@ class LocomotionEnv(DirectRLEnv):
             obs_rma = outputs_rma
 
         # Train at some interval
-        if num_episode_from_start % self.cfg.rma_ep_saving_interval == 0 and num_episode_from_start > self.cfg.rma_ep_saving_interval - 1:  # Adjust the interval as needed
+        if (num_episode_from_start % self.cfg.rma_ep_saving_interval == 0 and 
+            num_episode_from_start > self.cfg.rma_ep_saving_interval - 1 and 
+                num_episode_from_start < num_final_episode_from_start - 500):  # Adjust the interval as needed
             self._rma_network.train_network(batch_size=self.cfg.rma_batch_size, 
                                             epochs=self.cfg.rma_train_epochs, 
                                             learning_rate=self.cfg.rma_lr, 
