@@ -9,15 +9,15 @@ scene = 'random_boxes'  # flat, random_boxes, random_pyramids, perlin
 
 # ----------------------------------------------------------------------------------------------------------------
 if(robot == "aliengo"):
-    Kp_walking = 25.
-    Kd_walking = 2.
+    Kp_walking = 21.5
+    Kd_walking = 3.5
 
     Kp_stand_up_and_down = 25.
     Kd_stand_up_and_down = 2.
 
 elif(robot == "go2"):
-    Kp_walking = 25.
-    Kd_walking = 2.
+    Kp_walking = 21.5
+    Kd_walking = 3.5
 
     Kp_stand_up_and_down = 25.
     Kd_stand_up_and_down = 2.
