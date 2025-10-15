@@ -120,7 +120,6 @@ policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaacl
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-08_14-35-34_airtime0.2_mujoco_desiredfeetheight35cmfromlocomotionintegrated3legrewardbutcommented"
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-08_14-50-19_airtime0.7_mujoco_desiredfeetheight5cm_desiredbaseheight25cm"
 #policy_folder_path = dir_path + "/../tested_policies/" + robot + "/2025-09-07_19-13-16_go2_cuncurrent_se"
-"""
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-08_15-15-12_airtime0.5_mujoco_slide_desiredfeetheight15cm_desiredbaseheight35cm"
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-08_15-27-37_locomotion"
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-08_15-49-19_locomotioneditedwithremote"
@@ -128,24 +127,38 @@ policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaacl
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-08_16-31-03_robusteditedfromlocomotionAliengofromloco"
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-08_17-20-04_new_airtime_mujoco"
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-08_17-47-17_locomotion_airtime_mujoco"
+"""
 #good 4 leg with robust finally.
+"""
+"""
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-08_18-11-31_Robust_airtime_mujoco_desiredfeetheight15cm"
+"""
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-08_17-59-58_Robust_airtime_mujoco_500iteration"
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-09_11-13-45_Robust_airtime_mujoco_desiredfeetheight25cm"
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-09_11-46-17_Robust_airtime0.8_mujoco_desiredfeetheight25cmfixed"
-policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-09_12-26-38_Robust_airtime0.5_mujoco_desiredfeetheight25cmfixed"
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-09_13-33-37_Robust_airtime0.5_mujoco_desiredfeetheight5cm"
+policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-09_12-26-38_Robust_airtime0.5_mujoco_desiredfeetheight25cmfixed"
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-09_14-25-59_newpull9oct_airtime0.5_mujoco"
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-09_15-22-42_Lortime0.7_mujoco_locomotion"
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-09_14-37-35_airtime0.7_mujoco"
+policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-09_15-38-13_airtime0.7_mujoco_locomotionfixed"
+policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-09_16-44-07_airtime0.7_mujoco"
+policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-09_17-00-51_airtime0.7fixed_mujoco"
+policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-09_17-11-22_airtime1.0_mujoco"
+policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-09_17-25-38_airtime0.5_mujoco"
+policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-09_17-48-47_airtime0.5_mujoco_asymmetricppoTrue"
+policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-09_18-11-45_copypastedLocoAliengoRslrlppofromLocomotiontoRobust"
+"""
+policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-10_00-10-17_soloLocomotionLetsSeeeee"
+policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-10_01-05-18_locomotionClearancePeriodicSuggestion"
+policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-10_10-42-04_AirtimeClearanceSlide"
+policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-10_11-03-31_AirtimeClearancemujocoClearanceSlide"
 
-
-
-policy_folder_path = dir_path + "/../tested_policies/" + robot + "/aliengo_stop_and_go_correct_offset"
+#policy_folder_path = dir_path + "/../tested_policies/" + robot + "/aliengo_stop_and_go_correct_offset"
 #policy_folder_path = dir_path + "/../tested_policies/" + robot + "/go2_5asymm"
 
-cuncurrent_state_est_network = policy_folder_path + "/exported/cuncurrent_state_estimator.pth"
-rma_network = policy_folder_path + "/exported/rma.pth"
+#cuncurrent_state_est_network = policy_folder_path + "/exported/cuncurrent_state_estimator.pth"
+#rma_network = policy_folder_path + "/exported/rma.pth"
 
 # Load specific training parameters
 import yaml 
