@@ -73,6 +73,8 @@ policy_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs
 policy_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-08_14-50-19_airtime0.7_mujoco_desiredfeetheight5cm_desiredbaseheight25cm/exported/policy.onnx"
 """
 
+
+
 # ----------------------------------------------------------------------------------------------------------------
 if(robot == "aliengo"):
     Kp_walking = 21.5
@@ -153,6 +155,10 @@ policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaacl
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-10_01-05-18_locomotionClearancePeriodicSuggestion"
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-10_10-42-04_AirtimeClearanceSlide"
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-10_11-03-31_AirtimeClearancemujocoClearanceSlide"
+
+
+policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-15_14-53-17_ForkRobust_1000Iter_8192_clearance_slide_feettohipbase"
+policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-15_15-40-34_ForkRobust_600Iter_8192_clearance_slide_feettohip"
 
 #policy_folder_path = dir_path + "/../tested_policies/" + robot + "/aliengo_stop_and_go_correct_offset"
 #policy_folder_path = dir_path + "/../tested_policies/" + robot + "/go2_5asymm"
