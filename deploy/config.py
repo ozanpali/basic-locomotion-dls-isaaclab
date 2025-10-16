@@ -122,6 +122,8 @@ policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaacl
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-08_14-35-34_airtime0.2_mujoco_desiredfeetheight35cmfromlocomotionintegrated3legrewardbutcommented"
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-08_14-50-19_airtime0.7_mujoco_desiredfeetheight5cm_desiredbaseheight25cm"
 #policy_folder_path = dir_path + "/../tested_policies/" + robot + "/2025-09-07_19-13-16_go2_cuncurrent_se"
+"""
+"""
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-08_15-15-12_airtime0.5_mujoco_slide_desiredfeetheight15cm_desiredbaseheight35cm"
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-08_15-27-37_locomotion"
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-08_15-49-19_locomotioneditedwithremote"
@@ -165,6 +167,18 @@ policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaacl
 """
 
 
+"""
+
+
+
+#sag pc
+policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-09_18-03-54_sagpc_locomotion"
+policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-10_11-36-10_sagpc_locomotion"
+policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-10_11-48-26_sagpcAirtimeClearanceClearancemujocoSlide"
+policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-10_12-10-10_RightpcAirtimeClearancemujocoSlide"
+policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-10_13-26-36_RightpcOzansrepoRobustAirtimeMujocoSlideIteration1000"
+
+
 
 
 # after meeting with giulio 16th oct
@@ -172,11 +186,16 @@ policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaacl
 
 
 
+
+
+
 #policy_folder_path = dir_path + "/../tested_policies/" + robot + "/aliengo_stop_and_go_correct_offset"
+
+"""
 #policy_folder_path = dir_path + "/../tested_policies/" + robot + "/go2_5asymm"
 
-#cuncurrent_state_est_network = policy_folder_path + "/exported/cuncurrent_state_estimator.pth"
-#rma_network = policy_folder_path + "/exported/rma.pth"
+cuncurrent_state_est_network = policy_folder_path + "/exported/cuncurrent_state_estimator.pth"
+rma_network = policy_folder_path + "/exported/rma.pth"
 
 # Load specific training parameters
 import yaml 
