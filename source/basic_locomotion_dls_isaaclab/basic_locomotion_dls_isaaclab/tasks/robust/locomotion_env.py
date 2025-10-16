@@ -117,13 +117,13 @@ class LocomotionEnv(DirectRLEnv):
                 "feet_to_base_distance_l2",
                 "feet_to_hip_distance_l2",
                 "feet_vertical_surface_contacts",
-                #"fl_height_maintenance",
-                #"front_left_always_swing",
-                #"fl_calf_bend_reward",
-                #"feet_air_time_FL",
-                #"feet_air_time_FR",
-                #"feet_air_time_RL",
-                #"feet_air_time_RR",
+                "fl_height_maintenance",
+                "front_left_always_swing",
+                "fl_calf_bend_reward",
+                "feet_air_time_FL",
+                "feet_air_time_FR",
+                "feet_air_time_RL",
+                "feet_air_time_RR",
             ]
         }
         # Get specific body indices
@@ -440,28 +440,28 @@ class LocomotionEnv(DirectRLEnv):
         
         # Define individual thresholds for each leg (FL, FR, RL, RR)
         # You can adjust these values to create different gait patterns
-        #fl_threshold = 0.5   # Front Left - moderate air time
-        #fr_threshold = 0.5   # Front Right - longer air time  
-        #rl_threshold = 0.5   # Rear Left - longer air time
-        #rr_threshold = 0.5   # Rear Right - moderate air time
+        fl_threshold = 0.5  # Front Left - moderate air time
+        fr_threshold = 0.5   # Front Right - longer air time  
+        rl_threshold = 0.5   # Rear Left - longer air time
+        rr_threshold = 0.5   # Rear Right - moderate air time
         
         # Movement condition - only apply air time rewards when robot is commanded to move
-        #movement_condition = (torch.norm(self._commands[:, :2], dim=1) > 0.1)
+        movement_condition = (torch.norm(self._commands[:, :2], dim=1) > 0.1)
         
         # Front Left (FL) leg air time - index 0
-        #feet_air_time_FL = ((last_air_time[:, 0] - fl_threshold) * first_contact[:, 0]) * movement_condition
+        feet_air_time_FL = ((last_air_time[:, 0] - fl_threshold) * first_contact[:, 0]) * movement_condition
         # Front Left (FL) leg air time - index 0 (always positive reward for infinite air time)
         #fl_threshold = 0.0  # Set to 0 so FL always gets positive reward
         #feet_air_time_FL = torch.ones_like(movement_condition, dtype=torch.float32) * movement_condition  # Always positive when moving
         
         # Front Right (FR) leg air time - index 1
-        #feet_air_time_FR = ((last_air_time[:, 1] - fr_threshold) * first_contact[:, 1]) * movement_condition
+        feet_air_time_FR = ((last_air_time[:, 1] - fr_threshold) * first_contact[:, 1]) * movement_condition
         
         # Rear Left (RL) leg air time - index 2
-        #feet_air_time_RL = ((last_air_time[:, 2] - rl_threshold) * first_contact[:, 2]) * movement_condition
+        feet_air_time_RL = ((last_air_time[:, 2] - rl_threshold) * first_contact[:, 2]) * movement_condition
         
         # Rear Right (RR) leg air time - index 3
-        #feet_air_time_RR = ((last_air_time[:, 3] - rr_threshold) * first_contact[:, 3]) * movement_condition
+        feet_air_time_RR = ((last_air_time[:, 3] - rr_threshold) * first_contact[:, 3]) * movement_condition
         ####
 
 
@@ -476,34 +476,34 @@ class LocomotionEnv(DirectRLEnv):
         #feet_slide = torch.sum(body_speed[:, 1:] * contacts_foot[:, 1:], dim=1)
         #feet_slide = torch.exp(-feet_slide / 0.1)
 
-        """# Reward to encourage Front-Left leg to always be in swing (no contact)
+        # Reward to encourage Front-Left leg to always be in swing (no contact)
         current_contacts_now = self._contact_sensor.data.net_forces_w[:, self._feet_ids, :].norm(dim=-1) > 1.0
         fl_in_contact = current_contacts_now[:, 0]
-        front_left_always_swing = (~fl_in_contact).float()"""
+        front_left_always_swing = (~fl_in_contact).float()
 
         #### 3 legs
         # FL Calf Bend Reward - reward more bent FL calf joint (more negative angle)
         # FL calf joint target is -2.5 radians. More bent means more negative.
-        #fl_calf_pos = self._robot.data.joint_pos[:, 8]  # FL_calf_joint (index 8)
-        #target_pos = -2.5
-        #bend_amount = -(fl_calf_pos - target_pos)  # Positive when more bent than target
-        #bend_amount_clamped = torch.clamp(bend_amount, 0.0, 1.5)  # Max 1.5 rad more bent
-        #fl_calf_bend_reward = torch.exp(2.0 * bend_amount_clamped) - 1.0  # Exponential growth
+        fl_calf_pos = self._robot.data.joint_pos[:, 8]  # FL_calf_joint (index 8)
+        target_pos = -2.5
+        bend_amount = -(fl_calf_pos - target_pos)  # Positive when more bent than target
+        bend_amount_clamped = torch.clamp(bend_amount, 0.0, 1.5)  # Max 1.5 rad more bent
+        fl_calf_bend_reward = torch.exp(2.0 * bend_amount_clamped) - 1.0  # Exponential growth
         ####
 
         #### 3 legs
         # FL Height Maintenance Reward - keeps FL leg at desired height always
         # Get FL leg current height (index 0)
-        #fl_current_height = self._robot.data.body_pos_w[:, self._feet_ids_robot[0], 2]
+        fl_current_height = self._robot.data.body_pos_w[:, self._feet_ids_robot[0], 2]
         # Get standard/default FL leg height when robot is in default standing position
-        #fl_default_height = self._robot.data.default_root_state[0, 2] - 0.4  # Approximate standard foot height relative to base
+        fl_default_height = self._robot.data.default_root_state[0, 2] - 0.4  # Approximate standard foot height relative to base
         # Define desired height above standard position (configurable)
-        #fl_desired_height_above_standard = getattr(self.cfg, "fl_desired_height_above_standard", 0.20)  # Default 20cm above standard
-        #fl_target_height = fl_default_height + fl_desired_height_above_standard
+        fl_desired_height_above_standard = getattr(self.cfg, "fl_desired_height_above_standard", 0.20)  # Default 20cm above standard
+        fl_target_height = fl_default_height + fl_desired_height_above_standard
         # Compute height error
-        #fl_height_error = torch.abs(fl_current_height - fl_target_height)
+        fl_height_error = torch.abs(fl_current_height - fl_target_height)
         # Exponential reward (higher reward when closer to target height)
-        #fl_height_maintenance = torch.exp(-fl_height_error / 0.02)  # Sensitive to 2cm deviations"""
+        fl_height_maintenance = torch.exp(-fl_height_error / 0.02)  # Sensitive to 2cm deviations
         ####
 
         # feet periodical contacts suggestion
@@ -615,13 +615,13 @@ class LocomotionEnv(DirectRLEnv):
             "feet_to_base_distance_l2": feet_to_base_distance * self.cfg.feet_to_base_distance_reward_scale * self.step_dt,
             "feet_to_hip_distance_l2": feet_to_hip_distance * self.cfg.feet_to_hip_distance_reward_scale * self.step_dt,
             "feet_vertical_surface_contacts": feet_vertical_surface_contacts * self.cfg.feet_vertical_surface_contacts_reward_scale * self.step_dt,
-            #"fl_height_maintenance": fl_height_maintenance * self.cfg.fl_height_maintenance_reward_scale * self.step_dt,
-            #"front_left_always_swing": front_left_always_swing * getattr(self.cfg, "front_left_swing_reward_scale", 1.0) * self.step_dt,
-            #"fl_calf_bend_reward": fl_calf_bend_reward * self.cfg.fl_calf_bend_reward_scale * self.step_dt,
-            #"feet_air_time_FL": feet_air_time_FL * self.cfg.feet_air_time_reward_scale * self.step_dt,
-            #"feet_air_time_FR": feet_air_time_FR * self.cfg.feet_air_time_reward_scale * self.step_dt,
-            #"feet_air_time_RL": feet_air_time_RL * self.cfg.feet_air_time_reward_scale * self.step_dt,
-            #"feet_air_time_RR": feet_air_time_RR * self.cfg.feet_air_time_reward_scale * self.step_dt,
+            "fl_height_maintenance": fl_height_maintenance * self.cfg.fl_height_maintenance_reward_scale * self.step_dt,
+            "front_left_always_swing": front_left_always_swing * self.cfg.front_left_always_swing_reward_scale * self.step_dt,
+            "fl_calf_bend_reward": fl_calf_bend_reward * self.cfg.fl_calf_bend_reward_scale * self.step_dt,
+            "feet_air_time_FL": feet_air_time_FL * self.cfg.feet_air_time_FL_reward_scale * self.step_dt,
+            "feet_air_time_FR": feet_air_time_FR * self.cfg.feet_air_time_FR_reward_scale * self.step_dt,
+            "feet_air_time_RL": feet_air_time_RL * self.cfg.feet_air_time_RL_reward_scale * self.step_dt,
+            "feet_air_time_RR": feet_air_time_RR * self.cfg.feet_air_time_RR_reward_scale * self.step_dt,
         }
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
         
