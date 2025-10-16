@@ -35,6 +35,10 @@ args_cli, hydra_args = parser.parse_known_args()
 if args_cli.video:
     args_cli.enable_cameras = True
 
+# set default logging project name to task name when using wandb/neptune if not provided
+if getattr(args_cli, "log_project_name", None) is None:
+    args_cli.log_project_name = args_cli.task
+
 # clear out sys.argv for Hydra
 sys.argv = [sys.argv[0]] + hydra_args
 
@@ -60,7 +64,7 @@ from isaaclab.envs import (
 )
 from isaaclab.utils.dict import print_dict
 from isaaclab.utils.io import dump_pickle, dump_yaml
-from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlVecEnvWrapper
+from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlVecEnvWrapper, export_policy_as_jit, export_policy_as_onnx
 from isaaclab_tasks.utils import get_checkpoint_path
 from isaaclab_tasks.utils.hydra import hydra_task_config
 
@@ -140,12 +144,32 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # run training
     runner.learn(num_learning_iterations=agent_cfg.max_iterations, init_at_random_ep_len=True)
 
+    # export the trained policy as jit and onnx (align with train_symm.py pattern)
+    export_dir = os.path.join(log_dir, "exported")
+    os.makedirs(export_dir, exist_ok=True)
+
+    # Obtain the underlying torch policy module (convert if it has an export() helper).
+    policy_module = runner.alg.policy
+    policy_module = policy_module.export() if hasattr(policy_module, "export") else policy_module
+    # Move to CPU for portable exports and disable training-time layers
+    policy_module = policy_module.to("cpu")
+    policy_module.eval()
+
+    # Use the runner's observation normalizer if available (may be None; helpers accept None)
+    normalizer = getattr(runner, "obs_normalizer", None)
+
+    # JIT/ONNX export using helper utilities that expect (policy, normalizer, path, filename)
+    export_policy_as_jit(policy_module, normalizer=normalizer, path=export_dir, filename="policy.pt")
+    export_policy_as_onnx(policy_module, normalizer=normalizer, path=export_dir, filename="policy.onnx")
+
+    print(f"[INFO] Exported policy artifacts to: {export_dir}")
+
     # close the simulator
     env.close()
 
 
 if __name__ == "__main__":
     # run the main function
-    main()
+    main()  # type: ignore
     # close sim app
     simulation_app.close()
