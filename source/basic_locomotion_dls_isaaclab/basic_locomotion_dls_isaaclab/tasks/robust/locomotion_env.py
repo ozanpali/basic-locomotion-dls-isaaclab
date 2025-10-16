@@ -108,13 +108,13 @@ class LocomotionEnv(DirectRLEnv):
                 "joints_energy_l1",
                 
                 "feet_air_time",
-                #"feet_height_clearance_periodic",
+                "feet_height_clearance_periodic",
                 "feet_height_clearance",
-                #"feet_height_clearance_mujoco_periodic",
-                #"feet_height_clearance_mujoco",
+                "feet_height_clearance_mujoco_periodic",
+                "feet_height_clearance_mujoco",
                 "feet_slide",
-                #"feet_contact_suggestion",
-                #"feet_to_base_distance_l2",
+                "feet_contact_suggestion",
+                "feet_to_base_distance_l2",
                 "feet_to_hip_distance_l2",
                 "feet_vertical_surface_contacts",
                 #"fl_height_maintenance",
@@ -502,39 +502,32 @@ class LocomotionEnv(DirectRLEnv):
         
 
 
-        # feet height clearance mujoco
+        # feet height clearance mujoco (done)
         first_contact = self._contact_sensor.compute_first_contact(self.step_dt)[:, self._feet_ids]
         net_contact_forces = self._contact_sensor.data.net_forces_w_history
         is_contact = (torch.max(torch.norm(net_contact_forces[:, :, self._feet_ids], dim=-1), dim=1)[0] > 1.0)
-        #target_height = self.cfg.desired_feet_height + torch.cat((mean_height_ray_front.unsqueeze(1).expand(-1, 2), mean_height_ray_back.unsqueeze(1).expand(-1, 2)), dim=1)
-        feet_z_target_error_mujoco = self.cfg.desired_feet_height + torch.cat((mean_height_ray_front.unsqueeze(1).expand(-1, 2), mean_height_ray_back.unsqueeze(1).expand(-1, 2)), dim=1) - self._robot.data.body_pos_w[:, self._feet_ids_robot, 2]
-        feet_z_target_error_mujoco = torch.clamp(feet_z_target_error_mujoco, min=.0, max=self.cfg.desired_feet_height)
- 
 
-        self._swing_peak *= ~is_contact # reset if the foot is in contact
         self._swing_peak = torch.max(self._swing_peak, self._robot.data.body_pos_w[:, self._feet_ids_robot, 2].clone()) 
-        feet_height_clearance_mujoco_FL = torch.exp(-feet_z_target_error_mujoco[:,0]/ 0.01) * should_move
-        feet_height_clearance_mujoco_FR = torch.exp(-feet_z_target_error_mujoco[:,1]/ 0.01) * should_move
-        feet_height_clearance_mujoco_RL = torch.exp(-feet_z_target_error_mujoco[:,2]/ 0.01) * should_move
-        feet_height_clearance_mujoco_RR = torch.exp(-feet_z_target_error_mujoco[:,3]/ 0.01) * should_move
-        #feet_height_clearance_mujoco = torch.sum(torch.square(self._swing_peak / target_height - 1.0) *  first_contact, dim=-1)
-        feet_height_clearance_mujoco = feet_height_clearance_mujoco_FL + feet_height_clearance_mujoco_FR
-        feet_height_clearance_mujoco += feet_height_clearance_mujoco_RL + feet_height_clearance_mujoco_RR
-
-        # feet height clearance mujoco periodic
-        self._swing_peak_periodic *= ~contact_periodic_on # reset if the foot is in contact periodic phase
+        self._swing_peak *= ~is_contact # reset if the foot is in contact
+        target_height = self.cfg.desired_feet_height + torch.cat((mean_height_ray_front.unsqueeze(1).expand(-1, 2), mean_height_ray_back.unsqueeze(1).expand(-1, 2)), dim=1)
+        feet_height_clearance_mujoco = torch.sum(torch.square(self._swing_peak / target_height - 1.0) *  first_contact, dim=-1)
+ 
+        # feet height clearance mujoco periodic(combinations for swing peak location & feet_z_target_error)
         self._swing_peak_periodic = torch.max(self._swing_peak_periodic, self._robot.data.body_pos_w[:, self._feet_ids_robot, 2].clone())
-        feet_height_clearance_mujoco_periodic_FL = torch.exp(-feet_z_target_error_mujoco[:,0]/ 0.01) * should_move
-        feet_height_clearance_mujoco_periodic_FR = torch.exp(-feet_z_target_error_mujoco[:,1]/ 0.01) * should_move
-        feet_height_clearance_mujoco_periodic_RL = torch.exp(-feet_z_target_error_mujoco[:,2]/ 0.01) * should_move
-        feet_height_clearance_mujoco_periodic_RR = torch.exp(-feet_z_target_error_mujoco[:,3]/ 0.01) * should_move
-        #feet_height_clearance_mujoco_periodic = torch.sum(torch.square(self._swing_peak_periodic / target_height - 1.0) *  first_contact, dim=-1) 
+        self._swing_peak_periodic *= ~contact_periodic_on # reset if the foot is in contact periodic phase
+        feet_z_target_error_mujoco = self.cfg.desired_feet_height + torch.cat((mean_height_ray_front.unsqueeze(1).expand(-1, 2), mean_height_ray_back.unsqueeze(1).expand(-1, 2)), dim=1) - self._swing_peak_periodic #self._robot.data.body_pos_w[:, self._feet_ids_robot, 2]
+        #feet_z_target_error_mujoco = self.cfg.desired_feet_height + torch.cat((mean_height_ray_front.unsqueeze(1).expand(-1, 2), mean_height_ray_back.unsqueeze(1).expand(-1, 2)), dim=1) - self._robot.data.body_pos_w[:, self._feet_ids_robot, 2]
+        feet_z_target_error_mujoco = torch.clamp(feet_z_target_error_mujoco, min=.0, max=self.cfg.desired_feet_height)
+        feet_height_clearance_mujoco_periodic_FL = torch.exp(-feet_z_target_error_mujoco[:,0]/ 0.01) * should_move * ~contact_periodic_on[:,0] #first_contact[:,0]
+        feet_height_clearance_mujoco_periodic_FR = torch.exp(-feet_z_target_error_mujoco[:,1]/ 0.01) * should_move * ~contact_periodic_on[:,1] #first_contact[:,1]
+        feet_height_clearance_mujoco_periodic_RL = torch.exp(-feet_z_target_error_mujoco[:,2]/ 0.01) * should_move * ~contact_periodic_on[:,2] #first_contact[:,2]
+        feet_height_clearance_mujoco_periodic_RR = torch.exp(-feet_z_target_error_mujoco[:,3]/ 0.01) * should_move * ~contact_periodic_on[:,3] #first_contact[:,3]
         feet_height_clearance_mujoco_periodic = feet_height_clearance_mujoco_periodic_FL + feet_height_clearance_mujoco_periodic_FR
         feet_height_clearance_mujoco_periodic += feet_height_clearance_mujoco_periodic_RL + feet_height_clearance_mujoco_periodic_RR
 
 
         # feet height clearance periodic
-        feet_z_target_error = self.cfg.desired_feet_height + torch.cat((mean_height_ray_front.unsqueeze(1).expand(-1, 2), mean_height_ray_back.unsqueeze(1).expand(-1, 2)), dim=1) - self._robot.data.body_pos_w[:, self._feet_ids_robot, 2]
+        feet_z_target_error = self.cfg.desired_feet_height + torch.cat((mean_height_ray_front.unsqueeze(1).expand(-1, 2), mean_height_ray_back.unsqueeze(1).expand(-1, 2)), dim=1) - self._swing_peak_periodic #self._robot.data.body_pos_w[:, self._feet_ids_robot, 2]
         feet_z_target_error = torch.clamp(feet_z_target_error, min=.0, max=self.cfg.desired_feet_height)
  
         feet_height_clearance_periodic_FL = torch.exp(-feet_z_target_error[:,0]/ 0.01) * should_move * ~contact_periodic_on[:,0]
@@ -598,13 +591,13 @@ class LocomotionEnv(DirectRLEnv):
             "feet_air_time": feet_air_time * self.cfg.feet_air_time_reward_scale * self.step_dt,
             
             "feet_height_clearance": feet_height_clearance * self.cfg.feet_height_clearance_reward_scale * self.step_dt,
-            #"feet_height_clearance_periodic": feet_height_clearance_periodic * self.cfg.feet_height_clearance_periodic_reward_scale * self.step_dt,
-            #"feet_height_clearance_mujoco": feet_height_clearance_mujoco * self.cfg.feet_height_clearance_mujoco_reward_scale * self.step_dt,
-            #"feet_height_clearance_mujoco_periodic": feet_height_clearance_mujoco_periodic * self.cfg.feet_height_clearance_mujoco_periodic_reward_scale * self.step_dt,
+            "feet_height_clearance_periodic": feet_height_clearance_periodic * self.cfg.feet_height_clearance_periodic_reward_scale * self.step_dt,
+            "feet_height_clearance_mujoco": feet_height_clearance_mujoco * self.cfg.feet_height_clearance_mujoco_reward_scale * self.step_dt,
+            "feet_height_clearance_mujoco_periodic": feet_height_clearance_mujoco_periodic * self.cfg.feet_height_clearance_mujoco_periodic_reward_scale * self.step_dt,
             
             "feet_slide": feet_slide * self.cfg.feet_slide_reward_scale * self.step_dt,
-            #"feet_contact_suggestion": feet_contact_suggestion * self.cfg.feet_contact_suggestion_reward_scale * self.step_dt,
-            #"feet_to_base_distance_l2": feet_to_base_distance * self.cfg.feet_to_base_distance_reward_scale * self.step_dt,
+            "feet_contact_suggestion": feet_contact_suggestion * self.cfg.feet_contact_suggestion_reward_scale * self.step_dt,
+            "feet_to_base_distance_l2": feet_to_base_distance * self.cfg.feet_to_base_distance_reward_scale * self.step_dt,
             "feet_to_hip_distance_l2": feet_to_hip_distance * self.cfg.feet_to_hip_distance_reward_scale * self.step_dt,
             "feet_vertical_surface_contacts": feet_vertical_surface_contacts * self.cfg.feet_vertical_surface_contacts_reward_scale * self.step_dt,
             #"fl_height_maintenance": fl_height_maintenance * self.cfg.fl_height_maintenance_reward_scale * self.step_dt,

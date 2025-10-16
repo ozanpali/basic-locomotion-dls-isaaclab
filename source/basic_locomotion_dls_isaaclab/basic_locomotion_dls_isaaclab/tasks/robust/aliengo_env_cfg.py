@@ -267,7 +267,7 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
 
     
     # asymmetric ppo
-    use_asymmetric_ppo = False
+    use_asymmetric_ppo = True
     if(use_asymmetric_ppo):
         state_space = observation_space
         #state_space += 12 # P gain

@@ -134,8 +134,8 @@ policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaacl
 """
 """
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-08_18-11-31_Robust_airtime_mujoco_desiredfeetheight15cm"
-"""
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-08_17-59-58_Robust_airtime_mujoco_500iteration"
+"""
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-09_11-13-45_Robust_airtime_mujoco_desiredfeetheight25cm"
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-09_11-46-17_Robust_airtime0.8_mujoco_desiredfeetheight25cmfixed"
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-09_13-33-37_Robust_airtime0.5_mujoco_desiredfeetheight5cm"
@@ -150,7 +150,6 @@ policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaacl
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-09_17-25-38_airtime0.5_mujoco"
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-09_17-48-47_airtime0.5_mujoco_asymmetricppoTrue"
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-09_18-11-45_copypastedLocoAliengoRslrlppofromLocomotiontoRobust"
-"""
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-10_00-10-17_soloLocomotionLetsSeeeee"
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-10_01-05-18_locomotionClearancePeriodicSuggestion"
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-10_10-42-04_AirtimeClearanceSlide"
@@ -159,6 +158,19 @@ policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaacl
 
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-15_14-53-17_ForkRobust_1000Iter_8192_clearance_slide_feettohipbase"
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-15_15-40-34_ForkRobust_600Iter_8192_clearance_slide_feettohip"
+policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-15_16-30-18_ForkRobust_600Iter_8192_clearanceOver0.05_slide_feettohip"
+policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-15_15-40-34_ForkRobust_600Iter_8192_clearance_slide_feettohip"
+policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-15_17-10-14_ForkRobust_600Iter_8192_clearanceOver0.001scale0.5_slide_feettohip"
+policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-15_16-40-39_ForkRobust_600Iter_8192_clearanceOver0.05_slide_feettohip"
+"""
+
+
+
+
+# after meeting with giulio 16th oct
+
+
+
 
 #policy_folder_path = dir_path + "/../tested_policies/" + robot + "/aliengo_stop_and_go_correct_offset"
 #policy_folder_path = dir_path + "/../tested_policies/" + robot + "/go2_5asymm"
