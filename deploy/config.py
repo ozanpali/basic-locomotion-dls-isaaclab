@@ -106,6 +106,7 @@ else:
 
 # ----------------------------------------------------------------------------------------------------------------
 
+policy_folder_path = dir_path + "/../tested_policies/" + robot + "/aliengo_symmetricactor"
 """
 policy_folder_path = dir_path + "/../tested_policies/" + robot + "/8k_128_128_128_aliengo_stop_and_go_correct_offset"
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-08_14-50-19_airtime0.7_mujoco_desiredfeetheight5cm_desiredbaseheight25cm"
