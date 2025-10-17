@@ -441,8 +441,8 @@ class LocomotionEnv(DirectRLEnv):
         # Define individual thresholds for each leg (FL, FR, RL, RR)
         # You can adjust these values to create different gait patterns
         fl_threshold = 0.5  # Front Left - moderate air time
-        fr_threshold = 0.5   # Front Right - longer air time  
-        rl_threshold = 0.5   # Rear Left - longer air time
+        fr_threshold = 0.3   # Front Right - longer air time  
+        rl_threshold = 0.3   # Rear Left - longer air time
         rr_threshold = 0.5   # Rear Right - moderate air time
         
         # Movement condition - only apply air time rewards when robot is commanded to move
