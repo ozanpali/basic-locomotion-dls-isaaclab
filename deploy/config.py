@@ -189,6 +189,18 @@ policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaacl
 #policy_folder_path = parent_dir + "/"
 #policy_folder_path += "logs/rsl_rl/flat_direct/2025-10-17_11-17-32_LPC_1000Iter_8192_clearance"
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-17_16-23-09_LPC_1000Iter_8192Env_clearance_slide"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-17_17-42-48_LPC_2Iter_2Env_97e0efba_tripod_test2_bend"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-17_17-43-03_LPC_2Iter_2Env_18ad6995_tripod_test3_swing"
+#kinda lifs
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-17_19-03-07_LPC_1000Iter_8192Env_18ad6995_tripod_test3_swing"
+#better then before
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-17_19-58-46_LPC_1000Iter_8192Env_a4a33723_tripod_test5_maintenance_swing"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-17_20-26-22_LPC_1000Iter_8192Env_8c6cfa6a_tripod_test6_bend_swing"
+#properly lifts but touches.
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-17_20-53-57_LPC_1000Iter_8192Env_8ba738cc_tripod_test7_maintenance_bend_swing"
+#lets remove airtime for FL
+
+
 
 
 #policy_folder_path = dir_path + "/../tested_policies/" + robot + "/aliengo_stop_and_go_correct_offset"
