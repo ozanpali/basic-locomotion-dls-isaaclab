@@ -469,7 +469,7 @@ class LocomotionEnv(DirectRLEnv):
         contacts_foot = self._contact_sensor.data.net_forces_w_history[:, :, self._feet_ids, :].norm(dim=-1).max(dim=1)[0] > 1.0
         body_vel = self._robot.data.body_lin_vel_w[:, self._feet_ids_robot, :2]
         feet_slide = torch.sum(body_vel.norm(dim=-1) * contacts_foot, dim=1)
-        feet_slide = torch.exp(-feet_slide / 0.1)
+        #feet_slide = torch.exp(-feet_slide / 0.1)
 
         # Exclude Front-Left leg (index 0) from slide computation
         #body_speed = body_vel.norm(dim=-1)
