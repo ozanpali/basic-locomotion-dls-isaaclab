@@ -391,7 +391,7 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     action_smoothness_reward_scale = -0.001 * (1-use_amp)
 
     # Feet reward scale
-    feet_air_time_reward_scale = 0.5 * (1-use_amp) * 0.0
+    feet_air_time_reward_scale = 0.5 * (1-use_amp)
 
     feet_height_clearance_reward_scale = 0.25 * (1-use_amp)  
     feet_height_clearance_periodic_reward_scale = 0.25 * (1-use_amp) * 0.0
@@ -413,14 +413,14 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     # Reward for maintaining a desired height with the front-left (FL) foot
     fl_height_maintenance_reward_scale = 0.25 * (1-use_amp) * 0.0
     # Reward for encouraging the FL calf joint to bend (more negative angle)
-    fl_calf_bend_reward_scale = 0.25 * (1-use_amp) * 0.0
+    fl_calf_bend_reward_scale = 0.25 * (1-use_amp)
     # Desired height above the standard/default foot height for FL (meters)
     fl_desired_height_above_standard = 0.20 * (1-use_amp) * 0.0
     # Per-foot air time reward scales (allow different weighting per leg)
-    feet_air_time_FL_reward_scale = 0.5 * (1-use_amp)
-    feet_air_time_FR_reward_scale = 0.5 * (1-use_amp)
-    feet_air_time_RL_reward_scale = 0.5 * (1-use_amp)
-    feet_air_time_RR_reward_scale = 0.5 * (1-use_amp)
+    feet_air_time_FL_reward_scale = 0.5 * (1-use_amp) * 0.0
+    feet_air_time_FR_reward_scale = 0.5 * (1-use_amp) * 0.0
+    feet_air_time_RL_reward_scale = 0.5 * (1-use_amp) * 0.0
+    feet_air_time_RR_reward_scale = 0.5 * (1-use_amp) * 0.0
 
 
 
