@@ -65,13 +65,10 @@ done
 
 # Ordered list from first to last commit (as you provided)
 COMMITS=(
-  13527d6aaa837610c6a33fed7ebff165e42eb024  # tripod test1: maintenance
-  97e0efba563de014bfe4ae7612caba2d452bfe0f  # tripod test2: bend
-  18ad6995f9415c9aa2b67691064617e1b3cd597e  # tripod test3: swing
-  696e5e89dde92363e4ecca795a9b0c594c4c98fa  # tripod test4: maintenance bend
-  a4a33723d1db6302b7e20e17289baf412fd11871  # tripod test5: maintenance swing
-  8c6cfa6ab516696915f09cccee6ef608e92f9924  # tripod test6: bend swing
-  8ba738cc40182eafec04a222e87547d02df376d5  # tripod test7: maintenance bend swing
+  97f48f32e5d44d92b5f1319e147a8fdc03484c7a  # individual airtime FLRR 0.5 FRRL 0.3
+  fd06cdedbb7cf4298306c1d02235204a9c977463  # individual airtime FLRR 0.5 FRRL 0.3 FL calf target -2.5
+  6a7a9b15db8a0704995fe072f03e358f5499e40f  # individual airtime FLRR 0.5 FRRL 0.3 FL calf target -2.5 maintenance bend swing
+  9b8cb78204d3922d65ecd17ef8c3c53ada01cbd9  # individual airtime RR 0.5 FRRL 0.3 FL calf target -2.5 maintenance bend swing
 )
 
 # --- Helpers ---
