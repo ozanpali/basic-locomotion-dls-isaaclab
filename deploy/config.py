@@ -106,8 +106,8 @@ else:
 
 # ----------------------------------------------------------------------------------------------------------------
 
-policy_folder_path = dir_path + "/../tested_policies/" + robot + "/aliengo_symmetricactor"
 """
+policy_folder_path = dir_path + "/../tested_policies/" + robot + "/aliengo_symmetricactor"
 policy_folder_path = dir_path + "/../tested_policies/" + robot + "/8k_128_128_128_aliengo_stop_and_go_correct_offset"
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-08_14-50-19_airtime0.7_mujoco_desiredfeetheight5cm_desiredbaseheight25cm"
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-07_22-33-53_pullcheck_justclearance"
@@ -136,9 +136,9 @@ policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaacl
 #good 4 leg with robust finally.
 """
 """
+"""
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-08_18-11-31_Robust_airtime_mujoco_desiredfeetheight15cm"
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-08_17-59-58_Robust_airtime_mujoco_500iteration"
-"""
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-09_11-13-45_Robust_airtime_mujoco_desiredfeetheight25cm"
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-09_11-46-17_Robust_airtime0.8_mujoco_desiredfeetheight25cmfixed"
 policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-09_13-33-37_Robust_airtime0.5_mujoco_desiredfeetheight5cm"
@@ -183,20 +183,20 @@ policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaacl
 
 
 # after meeting with giulio 16th oct
+"""
 
-
-
-
-
+#policy_folder_path = "/home/dlsuser/isaaclab_ws_home/basic-locomotion-dls-isaaclab/logs/rsl_rl/flat_direct/2025-10-17_13-45-35_LPC_1000Iter_8192Env_3a72c548_fl_calf_bend_airtime_0.5"
+#policy_folder_path = parent_dir + "/"
+#policy_folder_path += "logs/rsl_rl/flat_direct/2025-10-17_11-17-32_LPC_1000Iter_8192_clearance"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-17_16-23-09_LPC_1000Iter_8192Env_clearance_slide"
 
 
 #policy_folder_path = dir_path + "/../tested_policies/" + robot + "/aliengo_stop_and_go_correct_offset"
 
-"""
 #policy_folder_path = dir_path + "/../tested_policies/" + robot + "/go2_5asymm"
 
-cuncurrent_state_est_network = policy_folder_path + "/exported/cuncurrent_state_estimator.pth"
-rma_network = policy_folder_path + "/exported/rma.pth"
+#cuncurrent_state_est_network = policy_folder_path + "/exported/cuncurrent_state_estimator.pth"
+#rma_network = policy_folder_path + "/exported/rma.pth"
 
 # Load specific training parameters
 import yaml 
