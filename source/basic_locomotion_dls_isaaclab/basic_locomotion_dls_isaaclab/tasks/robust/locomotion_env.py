@@ -412,9 +412,9 @@ class LocomotionEnv(DirectRLEnv):
         calf_joints_position_error = torch.square(calf_joints_position - self._robot.data.default_joint_pos[:,8:12])
         #### 3 legs
         # Create custom target positions with FL calf at -2.5 instead of default
-        #calf_target_positions = self._robot.data.default_joint_pos[:,8:12].clone()
-        #calf_target_positions[:, 0] = -2.5  # FL calf (index 0 of calf slice, index 8 overall)
-        #calf_joints_position_error = torch.square(calf_joints_position - calf_target_positions)
+        calf_target_positions = self._robot.data.default_joint_pos[:,8:12].clone()
+        calf_target_positions[:, 0] = -2.5  # FL calf (index 0 of calf slice, index 8 overall)
+        calf_joints_position_error = torch.square(calf_joints_position - calf_target_positions)
         ####
         calf_joints_position_reward = torch.sum(calf_joints_position_error,dim=1)
 
