@@ -498,7 +498,7 @@ class LocomotionEnv(DirectRLEnv):
         # Get standard/default FL leg height when robot is in default standing position
         fl_default_height = self._robot.data.default_root_state[0, 2] - 0.4  # Approximate standard foot height relative to base
         # Define desired height above standard position (configurable)
-        fl_desired_height_above_standard = getattr(self.cfg, "fl_desired_height_above_standard", 0.20)  # Default 20cm above standard
+        fl_desired_height_above_standard = 0.20  # Default 20cm above standard
         fl_target_height = fl_default_height + fl_desired_height_above_standard
         # Compute height error
         fl_height_error = torch.abs(fl_current_height - fl_target_height)
