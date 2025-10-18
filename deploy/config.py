@@ -199,7 +199,10 @@ policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-17_20-26-22_LPC_1000Iter_8
 #properly lifts but touches.
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-17_20-53-57_LPC_1000Iter_8192Env_8ba738cc_tripod_test7_maintenance_bend_swing"
 #lets remove airtime for FL
-
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-17_23-03-50_LPC_1000Iter_8192Env_97f48f32_individual_airtime_flrr_0.5_frrl_0.3"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-17_23-31-38_LPC_1000Iter_8192Env_fd06cded_individual_airtime_flrr_0.5_frrl_0.3_fl_calf_target_2.5"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-17_23-59-30_LPC_1000Iter_8192Env_6a7a9b15_individual_airtime_flrr_0.5_frrl_0.3_fl_calf_target_2.5_maintenance_bend_swing"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-18_00-27-03_LPC_1000Iter_8192Env_9b8cb782_individual_airtime_rr_0.5_frrl_0.3_fl_calf_target_2.5_maintenance_bend_swing"
 
 
 
