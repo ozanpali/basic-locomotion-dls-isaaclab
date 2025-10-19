@@ -124,6 +124,7 @@ class LocomotionEnv(DirectRLEnv):
                 "feet_air_time_FR",
                 "feet_air_time_RL",
                 "feet_air_time_RR",
+                "feet_air_time_FL_failure",
             ]
         }
         # Get specific body indices
@@ -433,6 +434,18 @@ class LocomotionEnv(DirectRLEnv):
         feet_air_time = torch.sum((last_air_time - 0.5) * first_contact, dim=1) * (
             torch.norm(self._commands[:, :2], dim=1) > 0.1
         )
+        active_feet_excluding_FL = [1, 2, 3]
+        feet_air_time_excluding_FL = torch.sum(
+            (last_air_time[:, active_feet_excluding_FL] - 0.5) * first_contact[:, active_feet_excluding_FL], dim=1
+        ) * (torch.norm(self._commands[:, :2], dim=1) > 0.1)
+        # Contact flags (reuse forces tensor). Threshold > 1.0 indicates contact.
+        contacts_foot = self._contact_sensor.data.net_forces_w_history[:, :, self._feet_ids, :].norm(dim=-1).max(dim=1)[0] > 1.0
+        fl_in_air = (~contacts_foot[:, 0]).float()
+        fl_contact = contacts_foot[:, 0].float()
+        fl_air_reward = 10.0 * fl_in_air
+        fl_penalty = -10.0 * fl_contact
+        feet_air_time_FL_failure = (feet_air_time_excluding_FL + fl_air_reward + fl_penalty)
+        
 
         #### 3 legs
         # Individual leg air time computation with separate thresholds for each leg
@@ -449,10 +462,10 @@ class LocomotionEnv(DirectRLEnv):
         movement_condition = (torch.norm(self._commands[:, :2], dim=1) > 0.1)
         
         # Front Left (FL) leg air time - index 0
-        feet_air_time_FL = ((last_air_time[:, 0] - fl_threshold) * first_contact[:, 0]) * movement_condition
-        # Front Left (FL) leg air time - index 0 (always positive reward for infinite air time)
-        #fl_threshold = 0.0  # Set to 0 so FL always gets positive reward
-        #feet_air_time_FL = torch.ones_like(movement_condition, dtype=torch.float32) * movement_condition  # Always positive when moving
+        #feet_air_time_FL = ((last_air_time[:, 0] - fl_threshold) * first_contact[:, 0]) * movement_condition
+        # Front Left (FL) v2leg air time - index 0 (always positive reward for infinite air time)
+        fl_threshold = 0.0  # Set to 0 so FL always gets positive reward
+        feet_air_time_FL = torch.ones_like(movement_condition, dtype=torch.float32) * movement_condition  # Always positive when moving
         
         # Front Right (FR) leg air time - index 1
         feet_air_time_FR = ((last_air_time[:, 1] - fr_threshold) * first_contact[:, 1]) * movement_condition
@@ -556,7 +569,7 @@ class LocomotionEnv(DirectRLEnv):
         #foot_velocity_tanh = torch.tanh(2.0 * torch.norm(self._robot.data.body_lin_vel_w[:, self._feet_ids_robot, :2], dim=2))
         #feet_height_clearance = torch.exp(-torch.sum(feet_z_target_error * foot_velocity_tanh, dim=1)/ 0.01) * should_move
 
-        # feet height clearance standard (exclude FL)
+        # feet height clearance standard v2 (exclude FL)
         foot_velocity_tanh = torch.tanh(2.0 * torch.norm(self._robot.data.body_lin_vel_w[:, self._feet_ids_robot, :2], dim=2))
         foot_velocity_tanh_excl_fl = foot_velocity_tanh[:, 1:]
         feet_z_target_error_excl_fl = feet_z_target_error[:, 1:]
@@ -628,6 +641,7 @@ class LocomotionEnv(DirectRLEnv):
             "feet_air_time_FR": feet_air_time_FR * self.cfg.feet_air_time_FR_reward_scale * self.step_dt,
             "feet_air_time_RL": feet_air_time_RL * self.cfg.feet_air_time_RL_reward_scale * self.step_dt,
             "feet_air_time_RR": feet_air_time_RR * self.cfg.feet_air_time_RR_reward_scale * self.step_dt,
+            "feet_air_time_FL_failure": feet_air_time_FL_failure * self.cfg.feet_air_time_FL_failure_reward_scale * self.step_dt,
         }
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
         
