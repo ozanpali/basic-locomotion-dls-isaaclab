@@ -203,6 +203,9 @@ policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-17_23-03-50_LPC_1000Iter_8
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-17_23-31-38_LPC_1000Iter_8192Env_fd06cded_individual_airtime_flrr_0.5_frrl_0.3_fl_calf_target_2.5"
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-17_23-59-30_LPC_1000Iter_8192Env_6a7a9b15_individual_airtime_flrr_0.5_frrl_0.3_fl_calf_target_2.5_maintenance_bend_swing"
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-18_00-27-03_LPC_1000Iter_8192Env_9b8cb782_individual_airtime_rr_0.5_frrl_0.3_fl_calf_target_2.5_maintenance_bend_swing"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-19_15-34-36_LPC_1000Iter_8192Env_a6249f35_maintenance_bend_swing_no_airtime"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-19_16-24-09_LPC_1000Iter_8192Env_f9ae6c8b_airtime_fl_failure_reward_swing_punish_touch_maintenance_bend_swing_clearance_v2"
+
 
 
 
