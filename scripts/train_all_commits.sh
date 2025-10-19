@@ -65,10 +65,14 @@ done
 
 # Ordered list from first to last commit (as you provided)
 COMMITS=(
-  97f48f32e5d44d92b5f1319e147a8fdc03484c7a  # individual airtime FLRR 0.5 FRRL 0.3
-  fd06cdedbb7cf4298306c1d02235204a9c977463  # individual airtime FLRR 0.5 FRRL 0.3 FL calf target -2.5
-  6a7a9b15db8a0704995fe072f03e358f5499e40f  # individual airtime FLRR 0.5 FRRL 0.3 FL calf target -2.5 maintenance bend swing
-  9b8cb78204d3922d65ecd17ef8c3c53ada01cbd9  # individual airtime RR 0.5 FRRL 0.3 FL calf target -2.5 maintenance bend swing
+ 2497913e078f9062385f75e494a59c882fcf2d5c  # airtime fl failure
+ 0c19c2df22f25a65cb403d26ab46dfce4d30f8ec  # airtime fl failure maintenance
+ d65cb358e7eba512515d15581b9b1a4f5999d874  # airtime fl failure bend
+ 2ff1623370b8013e4492bd508b9337b7fbe85967  # airtime fl failure swing
+ #42495d6efdffebae34dadfa6b7186d063cdbd5a6  # airtime fl failure maintenance bend
+ #ae69b40504ee818d5429dcaf8a3a5f227bdb0f3d  # airtime fl failure maintenance swing
+ #770c6bec362068afc67a2741579c712cbd8a3674  # airtime fl failure bend swing
+ #60d61d088a874c41dc0b7fe46a229264ba870e2e  # airtime fl failure maintenance bend swing
 )
 
 # --- Helpers ---
