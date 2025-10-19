@@ -418,9 +418,9 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     front_left_always_swing_reward_scale = 0.20 * (1-use_amp)
     # Per-foot air time reward scales (allow different weighting per leg)
     feet_air_time_FL_reward_scale = 0.5 * (1-use_amp) * 0.0
-    feet_air_time_FR_reward_scale = 0.5 * (1-use_amp)
-    feet_air_time_RL_reward_scale = 0.5 * (1-use_amp)
-    feet_air_time_RR_reward_scale = 0.5 * (1-use_amp)
+    feet_air_time_FR_reward_scale = 0.5 * (1-use_amp) * 0.0
+    feet_air_time_RL_reward_scale = 0.5 * (1-use_amp) * 0.0
+    feet_air_time_RR_reward_scale = 0.5 * (1-use_amp) * 0.0
 
 
 
