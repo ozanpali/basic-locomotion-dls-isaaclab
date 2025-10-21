@@ -14,7 +14,7 @@ HEADLESS_FLAG="--headless"
 LOG_PROJECT_NAME="Robust-Aliengo-Flat"
 # default max iterations (can be overridden by --max-iterations)
 MAX_ITER="1000"
-TRAIN_SCRIPT="scripts/rsl_rl/train.py"
+TRAIN_SCRIPT="scripts/rsl_rl/train_symm.py"
 DRY_RUN=false
 
 # Simple CLI parsing to override defaults
@@ -65,7 +65,10 @@ done
 
 # Ordered list from first to last commit (as you provided)
 COMMITS=(
-  82d62d2121ac01fe2887634c11da780941facdcb
+  cbe3d007ea9b115173a7077ebb9d031d822870eb
+  aa21364ee14016b720bee1e51c19c778292bfc60
+  ad5eee6225e42011ff74d4836237e9d78a073429
+  354b11346d6c2918462f46d44b45a7e3bce31459
 )
 
 # --- Helpers ---
@@ -144,7 +147,7 @@ for COMMIT in "${COMMITS[@]}"; do
   # Fix typo: use SUBJECT when building the suffix
   RUN_SUFFIX=$(subject_to_camelcase "${SUBJECT}")
   # Build run name: include iterations, envs, short commit id and sanitized commit subject
-  RUN_NAME="RPC_${MAX_ITER}Iter_${NUM_ENVS}Env_${SHORT_COMMIT}_${RUN_SUFFIX}"
+  RUN_NAME="LPC_${MAX_ITER}Iter_${NUM_ENVS}Env_${SHORT_COMMIT}_${RUN_SUFFIX}"
 
   info "Commit subject: ${SUBJECT}"
   info "Run name     : ${RUN_NAME}"
