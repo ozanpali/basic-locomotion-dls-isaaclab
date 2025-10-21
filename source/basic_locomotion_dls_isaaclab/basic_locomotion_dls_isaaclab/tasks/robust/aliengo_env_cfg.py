@@ -411,18 +411,21 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
 
     # Front-left specific rewards (moved here so they are grouped with other feet rewards)
     # Reward for maintaining a desired height with the front-left (FL) foot
-    fl_height_maintenance_reward_scale = 0.25 * (1-use_amp)
+    fl_height_maintenance_reward_scale = 0.25 * (1-use_amp) * 0.0
     # Reward for encouraging the FL calf joint to bend (more negative angle)
-    fl_calf_bend_reward_scale = 0.25 * (1-use_amp)
+    fl_calf_bend_reward_scale = 0.25 * (1-use_amp) * 0.0
     # Desired height above the standard/default foot height for FL (meters)
-    front_left_always_swing_reward_scale = 0.20 * (1-use_amp)
+    front_left_always_swing_reward_scale = 0.20 * (1-use_amp) * 0.0
     # Per-foot air time reward scales (allow different weighting per leg)
     feet_air_time_FL_reward_scale = 0.5 * (1-use_amp) * 0.0
     feet_air_time_FR_reward_scale = 0.5 * (1-use_amp) * 0.0
     feet_air_time_RL_reward_scale = 0.5 * (1-use_amp) * 0.0
     feet_air_time_RR_reward_scale = 0.5 * (1-use_amp) * 0.0
     #reward in the air punish when touch the ground
-    feet_air_time_FL_failure_reward_scale = 0.5 * (1-use_amp)
+    feet_air_time_FL_failure_reward_scale = 0.5 * (1-use_amp) * 0.0
+    feet_air_time_RL_failure_reward_scale = 0.5 * (1-use_amp) * 0.0
+    feet_air_time_FR_failure_reward_scale = 0.5 * (1-use_amp) * 0.0
+    feet_air_time_RR_failure_reward_scale = 0.5 * (1-use_amp) * 0.0
 
 
 

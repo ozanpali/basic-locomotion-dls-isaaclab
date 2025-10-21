@@ -125,6 +125,9 @@ class LocomotionEnv(DirectRLEnv):
                 "feet_air_time_RL",
                 "feet_air_time_RR",
                 "feet_air_time_FL_failure",
+                "feet_air_time_RL_failure",
+                "feet_air_time_FR_failure",
+                "feet_air_time_RR_failure",
             ]
         }
         # Get specific body indices
@@ -413,9 +416,9 @@ class LocomotionEnv(DirectRLEnv):
         calf_joints_position_error = torch.square(calf_joints_position - self._robot.data.default_joint_pos[:,8:12])
         #### 3 legs
         # Create custom target positions with FL calf at -2.5 instead of default
-        calf_target_positions = self._robot.data.default_joint_pos[:,8:12].clone()
-        calf_target_positions[:, 0] = -2.5  # FL calf (index 0 of calf slice, index 8 overall)
-        calf_joints_position_error = torch.square(calf_joints_position - calf_target_positions)
+        #calf_target_positions = self._robot.data.default_joint_pos[:,8:12].clone()
+        #calf_target_positions[:, 0] = -2.5  # FL calf (index 0 of calf slice, index 8 overall)
+        #calf_joints_position_error = torch.square(calf_joints_position - calf_target_positions)
         ####
         calf_joints_position_reward = torch.sum(calf_joints_position_error,dim=1)
 
@@ -434,6 +437,8 @@ class LocomotionEnv(DirectRLEnv):
         feet_air_time = torch.sum((last_air_time - 0.5) * first_contact, dim=1) * (
             torch.norm(self._commands[:, :2], dim=1) > 0.1
         )
+
+        # FL feet failure airtime
         active_feet_excluding_FL = [1, 2, 3]
         feet_air_time_excluding_FL = torch.sum(
             (last_air_time[:, active_feet_excluding_FL] - 0.5) * first_contact[:, active_feet_excluding_FL], dim=1
@@ -445,7 +450,45 @@ class LocomotionEnv(DirectRLEnv):
         fl_air_reward = 10.0 * fl_in_air
         fl_penalty = -10.0 * fl_contact
         feet_air_time_FL_failure = (feet_air_time_excluding_FL + fl_air_reward + fl_penalty)
-        
+
+        # RL feet failure airtime
+        active_feet_excluding_RL = [0, 1, 3]
+        feet_air_time_excluding_RL = torch.sum(
+            (last_air_time[:, active_feet_excluding_RL] - 0.5) * first_contact[:, active_feet_excluding_RL], dim=1
+        ) * (torch.norm(self._commands[:, :2], dim=1) > 0.1)
+        # Contact flags (reuse forces tensor). Threshold > 1.0 indicates contact.
+        contacts_foot = self._contact_sensor.data.net_forces_w_history[:, :, self._feet_ids, :].norm(dim=-1).max(dim=1)[0] > 1.0
+        rl_in_air = (~contacts_foot[:, 2]).float()
+        rl_contact = contacts_foot[:, 2].float()
+        rl_air_reward = 10.0 * rl_in_air
+        rl_penalty = -10.0 * rl_contact
+        feet_air_time_RL_failure = (feet_air_time_excluding_FL + rl_air_reward + rl_penalty)
+
+        # FR feet failure airtime
+        active_feet_excluding_FR = [0, 2, 3]
+        feet_air_time_excluding_FR = torch.sum(
+            (last_air_time[:, active_feet_excluding_FR] - 0.5) * first_contact[:, active_feet_excluding_FR], dim=1
+        ) * (torch.norm(self._commands[:, :2], dim=1) > 0.1)
+        # Contact flags (reuse forces tensor). Threshold > 1.0 indicates contact.
+        contacts_foot = self._contact_sensor.data.net_forces_w_history[:, :, self._feet_ids, :].norm(dim=-1).max(dim=1)[0] > 1.0
+        fr_in_air = (~contacts_foot[:, 1]).float()
+        fr_contact = contacts_foot[:, 1].float()
+        fr_air_reward = 10.0 * fr_in_air
+        fr_penalty = -10.0 * fr_contact
+        feet_air_time_FR_failure = (feet_air_time_excluding_FL + fr_air_reward + fr_penalty)
+
+        # RR feet failure airtime
+        active_feet_excluding_RR = [0, 1, 2]
+        feet_air_time_excluding_RR = torch.sum(
+            (last_air_time[:, active_feet_excluding_RR] - 0.5) * first_contact[:, active_feet_excluding_RR], dim=1
+        ) * (torch.norm(self._commands[:, :2], dim=1) > 0.1)
+        # Contact flags (reuse forces tensor). Threshold > 1.0 indicates contact.
+        contacts_foot = self._contact_sensor.data.net_forces_w_history[:, :, self._feet_ids, :].norm(dim=-1).max(dim=1)[0] > 1.0
+        rr_in_air = (~contacts_foot[:, 3]).float()
+        rr_contact = contacts_foot[:, 3].float()
+        rr_air_reward = 10.0 * rr_in_air
+        rr_penalty = -10.0 * rr_contact
+        feet_air_time_RR_failure = (feet_air_time_excluding_FL + rr_air_reward + rr_penalty)
 
         #### 3 legs
         # Individual leg air time computation with separate thresholds for each leg
@@ -642,6 +685,9 @@ class LocomotionEnv(DirectRLEnv):
             "feet_air_time_RL": feet_air_time_RL * self.cfg.feet_air_time_RL_reward_scale * self.step_dt,
             "feet_air_time_RR": feet_air_time_RR * self.cfg.feet_air_time_RR_reward_scale * self.step_dt,
             "feet_air_time_FL_failure": feet_air_time_FL_failure * self.cfg.feet_air_time_FL_failure_reward_scale * self.step_dt,
+            "feet_air_time_RL_failure": feet_air_time_RL_failure * self.cfg.feet_air_time_RL_failure_reward_scale * self.step_dt,
+            "feet_air_time_FR_failure": feet_air_time_FR_failure * self.cfg.feet_air_time_FR_failure_reward_scale * self.step_dt,
+            "feet_air_time_RR_failure": feet_air_time_RR_failure * self.cfg.feet_air_time_RR_failure_reward_scale * self.step_dt,
         }
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
         
