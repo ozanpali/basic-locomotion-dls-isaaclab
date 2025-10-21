@@ -227,7 +227,6 @@ policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-21_04-07-12_LPC_2000Iter_8
 
 
 
-policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-21_14-53-19_LPC_1000Iter_8192Env_4ceb149c_test1_fl_individual_clearance_fixed_bug_and_airtime_failure"
 
 
 
@@ -235,8 +234,9 @@ policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-21_14-53-19_LPC_1000Iter_8
 
 
 
-policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-21_02-19-53_LPC_2000Iter_8192Env_a02ab819_test1_rl_feet_failure_airtime_active"
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-21_16-15-11_RPC_1000Iter_8192Env_82d62d21_rl_failure_salak_deneme"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-21_02-19-53_LPC_2000Iter_8192Env_a02ab819_test1_rl_feet_failure_airtime_active"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-21_15-21-23_LPC_1000Iter_8192Env_3ffb0380_test2_rl_individual_clearance_fixed_bug_and_airtime_failure"
 
 #policy_folder_path = dir_path + "/../tested_policies/" + robot + "/aliengo_stop_and_go_correct_offset"
 
