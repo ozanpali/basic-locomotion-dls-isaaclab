@@ -422,10 +422,10 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     feet_air_time_RL_reward_scale = 0.5 * (1-use_amp) * 0.0
     feet_air_time_RR_reward_scale = 0.5 * (1-use_amp) * 0.0
     #reward in the air punish when touch the ground
-    feet_air_time_FL_failure_reward_scale = 0.5 * (1-use_amp) * 0.0
+    feet_air_time_FL_failure_reward_scale = 0.5 * (1-use_amp)
     feet_air_time_RL_failure_reward_scale = 0.5 * (1-use_amp) * 0.0
     feet_air_time_FR_failure_reward_scale = 0.5 * (1-use_amp) * 0.0
-    feet_air_time_RR_failure_reward_scale = 0.5 * (1-use_amp)
+    feet_air_time_RR_failure_reward_scale = 0.5 * (1-use_amp) * 0.0
 
 
 
