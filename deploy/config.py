@@ -237,6 +237,26 @@ policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-21_04-07-12_LPC_2000Iter_8
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-21_16-15-11_RPC_1000Iter_8192Env_82d62d21_rl_failure_salak_deneme"
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-21_02-19-53_LPC_2000Iter_8192Env_a02ab819_test1_rl_feet_failure_airtime_active"
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-21_15-21-23_LPC_1000Iter_8192Env_3ffb0380_test2_rl_individual_clearance_fixed_bug_and_airtime_failure"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-21_12-10-01_LPC_1000Iter_8192Env_01058928_test1_fl_feet_failure_airtime_std_clearance"
+
+# Properly working ones for individual leg up with individual clearance and airtime failure
+
+# front left leg up
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-21_18-03-19_LPC_2000Iter_8192Env_cbe3d007_test1_fl_up_individual_clearance_std_and_airtime"
+# rear left leg up
+#policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-21_18-58-27_LPC_2000Iter_8192Env_aa21364e_test2_rl_up_individual_clearance_std_and_airtime"
+# front right leg up
+#policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-21_17-04-51_RPC_2000Iter_8192Env_ad5eee62_test3_fr_up_individual_clearance_std_and_airtime"
+# rear right leg up
+#policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-21_18-23-43_RPC_2000Iter_8192Env_354b1134_test4_rr_up_individual_clearance_std_and_airtime"
+
+
+
+
+
+
+
+
 
 #policy_folder_path = dir_path + "/../tested_policies/" + robot + "/aliengo_stop_and_go_correct_offset"
 
