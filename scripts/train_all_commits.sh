@@ -65,10 +65,7 @@ done
 
 # Ordered list from first to last commit (as you provided)
 COMMITS=(
-  #4ceb149c53088b507442d97d752f4f7908e86d4a
-  #3ffb03803383b9a411916f7411f8dbcbe04a02da
-  #9762cdd8b5ea4531dbb17c9c6b84a5f775866ecd
-  befd709e4ff6d1e6aea5dae27da527a489ff546e
+  82d62d2121ac01fe2887634c11da780941facdcb
 )
 
 # --- Helpers ---
