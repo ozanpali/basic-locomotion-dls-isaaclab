@@ -128,6 +128,11 @@ class LocomotionEnv(DirectRLEnv):
                 "feet_air_time_RL_failure",
                 "feet_air_time_FR_failure",
                 "feet_air_time_RR_failure",
+
+                "feet_height_clearance_excl_fl",
+                "feet_height_clearance_excl_rl",
+                "feet_height_clearance_excl_fr",
+                "feet_height_clearance_excl_rr"
             ]
         }
         # Get specific body indices
@@ -612,11 +617,29 @@ class LocomotionEnv(DirectRLEnv):
         foot_velocity_tanh = torch.tanh(2.0 * torch.norm(self._robot.data.body_lin_vel_w[:, self._feet_ids_robot, :2], dim=2))
         feet_height_clearance = torch.exp(-torch.sum(feet_z_target_error * foot_velocity_tanh, dim=1)/ 0.01) * should_move
 
-        # feet height clearance standard v2 (exclude FL)
-        #foot_velocity_tanh = torch.tanh(2.0 * torch.norm(self._robot.data.body_lin_vel_w[:, self._feet_ids_robot, :2], dim=2))
-        #foot_velocity_tanh_excl_fl = foot_velocity_tanh[:, 1:]
-        #feet_z_target_error_excl_fl = feet_z_target_error[:, 1:]
-        #feet_height_clearance = torch.exp(-torch.sum(feet_z_target_error_excl_fl * foot_velocity_tanh_excl_fl, dim=1)/ 0.01) * should_move
+        # feet height clearance standard (exclude FL)
+        foot_velocity_tanh = torch.tanh(2.0 * torch.norm(self._robot.data.body_lin_vel_w[:, self._feet_ids_robot, :2], dim=2))
+        foot_velocity_tanh_excl_fl = foot_velocity_tanh[:, 1:]
+        feet_z_target_error_excl_fl = feet_z_target_error[:, 1:]
+        feet_height_clearance_excl_fl = torch.exp(-torch.sum(feet_z_target_error_excl_fl * foot_velocity_tanh_excl_fl, dim=1)/ 0.01) * should_move
+
+        # feet height clearance standard (exclude RL)
+        foot_velocity_tanh = torch.tanh(2.0 * torch.norm(self._robot.data.body_lin_vel_w[:, self._feet_ids_robot, :2], dim=2))
+        foot_velocity_tanh_excl_rl = foot_velocity_tanh[:, [0,1,3]]
+        feet_z_target_error_excl_rl = feet_z_target_error[:, [0,1,3]]
+        feet_height_clearance_excl_rl = torch.exp(-torch.sum(feet_z_target_error_excl_rl * foot_velocity_tanh_excl_rl, dim=1)/ 0.01) * should_move
+
+        # feet height clearance standard (exclude FR)
+        foot_velocity_tanh = torch.tanh(2.0 * torch.norm(self._robot.data.body_lin_vel_w[:, self._feet_ids_robot, :2], dim=2))
+        foot_velocity_tanh_excl_fr = foot_velocity_tanh[:, [0,2,3]]
+        feet_z_target_error_excl_fr = feet_z_target_error[:, [0,2,3]]
+        feet_height_clearance_excl_fr = torch.exp(-torch.sum(feet_z_target_error_excl_fr * foot_velocity_tanh_excl_fr, dim=1)/ 0.01) * should_move
+
+        # feet height clearance standard (exclude RR)
+        foot_velocity_tanh = torch.tanh(2.0 * torch.norm(self._robot.data.body_lin_vel_w[:, self._feet_ids_robot, :2], dim=2))
+        foot_velocity_tanh_excl_rr = foot_velocity_tanh[:, [0,1,2]]
+        feet_z_target_error_excl_rr = feet_z_target_error[:, [0,1,2]]
+        feet_height_clearance_excl_rr = torch.exp(-torch.sum(feet_z_target_error_excl_rr * foot_velocity_tanh_excl_rr, dim=1)/ 0.01) * should_move
 
 
         # feet to com distance
@@ -688,6 +711,10 @@ class LocomotionEnv(DirectRLEnv):
             "feet_air_time_RL_failure": feet_air_time_RL_failure * self.cfg.feet_air_time_RL_failure_reward_scale * self.step_dt,
             "feet_air_time_FR_failure": feet_air_time_FR_failure * self.cfg.feet_air_time_FR_failure_reward_scale * self.step_dt,
             "feet_air_time_RR_failure": feet_air_time_RR_failure * self.cfg.feet_air_time_RR_failure_reward_scale * self.step_dt,
+            "feet_height_clearance_excl_fl": feet_height_clearance_excl_fl * self.cfg.feet_height_clearance_excl_fl_reward_scale * self.step_dt,
+            "feet_height_clearance_excl_rl": feet_height_clearance_excl_rl * self.cfg.feet_height_clearance_excl_rl_reward_scale * self.step_dt,
+            "feet_height_clearance_excl_fr": feet_height_clearance_excl_fr * self.cfg.feet_height_clearance_excl_fr_reward_scale * self.step_dt,
+            "feet_height_clearance_excl_rr": feet_height_clearance_excl_rr * self.cfg.feet_height_clearance_excl_rr_reward_scale * self.step_dt,
         }
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
         
