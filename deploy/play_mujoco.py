@@ -138,6 +138,10 @@ if __name__ == '__main__':
         tau.RL = Kp * (error_joints_pos.RL) - Kd * joints_vel.RL
         tau.RR = Kp * (error_joints_pos.RR) - Kd * joints_vel.RR
 
+        tau.FL[0] *= 1 # scale FL calf torque by 0.3 during failure
+        tau.FL[1] *= 1 # scale FR calf torque by 0.3 during failure
+        tau.FL[2] *= 1 # scale RL calf torque by 0.3 during failure
+
 
         # Set control and mujoco step ----------------------------------------------------------------------
         action = np.zeros(env.mjModel.nu)

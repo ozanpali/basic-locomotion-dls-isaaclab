@@ -207,6 +207,15 @@ policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-19_15-34-36_LPC_1000Iter_8
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-19_16-24-09_LPC_1000Iter_8192Env_f9ae6c8b_airtime_fl_failure_reward_swing_punish_touch_maintenance_bend_swing_clearance_v2"
 
 
+#maintenance is not keeping the leg up enough
+#policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-19_20-01-20_LPC_2000Iter_8192Env_0c19c2df_airtime_fl_failure_maintenance"
+#turning is not good enough
+#policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-19_20-56-35_LPC_2000Iter_8192Env_d65cb358_airtime_fl_failure_bend"
+#slow forward commands are bad.
+#policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-19_21-51-44_LPC_2000Iter_8192Env_2ff16233_airtime_fl_failure_swing"
+#good
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-19_19-05-57_LPC_2000Iter_8192Env_2497913e_airtime_fl_failure"
+
 
 
 #policy_folder_path = dir_path + "/../tested_policies/" + robot + "/aliengo_stop_and_go_correct_offset"
