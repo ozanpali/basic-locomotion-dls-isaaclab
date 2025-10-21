@@ -14,7 +14,7 @@ HEADLESS_FLAG="--headless"
 LOG_PROJECT_NAME="Robust-Aliengo-Flat"
 # default max iterations (can be overridden by --max-iterations)
 MAX_ITER="1000"
-TRAIN_SCRIPT="scripts/rsl_rl/train_symm.py"
+TRAIN_SCRIPT="scripts/rsl_rl/train.py"
 DRY_RUN=false
 
 # Simple CLI parsing to override defaults
@@ -65,13 +65,13 @@ done
 
 # Ordered list from first to last commit (as you provided)
 COMMITS=(
-  2e77b4155da44c59bc9b79bd841835bab95ab985
-  6d14ae4997bc4eda38ef4bbdbb2f0d82547f2b0f
-  1f98636e5a0b3a766c9b27caeac479f3e6b08ddd
-  2e286df11bfdd20c4c703c18fe32c472ed3eb67f
-  #f99d2fb061dd769654d82ce36699f4367d5fc5d8
-  #c0fd03dcc794143027f48e84a891dd24260f0d32
-  #32e08b07243ba7ab058d6136177d58d239044dc0
+  #2e77b4155da44c59bc9b79bd841835bab95ab985
+  #6d14ae4997bc4eda38ef4bbdbb2f0d82547f2b0f
+  #1f98636e5a0b3a766c9b27caeac479f3e6b08ddd
+  #2e286df11bfdd20c4c703c18fe32c472ed3eb67f
+  f99d2fb061dd769654d82ce36699f4367d5fc5d8
+  c0fd03dcc794143027f48e84a891dd24260f0d32
+  32e08b07243ba7ab058d6136177d58d239044dc0
 )
 
 # --- Helpers ---
@@ -150,7 +150,7 @@ for COMMIT in "${COMMITS[@]}"; do
   # Fix typo: use SUBJECT when building the suffix
   RUN_SUFFIX=$(subject_to_camelcase "${SUBJECT}")
   # Build run name: include iterations, envs, short commit id and sanitized commit subject
-  RUN_NAME="LPC_${MAX_ITER}Iter_${NUM_ENVS}Env_${SHORT_COMMIT}_${RUN_SUFFIX}"
+  RUN_NAME="RPC_${MAX_ITER}Iter_${NUM_ENVS}Env_${SHORT_COMMIT}_${RUN_SUFFIX}"
 
   info "Commit subject: ${SUBJECT}"
   info "Run name     : ${RUN_NAME}"
