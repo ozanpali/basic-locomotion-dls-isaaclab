@@ -250,7 +250,14 @@ policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-21_18-03-19_LPC_2000Iter_8
 # rear right leg up
 #policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-21_18-23-43_RPC_2000Iter_8192Env_354b1134_test4_rr_up_individual_clearance_std_and_airtime"
 
-
+# leg up and failure events
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-21_22-37-09_LPC_3000Iter_8192Env_2e77b415_test1_fl_always_up_hip_failure_5_15_seconds_scale_0.3"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-21_23-57-48_LPC_3000Iter_8192Env_6d14ae49_test2_fl_always_up_thigh_failure_5_15_seconds_scale_0.3"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-22_01-19-20_LPC_3000Iter_8192Env_1f98636e_test3_fl_always_up_calf_failure_5_15_seconds_scale_0.3"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-22_02-40-31_LPC_3000Iter_8192Env_2e286df1_test4_fl_always_up_hip_thigh_failure_5_15_seconds_scale_0.3"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-21_22-38-28_RPC_3000Iter_8192Env_f99d2fb0_test5_fl_always_up_hip_calf_failure_5_15_seconds_scale_0.3"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-22_00-37-27_RPC_3000Iter_8192Env_c0fd03dc_test6_fl_always_up_thigh_calf_failure_5_15_seconds_scale_0.3"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-22_02-36-20_RPC_3000Iter_8192Env_32e08b07_test7_fl_always_up_hip_thigh_calf_failure_5_15_seconds_scale_0.3"
 
 
 
