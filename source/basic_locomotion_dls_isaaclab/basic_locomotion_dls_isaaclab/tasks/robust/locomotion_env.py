@@ -65,6 +65,9 @@ class LocomotionEnv(DirectRLEnv):
         # Observation history
         self._observation_history = torch.zeros(self.num_envs, cfg.history_length, cfg.single_observation_space, device=self.device)
 
+        # Mask indicating whether FL hip torque scaling event is active per-env
+        self._fl_hip_torque_scaled_mask = torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
+
         # RMA
         if(cfg.use_rma == True):
             self._rma_network = SimpleNN(cfg.rma_observation_space, cfg.rma_output_space)
@@ -707,7 +710,8 @@ class LocomotionEnv(DirectRLEnv):
             "feet_air_time_FR": feet_air_time_FR * self.cfg.feet_air_time_FR_reward_scale * self.step_dt,
             "feet_air_time_RL": feet_air_time_RL * self.cfg.feet_air_time_RL_reward_scale * self.step_dt,
             "feet_air_time_RR": feet_air_time_RR * self.cfg.feet_air_time_RR_reward_scale * self.step_dt,
-            "feet_air_time_FL_failure": feet_air_time_FL_failure * self.cfg.feet_air_time_FL_failure_reward_scale * self.step_dt,
+            # Gate FL air-time failure term by FL hip torque scaling event mask
+            "feet_air_time_FL_failure": feet_air_time_FL_failure * self.cfg.feet_air_time_FL_failure_reward_scale * self.step_dt * self._fl_hip_torque_scaled_mask,
             "feet_air_time_RL_failure": feet_air_time_RL_failure * self.cfg.feet_air_time_RL_failure_reward_scale * self.step_dt,
             "feet_air_time_FR_failure": feet_air_time_FR_failure * self.cfg.feet_air_time_FR_failure_reward_scale * self.step_dt,
             "feet_air_time_RR_failure": feet_air_time_RR_failure * self.cfg.feet_air_time_RR_failure_reward_scale * self.step_dt,

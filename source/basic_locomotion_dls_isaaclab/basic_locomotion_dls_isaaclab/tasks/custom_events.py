@@ -253,3 +253,22 @@ def scale_joint_torque(
 
         # update the scale for the targeted joints and environments
         actuator.torque_scale[env_index, actuator_joint_mask] = float(scale)
+
+    # Track activation for FL hip torque scaling to gate specific rewards
+    # If this event targets the front-left hip joint, record a per-env mask that
+    # downstream reward code can use to enable/disable related penalties.
+    try:
+        target_names = getattr(asset_cfg, "joint_names", None)
+        if target_names and ("FL_hip_joint" in target_names):
+            # lazily create the mask on the env
+            if not hasattr(env, "_fl_hip_torque_scaled_mask"):
+                device = asset.device
+                env._fl_hip_torque_scaled_mask = torch.zeros(env.scene.num_envs, dtype=torch.float, device=device)
+            is_active = 1.0 if abs(float(scale) - 1.0) > 1e-6 else 0.0
+            if env_ids is None:
+                env._fl_hip_torque_scaled_mask[:] = is_active
+            else:
+                env._fl_hip_torque_scaled_mask[env_ids] = is_active
+    except Exception:
+        # never fail the event due to tracking; scaling above is the primary behavior
+        pass
