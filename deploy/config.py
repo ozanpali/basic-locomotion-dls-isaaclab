@@ -259,8 +259,8 @@ policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-21_22-38-28_RPC_3000Iter_8
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-22_00-37-27_RPC_3000Iter_8192Env_c0fd03dc_test6_fl_always_up_thigh_calf_failure_5_15_seconds_scale_0.3"
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-22_02-36-20_RPC_3000Iter_8192Env_32e08b07_test7_fl_always_up_hip_thigh_calf_failure_5_15_seconds_scale_0.3"
 
-
-
+# leg up and failure event with event-aware rewards attempt(failed) need to use asymmetric ppo
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-22_15-19-36_LPC_1500Iter_8192Env_95f329a8_test1_fl_always_up_hip_failure_5_15_seconds_scale_0.3"
 
 
 
