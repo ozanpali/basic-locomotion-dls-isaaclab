@@ -167,6 +167,7 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
         cuncurrent_state_est_train_epochs = 1000
         cuncurrent_state_est_lr = 1e-3
         cuncurrent_state_est_ep_saving_interval = 1000
+        cuncurrent_state_est_ep_saving_start = 6000 
 
     use_rma = False
     if(use_rma):
@@ -182,6 +183,7 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
         rma_train_epochs = 1000
         rma_lr = 1e-3
         rma_ep_saving_interval = 1000
+        rma_ep_saving_start = 6000
         
     
     use_filter_actions = True
@@ -283,7 +285,7 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
 
     # Desired tracking variables
     desired_base_height = 0.30
-    desired_feet_height = 0.05
+    desired_feet_height = 0.04
 
     # Desired clip actions
     desired_clip_actions = 3.0
