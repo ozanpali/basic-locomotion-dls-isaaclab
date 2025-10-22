@@ -131,14 +131,14 @@ class EventCfg:
 
     
     # Per-joint torque scaling (12 events)
-    """
+    
     torque_scale_FL_hip = EventTerm(
         func=custom_events.scale_joint_torque,
         mode="interval",
         interval_range_s=(5.0, 15.0),
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=["FL_hip_joint"]), "scale": 0.3},
     )
-    """
+    
     """
     torque_scale_FR_hip = EventTerm(
         func=custom_events.scale_joint_torque,
