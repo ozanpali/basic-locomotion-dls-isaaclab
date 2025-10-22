@@ -254,21 +254,58 @@ def scale_joint_torque(
         # update the scale for the targeted joints and environments
         actuator.torque_scale[env_index, actuator_joint_mask] = float(scale)
 
-    # Track activation for FL hip torque scaling to gate specific rewards
-    # If this event targets the front-left hip joint, record a per-env mask that
-    # downstream reward code can use to enable/disable related penalties.
+    # Track per-leg, per-joint torque scaling activation for downstream logic (rewards/critic state)
+    # We maintain env._torque_scaled_mask_per_leg_joint with shape [num_envs, 4, 3]
+    # legs index order: [FL, FR, RL, RR]; joints: [hip, thigh, calf]
     try:
         target_names = getattr(asset_cfg, "joint_names", None)
-        if target_names and ("FL_hip_joint" in target_names):
-            # lazily create the mask on the env
-            if not hasattr(env, "_fl_hip_torque_scaled_mask"):
+        if target_names is None:
+            target_names_list = []
+        elif isinstance(target_names, (list, tuple)):
+            target_names_list = list(target_names)
+        elif isinstance(target_names, str):
+            target_names_list = [target_names]
+        else:
+            target_names_list = []
+
+        if target_names_list:
+            # lazy init mask tensor
+            if not hasattr(env, "_torque_scaled_mask_per_leg_joint"):
                 device = asset.device
-                env._fl_hip_torque_scaled_mask = torch.zeros(env.scene.num_envs, dtype=torch.float, device=device)
-            is_active = 1.0 if abs(float(scale) - 1.0) > 1e-6 else 0.0
-            if env_ids is None:
-                env._fl_hip_torque_scaled_mask[:] = is_active
-            else:
-                env._fl_hip_torque_scaled_mask[env_ids] = is_active
+                env._torque_scaled_mask_per_leg_joint = torch.zeros(
+                    (env.scene.num_envs, 4, 3), dtype=torch.float, device=device
+                )
+
+            def _leg_idx(name: str) -> int | None:
+                if name.startswith("FL_"):
+                    return 0
+                if name.startswith("FR_"):
+                    return 1
+                if name.startswith("RL_"):
+                    return 2
+                if name.startswith("RR_"):
+                    return 3
+                return None
+
+            def _joint_idx(name: str) -> int | None:
+                if "_hip_" in name:
+                    return 0
+                if "_thigh_" in name:
+                    return 1
+                if "_calf_" in name:
+                    return 2
+                return None
+
+            active_val = 1.0 if abs(float(scale) - 1.0) > 1e-6 else 0.0
+            for jn in target_names_list:
+                li = _leg_idx(jn)
+                ji = _joint_idx(jn)
+                if li is None or ji is None:
+                    continue
+                if env_ids is None:
+                    env._torque_scaled_mask_per_leg_joint[:, li, ji] = active_val
+                else:
+                    env._torque_scaled_mask_per_leg_joint[env_ids, li, ji] = active_val
     except Exception:
-        # never fail the event due to tracking; scaling above is the primary behavior
+        # Never fail the event due to tracking; scaling above is the primary behavior
         pass
