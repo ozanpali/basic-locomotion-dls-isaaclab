@@ -263,6 +263,14 @@ policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-22_02-36-20_RPC_3000Iter_8
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-22_15-19-36_LPC_1500Iter_8192Env_95f329a8_test1_fl_always_up_hip_failure_5_15_seconds_scale_0.3"
 
 
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-24_17-40-40_kalorifer"
+
+
+
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-26_17-30-35_LegFlagIsInBothActorCritic"
+
+
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-26_17-44-55_LegFlagIsInBothActorCritic"
 
 
 #policy_folder_path = dir_path + "/../tested_policies/" + robot + "/aliengo_stop_and_go_correct_offset"
