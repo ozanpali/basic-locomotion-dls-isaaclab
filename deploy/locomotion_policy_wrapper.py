@@ -202,6 +202,11 @@ class LocomotionPolicyWrapper:
             height_data = (base_pos[2] - heightmap_data_isaac_convention - 0.5)
             height_data = height_data.clip(-1.0, 1.0)
             obs = np.concatenate((obs, height_data), axis=0)
+        
+        # Append per-leg flags to match training input shape; in deployment (MuJoCo) we default to zeros.
+        # Order: [FL, FR, RL, RR]; dtype float32 0/1.
+        leg_any_scaled = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)
+        obs = np.concatenate((obs, leg_any_scaled), axis=0)
             
         
         # RL Prediction

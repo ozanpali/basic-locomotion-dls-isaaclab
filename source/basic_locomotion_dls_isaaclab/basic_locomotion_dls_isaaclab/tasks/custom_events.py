@@ -246,13 +246,22 @@ def scale_joint_torque(
         _ensure_patch_and_scale(actuator)
 
         # prepare indexing shapes
-        if env_ids != slice(None):
-            env_index = env_ids[:, None]
+        num_envs = env.scene.num_envs
+        all_env_ids = torch.arange(num_envs, device=asset.device)
+        if env_ids is None or env_ids == slice(None):
+            # No specific subset provided: apply to all envs
+            actuator.torque_scale[:, actuator_joint_mask] = float(scale)
         else:
-            env_index = slice(None)
-
-        # update the scale for the targeted joints and environments
-        actuator.torque_scale[env_index, actuator_joint_mask] = float(scale)
+            # Apply to active envs; reset to 1.0 for the complement so the interval acts as a gate
+            env_ids = env_ids.to(asset.device)
+            env_index_on = env_ids[:, None]
+            actuator.torque_scale[env_index_on, actuator_joint_mask] = float(scale)
+            # complement envs get reset to 1.0
+            inactive_env_ids = torch.ones(num_envs, dtype=torch.bool, device=asset.device)
+            inactive_env_ids[env_ids] = False
+            if torch.any(inactive_env_ids):
+                env_index_off = inactive_env_ids.nonzero(as_tuple=False).squeeze(1)[:, None]
+                actuator.torque_scale[env_index_off, actuator_joint_mask] = 1.0
 
     # Track per-leg, per-joint torque scaling activation for downstream logic (rewards/critic state)
     # We maintain env._torque_scaled_mask_per_leg_joint with shape [num_envs, 4, 3]
@@ -297,15 +306,24 @@ def scale_joint_torque(
                 return None
 
             active_val = 1.0 if abs(float(scale) - 1.0) > 1e-6 else 0.0
+            num_envs = env.scene.num_envs
+            all_env_ids = torch.arange(num_envs, device=asset.device)
             for jn in target_names_list:
                 li = _leg_idx(jn)
                 ji = _joint_idx(jn)
                 if li is None or ji is None:
                     continue
-                if env_ids is None:
+                if env_ids is None or env_ids == slice(None):
+                    # Set the same value for all envs
                     env._torque_scaled_mask_per_leg_joint[:, li, ji] = active_val
                 else:
+                    env_ids = env_ids.to(asset.device)
                     env._torque_scaled_mask_per_leg_joint[env_ids, li, ji] = active_val
+                    # Reset others to 0 so mask reflects current interval activity
+                    inactive_env_ids = torch.ones(num_envs, dtype=torch.bool, device=asset.device)
+                    inactive_env_ids[env_ids] = False
+                    if torch.any(inactive_env_ids):
+                        env._torque_scaled_mask_per_leg_joint[inactive_env_ids, li, ji] = 0.0
     except Exception:
         # Never fail the event due to tracking; scaling above is the primary behavior
         pass

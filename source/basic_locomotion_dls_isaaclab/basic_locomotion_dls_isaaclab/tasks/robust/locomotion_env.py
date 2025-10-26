@@ -273,6 +273,11 @@ class LocomotionEnv(DirectRLEnv):
             obs_rma = self._get_rma(clock_data)
             obs = torch.cat((obs, obs_rma), dim=-1)
 
+        # Append only the per-leg torque scaling flags (0/1) to the policy observation
+        # Shape: [num_envs, 4]; order: [FL, FR, RL, RR]
+        leg_any_scaled = (self._torque_scaled_mask_per_leg_joint.max(dim=2).values > 0.0).float()
+        obs = torch.cat((obs, leg_any_scaled), dim=-1)
+
 
         # Final observations dictionary
         observations = {"policy": obs}    
@@ -308,6 +313,10 @@ class LocomotionEnv(DirectRLEnv):
 
 
     def _get_rewards(self) -> torch.Tensor:
+
+        # Create a binary per-leg mask (0/1) indicating whether ANY joint on the leg has torque scaling active
+        # Shape: [num_envs, 4]; dtype: int (for clear logical use); cast to float when multiplying with rewards
+        leg_any_scaled_int = (self._torque_scaled_mask_per_leg_joint.max(dim=2).values > 0.0).int()
 
         # track_height
         height_data_scanner = self._height_scanner.data.ray_hits_w[..., 2]
@@ -672,6 +681,15 @@ class LocomotionEnv(DirectRLEnv):
         feet_vertical_surface_contacts = torch.any(forces_xy > 4 * forces_z, dim=1).float()
         feet_vertical_surface_contacts *= torch.clamp(-self._robot.data.projected_gravity_b[:, 2], 0, 0.7) / 0.7
 
+        #print self._torque_scaled_mask_per_leg_joint.max(dim=2).values[:, 0]
+        #print("Torque scaling mask FL leg joints:", leg_any_scaled_int[:, 0])
+        #print Feet air time
+        #print("Feet air time:", feet_air_time * self.cfg.feet_air_time_reward_scale * self.step_dt * (1.0 - leg_any_scaled_int[:, 0].float()))        
+    
+        #print("Torque scaling mask FR leg joints:", self._torque_scaled_mask_per_leg_joint.max(dim=2).values[:, 1])
+        #print("Torque scaling mask RL leg joints:", self._torque_scaled_mask_per_leg_joint.max(dim=2).values[:, 2])
+        #print("Torque scaling mask RR leg joints:", self._torque_scaled_mask_per_leg_joint.max(dim=2).values[:, 3])
+        #print(" \n")
 
         rewards = {
             "track_height_exp": height_error_mapped * self.cfg.height_reward_scale * self.step_dt,
@@ -692,9 +710,17 @@ class LocomotionEnv(DirectRLEnv):
             "joints_torques_l2": joints_torques * self.cfg.joints_torque_reward_scale * self.step_dt,
             "joints_energy_l1": joints_energy * self.cfg.joints_energy_reward_scale * self.step_dt,
 
-            "feet_air_time": feet_air_time * self.cfg.feet_air_time_reward_scale * self.step_dt * (1.0 - self._torque_scaled_mask_per_leg_joint.max(dim=2).values[:, 0]) * (1.0 - self._torque_scaled_mask_per_leg_joint.max(dim=2).values[:, 1]) * (1.0 - self._torque_scaled_mask_per_leg_joint.max(dim=2).values[:, 2]) * (1.0 - self._torque_scaled_mask_per_leg_joint.max(dim=2).values[:, 3]),
+            "feet_air_time": feet_air_time * self.cfg.feet_air_time_reward_scale * self.step_dt *
+                            (1.0 - leg_any_scaled_int[:, 0].float()) *
+                            (1.0 - leg_any_scaled_int[:, 1].float()) *
+                            (1.0 - leg_any_scaled_int[:, 2].float()) *
+                            (1.0 - leg_any_scaled_int[:, 3].float()),
             
-            "feet_height_clearance": feet_height_clearance * self.cfg.feet_height_clearance_reward_scale * self.step_dt * (1.0 - self._torque_scaled_mask_per_leg_joint.max(dim=2).values[:, 0]) * (1.0 - self._torque_scaled_mask_per_leg_joint.max(dim=2).values[:, 1]) * (1.0 - self._torque_scaled_mask_per_leg_joint.max(dim=2).values[:, 2]) * (1.0 - self._torque_scaled_mask_per_leg_joint.max(dim=2).values[:, 3]),
+            "feet_height_clearance": feet_height_clearance * self.cfg.feet_height_clearance_reward_scale * self.step_dt *
+                                      (1.0 - leg_any_scaled_int[:, 0].float()) *
+                                      (1.0 - leg_any_scaled_int[:, 1].float()) *
+                                      (1.0 - leg_any_scaled_int[:, 2].float()) *
+                                      (1.0 - leg_any_scaled_int[:, 3].float()),
             "feet_height_clearance_periodic": feet_height_clearance_periodic * self.cfg.feet_height_clearance_periodic_reward_scale * self.step_dt,
             "feet_height_clearance_mujoco": feet_height_clearance_mujoco * self.cfg.feet_height_clearance_mujoco_reward_scale * self.step_dt,
             "feet_height_clearance_mujoco_periodic": feet_height_clearance_mujoco_periodic * self.cfg.feet_height_clearance_mujoco_periodic_reward_scale * self.step_dt,
@@ -711,16 +737,15 @@ class LocomotionEnv(DirectRLEnv):
             "feet_air_time_FR": feet_air_time_FR * self.cfg.feet_air_time_FR_reward_scale * self.step_dt,
             "feet_air_time_RL": feet_air_time_RL * self.cfg.feet_air_time_RL_reward_scale * self.step_dt,
             "feet_air_time_RR": feet_air_time_RR * self.cfg.feet_air_time_RR_reward_scale * self.step_dt,
-            # Gate FL air-time failure term by FL hip torque scaling event mask
-            # Gate FL air-time failure term by whether any torque scaling (hip/thigh/calf) is active on FL
-            "feet_air_time_FL_failure": feet_air_time_FL_failure * self.cfg.feet_air_time_FL_failure_reward_scale * self.step_dt * (self._torque_scaled_mask_per_leg_joint.max(dim=2).values[:, 0]),
-            "feet_air_time_RL_failure": feet_air_time_RL_failure * self.cfg.feet_air_time_RL_failure_reward_scale * self.step_dt * (self._torque_scaled_mask_per_leg_joint.max(dim=2).values[:, 2]),
-            "feet_air_time_FR_failure": feet_air_time_FR_failure * self.cfg.feet_air_time_FR_failure_reward_scale * self.step_dt * (self._torque_scaled_mask_per_leg_joint.max(dim=2).values[:, 1]),
-            "feet_air_time_RR_failure": feet_air_time_RR_failure * self.cfg.feet_air_time_RR_failure_reward_scale * self.step_dt * (self._torque_scaled_mask_per_leg_joint.max(dim=2).values[:, 3]),
-            "feet_height_clearance_excl_fl": feet_height_clearance_excl_fl * self.cfg.feet_height_clearance_excl_fl_reward_scale * self.step_dt * (self._torque_scaled_mask_per_leg_joint.max(dim=2).values[:, 0]),
-            "feet_height_clearance_excl_rl": feet_height_clearance_excl_rl * self.cfg.feet_height_clearance_excl_rl_reward_scale * self.step_dt * (self._torque_scaled_mask_per_leg_joint.max(dim=2).values[:, 2]),
-            "feet_height_clearance_excl_fr": feet_height_clearance_excl_fr * self.cfg.feet_height_clearance_excl_fr_reward_scale * self.step_dt * (self._torque_scaled_mask_per_leg_joint.max(dim=2).values[:, 1]),
-            "feet_height_clearance_excl_rr": feet_height_clearance_excl_rr * self.cfg.feet_height_clearance_excl_rr_reward_scale * self.step_dt * (self._torque_scaled_mask_per_leg_joint.max(dim=2).values[:, 3]),
+            # Gate terms by whether any torque scaling (hip/thigh/calf) is active on the corresponding leg
+            "feet_air_time_FL_failure": feet_air_time_FL_failure * self.cfg.feet_air_time_FL_failure_reward_scale * self.step_dt * (leg_any_scaled_int[:, 0].float()),
+            "feet_air_time_RL_failure": feet_air_time_RL_failure * self.cfg.feet_air_time_RL_failure_reward_scale * self.step_dt * (leg_any_scaled_int[:, 2].float()),
+            "feet_air_time_FR_failure": feet_air_time_FR_failure * self.cfg.feet_air_time_FR_failure_reward_scale * self.step_dt * (leg_any_scaled_int[:, 1].float()),
+            "feet_air_time_RR_failure": feet_air_time_RR_failure * self.cfg.feet_air_time_RR_failure_reward_scale * self.step_dt * (leg_any_scaled_int[:, 3].float()),
+            "feet_height_clearance_excl_fl": feet_height_clearance_excl_fl * self.cfg.feet_height_clearance_excl_fl_reward_scale * self.step_dt * (leg_any_scaled_int[:, 0].float()),
+            "feet_height_clearance_excl_rl": feet_height_clearance_excl_rl * self.cfg.feet_height_clearance_excl_rl_reward_scale * self.step_dt * (leg_any_scaled_int[:, 2].float()),
+            "feet_height_clearance_excl_fr": feet_height_clearance_excl_fr * self.cfg.feet_height_clearance_excl_fr_reward_scale * self.step_dt * (leg_any_scaled_int[:, 1].float()),
+            "feet_height_clearance_excl_rr": feet_height_clearance_excl_rr * self.cfg.feet_height_clearance_excl_rr_reward_scale * self.step_dt * (leg_any_scaled_int[:, 3].float()),
         }
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
         
@@ -1036,15 +1061,11 @@ class LocomotionEnv(DirectRLEnv):
         delta_s = torch.tensor(distance_between_front_and_back).to(self.device)
         terrain_pitch = -torch.atan2(delta_z, delta_s)
 
-        # Per-leg failure flags: 1 if any torque scaling (hip/thigh/calf) is active on the leg
-        leg_any_scaled = self._torque_scaled_mask_per_leg_joint.max(dim=2).values  # [num_envs, 4]
-
         obs_privileged = torch.cat(( 
                             #hip_stiffness/default_stiffness, thigh_stiffness/default_stiffness, calf_stiffness/default_stiffness, #P gain
                             #hip_damping/default_damping, thigh_damping/default_damping, calf_damping/default_damping, #D gain
                             height_error.unsqueeze(1),
                             terrain_pitch.unsqueeze(1),
-                            leg_any_scaled,
                             #masses, inertias,
                             #hip_static_friction, thigh_static_friction, calf_static_friction,  
                             #hip_dynamic_friction, thigh_dynamic_friction, calf_dynamic_friction, 
