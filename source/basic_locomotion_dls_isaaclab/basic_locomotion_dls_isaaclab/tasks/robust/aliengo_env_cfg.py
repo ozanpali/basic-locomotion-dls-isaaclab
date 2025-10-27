@@ -130,6 +130,7 @@ class EventCfg:
     )"""
 
     
+    """
     # Per-joint torque scaling via interval events (uses TTL env-side for persistence)
     torque_scale_FL_hip = EventTerm(
         func=custom_events.scale_joint_torque,
@@ -151,7 +152,6 @@ class EventCfg:
         #interval_range_s=(0.0, 0.0),
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=["FL_calf_joint"]), "scale": 0.3},
     )
-    """
     # Mirror events for FR, RL, RR legs
     torque_scale_FR_hip = EventTerm(
         func=custom_events.scale_joint_torque,
