@@ -485,7 +485,7 @@ class LocomotionEnv(DirectRLEnv):
         rl_contact = contacts_foot[:, 2].float()
         rl_air_reward = 10.0 * rl_in_air
         rl_penalty = -10.0 * rl_contact
-        feet_air_time_RL_failure = (feet_air_time_excluding_FL + rl_air_reward + rl_penalty)
+        feet_air_time_RL_failure = (feet_air_time_excluding_RL + rl_air_reward + rl_penalty)
 
         # FR feet failure airtime
         active_feet_excluding_FR = [0, 2, 3]
@@ -498,7 +498,7 @@ class LocomotionEnv(DirectRLEnv):
         fr_contact = contacts_foot[:, 1].float()
         fr_air_reward = 10.0 * fr_in_air
         fr_penalty = -10.0 * fr_contact
-        feet_air_time_FR_failure = (feet_air_time_excluding_FL + fr_air_reward + fr_penalty)
+        feet_air_time_FR_failure = (feet_air_time_excluding_FR + fr_air_reward + fr_penalty)
 
         # RR feet failure airtime
         active_feet_excluding_RR = [0, 1, 2]
@@ -511,7 +511,7 @@ class LocomotionEnv(DirectRLEnv):
         rr_contact = contacts_foot[:, 3].float()
         rr_air_reward = 10.0 * rr_in_air
         rr_penalty = -10.0 * rr_contact
-        feet_air_time_RR_failure = (feet_air_time_excluding_FL + rr_air_reward + rr_penalty)
+        feet_air_time_RR_failure = (feet_air_time_excluding_RR + rr_air_reward + rr_penalty)
 
         """  deactivated completely them will delete them soon
         #### 3 legs
