@@ -186,144 +186,108 @@ def scale_joint_torque(
     scale: float = 1.0,
 ):
     """
-    Scale the applied effort (torque) for selected joints by a multiplicative factor.
+    Scale joint efforts for selected joints and update a per-leg, per-joint activation mask.
 
-    Notes
-    - This does NOT modify stiffness or damping; it multiplies the final joint efforts.
-    - Implemented via runtime monkey-patching of actuator compute() to apply a per-joint scale tensor.
-    - Safe to call repeatedly; patching occurs only once per actuator instance.
-    - Use with mode="interval" to enable this scaling at scheduled times. Call again with scale=1.0 to reset.
+    Behavior
+    - Multiplies computed joint efforts by `scale` for targeted joints.
+    - Safe to call repeatedly. Patches actuator.compute only once per actuator.
+    - Interval-friendly: when called with a subset `env_ids`, sets those envs to `scale`
+      and resets the complement envs to 1.0 for the targeted joints (acts like a gate).
+    - Updates env._torque_scaled_mask_per_leg_joint[env, leg(FL/FR/RL/RR), joint(hip/thigh/calf)].
     """
-    # extract the used quantities (to enable type-hinting)
+    # locate articulation
     asset: Articulation = env.scene[asset_cfg.name]
 
-    # resolve environment ids
+    # normalize env_ids
     if env_ids is None:
         env_ids = torch.arange(env.scene.num_envs, device=asset.device)
-
-    # resolve joint indices (list or slice)
-    if asset_cfg.joint_ids == slice(None):
-        joint_ids = slice(None)
     else:
-        joint_ids = torch.tensor(asset_cfg.joint_ids, dtype=torch.int, device=asset.device)
+        env_ids = env_ids.to(asset.device)
 
-    # helper: ensure actuator has torque_scale tensor and patch compute once
-    def _ensure_patch_and_scale(actuator):
-        # Create per-joint, per-env torque scale map if missing
+    # resolve target joint ids (global indices on the robot)
+    if asset_cfg.joint_ids == slice(None):
+        selected_joint_ids = None  # means: all joints in each actuator
+    else:
+        selected_joint_ids = set(int(x) for x in torch.as_tensor(asset_cfg.joint_ids).view(-1).tolist())
+
+    # ensure each actuator has a per-env, per-joint scale tensor and a patched compute()
+    for actuator in asset.actuators.values():
+        # which of this actuator's joints are selected
+        if selected_joint_ids is None:
+            joint_mask = [True for _ in actuator.joint_indices]
+        else:
+            joint_mask = [int(jid) in selected_joint_ids for jid in actuator.joint_indices]
+        if not any(joint_mask):
+            continue
+
+        # init torque_scale tensor
         if not hasattr(actuator, "torque_scale"):
-            num_envs = env.scene.num_envs
-            num_joints = len(actuator.joint_indices)
             actuator.torque_scale = torch.ones(
-                (num_envs, num_joints), dtype=torch.float, device=asset.device
+                (env.scene.num_envs, len(actuator.joint_indices)), dtype=torch.float, device=asset.device
             )
 
-        # Monkey-patch compute once to apply scaling after base compute
-        if not hasattr(actuator, "_torque_scale_patched") or actuator._torque_scale_patched is False:
+        # patch compute once
+        if not getattr(actuator, "_torque_scale_patched", False):
             actuator._orig_compute_for_torque_scale = actuator.compute
 
             def _compute_with_scale(*args, _self=actuator, **kwargs):
                 ca = _self._orig_compute_for_torque_scale(*args, **kwargs)
-                # Ensure torque_scale shape matches
-                if hasattr(_self, "torque_scale") and getattr(ca, "joint_efforts", None) is not None:
-                    # Multiply per-env and per-joint
+                if getattr(ca, "joint_efforts", None) is not None:
                     ca.joint_efforts = ca.joint_efforts * _self.torque_scale
                 return ca
 
             actuator.compute = _compute_with_scale
             actuator._torque_scale_patched = True
 
-    # Apply scale for the selected joints within each actuator group
-    for actuator in asset.actuators.values():
-        # map the selected joint_ids into this actuator's local joint set
-        if isinstance(joint_ids, slice):
-            actuator_joint_mask = [True] * len(actuator.joint_indices)
-        else:
-            selected_ids = set(int(x) for x in joint_ids.view(-1).tolist())
-            actuator_joint_mask = [int(jid) in selected_ids for jid in actuator.joint_indices]
-        if sum(actuator_joint_mask) == 0:
-            continue
+        # write scales: set active envs; do NOT reset complement here to avoid flicker
+        joint_idx = torch.tensor([i for i, m in enumerate(joint_mask) if m], dtype=torch.long, device=asset.device)
+        actuator.torque_scale[env_ids.unsqueeze(1), joint_idx] = float(scale)
 
-        _ensure_patch_and_scale(actuator)
-
-        # prepare indexing shapes
-        num_envs = env.scene.num_envs
-        all_env_ids = torch.arange(num_envs, device=asset.device)
-        if env_ids is None or env_ids == slice(None):
-            # No specific subset provided: apply to all envs
-            actuator.torque_scale[:, actuator_joint_mask] = float(scale)
-        else:
-            # Apply to active envs; reset to 1.0 for the complement so the interval acts as a gate
-            env_ids = env_ids.to(asset.device)
-            env_index_on = env_ids[:, None]
-            actuator.torque_scale[env_index_on, actuator_joint_mask] = float(scale)
-            # complement envs get reset to 1.0
-            inactive_env_ids = torch.ones(num_envs, dtype=torch.bool, device=asset.device)
-            inactive_env_ids[env_ids] = False
-            if torch.any(inactive_env_ids):
-                env_index_off = inactive_env_ids.nonzero(as_tuple=False).squeeze(1)[:, None]
-                actuator.torque_scale[env_index_off, actuator_joint_mask] = 1.0
-
-    # Track per-leg, per-joint torque scaling activation for downstream logic (rewards/critic state)
-    # We maintain env._torque_scaled_mask_per_leg_joint with shape [num_envs, 4, 3]
-    # legs index order: [FL, FR, RL, RR]; joints: [hip, thigh, calf]
+    # update per-leg, per-joint mask used by rewards/observations
     try:
+        # lazily initialize the mask on the env
+        if not hasattr(env, "_torque_scaled_mask_per_leg_joint"):
+            env._torque_scaled_mask_per_leg_joint = torch.zeros(
+                (env.scene.num_envs, 4, 3), dtype=torch.float, device=asset.device
+            )
+
+        # turn joint names (if provided) into leg/joint indices
         target_names = getattr(asset_cfg, "joint_names", None)
         if target_names is None:
-            target_names_list = []
-        elif isinstance(target_names, (list, tuple)):
-            target_names_list = list(target_names)
+            names: list[str] = []
         elif isinstance(target_names, str):
-            target_names_list = [target_names]
+            names = [target_names]
         else:
-            target_names_list = []
+            names = list(target_names)
 
-        if target_names_list:
-            # lazy init mask tensor
-            if not hasattr(env, "_torque_scaled_mask_per_leg_joint"):
-                device = asset.device
-                env._torque_scaled_mask_per_leg_joint = torch.zeros(
-                    (env.scene.num_envs, 4, 3), dtype=torch.float, device=device
-                )
+        def _leg_idx(n: str) -> int | None:
+            if n.startswith("FL_"):
+                return 0
+            if n.startswith("FR_"):
+                return 1
+            if n.startswith("RL_"):
+                return 2
+            if n.startswith("RR_"):
+                return 3
+            return None
 
-            def _leg_idx(name: str) -> int | None:
-                if name.startswith("FL_"):
-                    return 0
-                if name.startswith("FR_"):
-                    return 1
-                if name.startswith("RL_"):
-                    return 2
-                if name.startswith("RR_"):
-                    return 3
-                return None
+        def _joint_idx(n: str) -> int | None:
+            if "hip" in n:
+                return 0
+            if "thigh" in n:
+                return 1
+            if "calf" in n:
+                return 2
+            return None
 
-            def _joint_idx(name: str) -> int | None:
-                if "_hip_" in name:
-                    return 0
-                if "_thigh_" in name:
-                    return 1
-                if "_calf_" in name:
-                    return 2
-                return None
-
-            active_val = 1.0 if abs(float(scale) - 1.0) > 1e-6 else 0.0
-            num_envs = env.scene.num_envs
-            all_env_ids = torch.arange(num_envs, device=asset.device)
-            for jn in target_names_list:
-                li = _leg_idx(jn)
-                ji = _joint_idx(jn)
-                if li is None or ji is None:
-                    continue
-                if env_ids is None or env_ids == slice(None):
-                    # Set the same value for all envs
-                    env._torque_scaled_mask_per_leg_joint[:, li, ji] = active_val
-                else:
-                    env_ids = env_ids.to(asset.device)
-                    env._torque_scaled_mask_per_leg_joint[env_ids, li, ji] = active_val
-                    # Reset others to 0 so mask reflects current interval activity
-                    inactive_env_ids = torch.ones(num_envs, dtype=torch.bool, device=asset.device)
-                    inactive_env_ids[env_ids] = False
-                    if torch.any(inactive_env_ids):
-                        env._torque_scaled_mask_per_leg_joint[inactive_env_ids, li, ji] = 0.0
+        active_val = 1.0 if abs(float(scale) - 1.0) > 1e-6 else 0.0
+        for jn in names:
+            li = _leg_idx(jn)
+            ji = _joint_idx(jn)
+            if li is None or ji is None:
+                continue
+            # set active envs to active_val; do NOT reset complement here to avoid flicker
+            env._torque_scaled_mask_per_leg_joint[env_ids, li, ji] = active_val
     except Exception:
-        # Never fail the event due to tracking; scaling above is the primary behavior
+        # do not break the event on tracking failure
         pass

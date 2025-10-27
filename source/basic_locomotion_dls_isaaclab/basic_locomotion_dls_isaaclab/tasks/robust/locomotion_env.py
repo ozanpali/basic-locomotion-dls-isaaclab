@@ -67,7 +67,11 @@ class LocomotionEnv(DirectRLEnv):
 
         # Per-leg, per-joint torque scaling activation mask [num_envs, 4 legs, 3 joints]
         # legs: [FL, FR, RL, RR]; joints: [hip, thigh, calf]
-        self._torque_scaled_mask_per_leg_joint = torch.zeros(self.num_envs, 4, 3, dtype=torch.float, device=self.device)
+        # Note: _setup_scene may have already created and populated this via custom_events.
+        if not hasattr(self, "_torque_scaled_mask_per_leg_joint"):
+            self._torque_scaled_mask_per_leg_joint = torch.zeros(
+                self.num_envs, 4, 3, dtype=torch.float, device=self.device
+            )
 
         # RMA
         if(cfg.use_rma == True):
@@ -121,13 +125,13 @@ class LocomotionEnv(DirectRLEnv):
                 "feet_to_base_distance_l2",
                 "feet_to_hip_distance_l2",
                 "feet_vertical_surface_contacts",
-                "fl_height_maintenance",
-                "front_left_always_swing",
-                "fl_calf_bend_reward",
-                "feet_air_time_FL",
-                "feet_air_time_FR",
-                "feet_air_time_RL",
-                "feet_air_time_RR",
+                #"fl_height_maintenance",  #deactivated completely them will delete them soon
+                #"front_left_always_swing",
+                #"fl_calf_bend_reward",
+                #"feet_air_time_FL",
+                #"feet_air_time_FR",
+                #"feet_air_time_RL",
+                #"feet_air_time_RR",
                 "feet_air_time_FL_failure",
                 "feet_air_time_RL_failure",
                 "feet_air_time_FR_failure",
@@ -276,6 +280,7 @@ class LocomotionEnv(DirectRLEnv):
         # Append only the per-leg torque scaling flags (0/1) to the policy observation
         # Shape: [num_envs, 4]; order: [FL, FR, RL, RR]
         leg_any_scaled = (self._torque_scaled_mask_per_leg_joint.max(dim=2).values > 0.0).float()
+        #print("Leg any scaled:", leg_any_scaled)
         obs = torch.cat((obs, leg_any_scaled), dim=-1)
 
 
@@ -508,6 +513,7 @@ class LocomotionEnv(DirectRLEnv):
         rr_penalty = -10.0 * rr_contact
         feet_air_time_RR_failure = (feet_air_time_excluding_FL + rr_air_reward + rr_penalty)
 
+        """  deactivated completely them will delete them soon
         #### 3 legs
         # Individual leg air time computation with separate thresholds for each leg
         # This allows fine-grained control over each leg's swing behavior
@@ -537,7 +543,7 @@ class LocomotionEnv(DirectRLEnv):
         # Rear Right (RR) leg air time - index 3
         feet_air_time_RR = ((last_air_time[:, 3] - rr_threshold) * first_contact[:, 3]) * movement_condition
         ####
-
+        """
 
         # feet slide
         contacts_foot = self._contact_sensor.data.net_forces_w_history[:, :, self._feet_ids, :].norm(dim=-1).max(dim=1)[0] > 1.0
@@ -545,6 +551,7 @@ class LocomotionEnv(DirectRLEnv):
         feet_slide = torch.sum(body_vel.norm(dim=-1) * contacts_foot, dim=1)
         #feet_slide = torch.exp(-feet_slide / 0.1)
 
+        """" deactivated completely them will delete them soon
         # Exclude Front-Left leg (index 0) from slide computation
         #body_speed = body_vel.norm(dim=-1)
         #feet_slide = torch.sum(body_speed[:, 1:] * contacts_foot[:, 1:], dim=1)
@@ -579,6 +586,7 @@ class LocomotionEnv(DirectRLEnv):
         # Exponential reward (higher reward when closer to target height)
         fl_height_maintenance = torch.exp(-fl_height_error / 0.02)  # Sensitive to 2cm deviations
         ####
+        """
 
         # feet periodical contacts suggestion
         should_move = torch.norm(self._commands[:, :3], dim=1) > 0.01
@@ -683,6 +691,10 @@ class LocomotionEnv(DirectRLEnv):
 
         #print self._torque_scaled_mask_per_leg_joint.max(dim=2).values[:, 0]
         #print("Torque scaling mask FL leg joints:", leg_any_scaled_int[:, 0])
+        #print("Torque scaling mask FR leg joints:", leg_any_scaled_int[:, 1])
+        #print("Torque scaling mask RL leg joints:", leg_any_scaled_int[:, 2])
+        #print("Torque scaling mask RR leg joints:", leg_any_scaled_int[:, 3])
+        #print(" \n")
         #print Feet air time
         #print("Feet air time:", feet_air_time * self.cfg.feet_air_time_reward_scale * self.step_dt * (1.0 - leg_any_scaled_int[:, 0].float()))        
     
@@ -710,17 +722,17 @@ class LocomotionEnv(DirectRLEnv):
             "joints_torques_l2": joints_torques * self.cfg.joints_torque_reward_scale * self.step_dt,
             "joints_energy_l1": joints_energy * self.cfg.joints_energy_reward_scale * self.step_dt,
 
-            "feet_air_time": feet_air_time * self.cfg.feet_air_time_reward_scale * self.step_dt *
-                            (1.0 - leg_any_scaled_int[:, 0].float()) *
-                            (1.0 - leg_any_scaled_int[:, 1].float()) *
-                            (1.0 - leg_any_scaled_int[:, 2].float()) *
-                            (1.0 - leg_any_scaled_int[:, 3].float()),
+            "feet_air_time": feet_air_time * self.cfg.feet_air_time_reward_scale * self.step_dt,# *
+            #                (1.0 - leg_any_scaled_int[:, 0].float()) *
+            #                (1.0 - leg_any_scaled_int[:, 1].float()) *
+            #                (1.0 - leg_any_scaled_int[:, 2].float()) *
+            #                (1.0 - leg_any_scaled_int[:, 3].float()),
             
-            "feet_height_clearance": feet_height_clearance * self.cfg.feet_height_clearance_reward_scale * self.step_dt *
-                                      (1.0 - leg_any_scaled_int[:, 0].float()) *
-                                      (1.0 - leg_any_scaled_int[:, 1].float()) *
-                                      (1.0 - leg_any_scaled_int[:, 2].float()) *
-                                      (1.0 - leg_any_scaled_int[:, 3].float()),
+            "feet_height_clearance": feet_height_clearance * self.cfg.feet_height_clearance_reward_scale * self.step_dt,# *
+            #                          (1.0 - leg_any_scaled_int[:, 0].float()) *
+            #                          (1.0 - leg_any_scaled_int[:, 1].float()) *
+            #                          (1.0 - leg_any_scaled_int[:, 2].float()) *
+            #                          (1.0 - leg_any_scaled_int[:, 3].float()),
             "feet_height_clearance_periodic": feet_height_clearance_periodic * self.cfg.feet_height_clearance_periodic_reward_scale * self.step_dt,
             "feet_height_clearance_mujoco": feet_height_clearance_mujoco * self.cfg.feet_height_clearance_mujoco_reward_scale * self.step_dt,
             "feet_height_clearance_mujoco_periodic": feet_height_clearance_mujoco_periodic * self.cfg.feet_height_clearance_mujoco_periodic_reward_scale * self.step_dt,
@@ -730,22 +742,22 @@ class LocomotionEnv(DirectRLEnv):
             "feet_to_base_distance_l2": feet_to_base_distance * self.cfg.feet_to_base_distance_reward_scale * self.step_dt,
             "feet_to_hip_distance_l2": feet_to_hip_distance * self.cfg.feet_to_hip_distance_reward_scale * self.step_dt,
             "feet_vertical_surface_contacts": feet_vertical_surface_contacts * self.cfg.feet_vertical_surface_contacts_reward_scale * self.step_dt,
-            "fl_height_maintenance": fl_height_maintenance * self.cfg.fl_height_maintenance_reward_scale * self.step_dt,
-            "front_left_always_swing": front_left_always_swing * self.cfg.front_left_always_swing_reward_scale * self.step_dt,
-            "fl_calf_bend_reward": fl_calf_bend_reward * self.cfg.fl_calf_bend_reward_scale * self.step_dt,
-            "feet_air_time_FL": feet_air_time_FL * self.cfg.feet_air_time_FL_reward_scale * self.step_dt,
-            "feet_air_time_FR": feet_air_time_FR * self.cfg.feet_air_time_FR_reward_scale * self.step_dt,
-            "feet_air_time_RL": feet_air_time_RL * self.cfg.feet_air_time_RL_reward_scale * self.step_dt,
-            "feet_air_time_RR": feet_air_time_RR * self.cfg.feet_air_time_RR_reward_scale * self.step_dt,
+            #"fl_height_maintenance": fl_height_maintenance * self.cfg.fl_height_maintenance_reward_scale * self.step_dt,   # deactivated them completely will delete them soon
+            #"front_left_always_swing": front_left_always_swing * self.cfg.front_left_always_swing_reward_scale * self.step_dt,
+            #"fl_calf_bend_reward": fl_calf_bend_reward * self.cfg.fl_calf_bend_reward_scale * self.step_dt,
+            #"feet_air_time_FL": feet_air_time_FL * self.cfg.feet_air_time_FL_reward_scale * self.step_dt,
+            #"feet_air_time_FR": feet_air_time_FR * self.cfg.feet_air_time_FR_reward_scale * self.step_dt,
+            #"feet_air_time_RL": feet_air_time_RL * self.cfg.feet_air_time_RL_reward_scale * self.step_dt,
+            #"feet_air_time_RR": feet_air_time_RR * self.cfg.feet_air_time_RR_reward_scale * self.step_dt,
             # Gate terms by whether any torque scaling (hip/thigh/calf) is active on the corresponding leg
-            "feet_air_time_FL_failure": feet_air_time_FL_failure * self.cfg.feet_air_time_FL_failure_reward_scale * self.step_dt * (leg_any_scaled_int[:, 0].float()),
-            "feet_air_time_RL_failure": feet_air_time_RL_failure * self.cfg.feet_air_time_RL_failure_reward_scale * self.step_dt * (leg_any_scaled_int[:, 2].float()),
-            "feet_air_time_FR_failure": feet_air_time_FR_failure * self.cfg.feet_air_time_FR_failure_reward_scale * self.step_dt * (leg_any_scaled_int[:, 1].float()),
-            "feet_air_time_RR_failure": feet_air_time_RR_failure * self.cfg.feet_air_time_RR_failure_reward_scale * self.step_dt * (leg_any_scaled_int[:, 3].float()),
-            "feet_height_clearance_excl_fl": feet_height_clearance_excl_fl * self.cfg.feet_height_clearance_excl_fl_reward_scale * self.step_dt * (leg_any_scaled_int[:, 0].float()),
-            "feet_height_clearance_excl_rl": feet_height_clearance_excl_rl * self.cfg.feet_height_clearance_excl_rl_reward_scale * self.step_dt * (leg_any_scaled_int[:, 2].float()),
-            "feet_height_clearance_excl_fr": feet_height_clearance_excl_fr * self.cfg.feet_height_clearance_excl_fr_reward_scale * self.step_dt * (leg_any_scaled_int[:, 1].float()),
-            "feet_height_clearance_excl_rr": feet_height_clearance_excl_rr * self.cfg.feet_height_clearance_excl_rr_reward_scale * self.step_dt * (leg_any_scaled_int[:, 3].float()),
+            "feet_air_time_FL_failure": feet_air_time_FL_failure * self.cfg.feet_air_time_FL_failure_reward_scale * self.step_dt,# * (leg_any_scaled_int[:, 0].float()),
+            "feet_air_time_RL_failure": feet_air_time_RL_failure * self.cfg.feet_air_time_RL_failure_reward_scale * self.step_dt,# * (leg_any_scaled_int[:, 2].float()),
+            "feet_air_time_FR_failure": feet_air_time_FR_failure * self.cfg.feet_air_time_FR_failure_reward_scale * self.step_dt,# * (leg_any_scaled_int[:, 1].float()),
+            "feet_air_time_RR_failure": feet_air_time_RR_failure * self.cfg.feet_air_time_RR_failure_reward_scale * self.step_dt,# * (leg_any_scaled_int[:, 3].float()),
+            "feet_height_clearance_excl_fl": feet_height_clearance_excl_fl * self.cfg.feet_height_clearance_excl_fl_reward_scale * self.step_dt,# * (leg_any_scaled_int[:, 0].float()),
+            "feet_height_clearance_excl_rl": feet_height_clearance_excl_rl * self.cfg.feet_height_clearance_excl_rl_reward_scale * self.step_dt,# * (leg_any_scaled_int[:, 2].float()),
+            "feet_height_clearance_excl_fr": feet_height_clearance_excl_fr * self.cfg.feet_height_clearance_excl_fr_reward_scale * self.step_dt,# * (leg_any_scaled_int[:, 1].float()),
+            "feet_height_clearance_excl_rr": feet_height_clearance_excl_rr * self.cfg.feet_height_clearance_excl_rr_reward_scale * self.step_dt,# * (leg_any_scaled_int[:, 3].float()),
         }
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
         
