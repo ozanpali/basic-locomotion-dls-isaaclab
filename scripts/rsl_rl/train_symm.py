@@ -65,6 +65,7 @@ simulation_app = app_launcher.app
 """Rest everything follows."""
 
 import os  # noqa: I001
+import re
 from datetime import datetime
 
 import isaaclab_tasks  # noqa: F401
@@ -141,7 +142,40 @@ def main(
 
     # save resume path before creating a new log_dir
     if agent_cfg.resume:
-        resume_path = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
+        # Normalize CLI/resume selectors:
+        # - load_run: regex for run folder. Use ".*" for latest when unset or "-1".
+        # - load_checkpoint: regex for checkpoint file. Accept plain iteration (e.g., "999") and map to model_999.pt.
+        load_run_regex = agent_cfg.load_run
+        if load_run_regex in (None, "", "-1"):
+            load_run_regex = ".*"
+        load_ckpt_regex = getattr(agent_cfg, "load_checkpoint", None)
+        if load_ckpt_regex in (None, "", "-1"):
+            load_ckpt_regex = r"model_.*\\.pt"
+        else:
+            # If a numeric iteration is provided (e.g., "999"), match exactly model_999.pt
+            if isinstance(load_ckpt_regex, (int, float)) or (isinstance(load_ckpt_regex, str) and load_ckpt_regex.isdigit()):
+                load_ckpt_regex = rf"model_{int(load_ckpt_regex)}\\.pt"
+
+        # Fallback: if latest run has no checkpoints, scan previous runs until one matches
+        def _find_latest_ckpt_with_fallback(root_path: str, run_regex: str, ckpt_regex: str) -> str:
+            # collect candidate runs matching regex
+            runs = [d.name for d in os.scandir(root_path) if d.is_dir() and re.match(run_regex, d.name)]
+            if not runs:
+                raise ValueError(f"No runs present in the directory: '{root_path}' match: '{run_regex}'.")
+            runs.sort()
+            # iterate from latest to oldest
+            for run_name in reversed(runs):
+                try:
+                    # escape run_name to match exactly this folder
+                    exact_run_regex = re.escape(run_name)
+                    return get_checkpoint_path(root_path, exact_run_regex, ckpt_regex)
+                except ValueError:
+                    continue
+            raise ValueError(
+                f"No checkpoints found in any runs under '{root_path}' matching run='{run_regex}', checkpoint='{ckpt_regex}'."
+            )
+
+        resume_path = _find_latest_ckpt_with_fallback(log_root_path, load_run_regex, load_ckpt_regex)
 
     # wrap for video recording
     if args_cli.video:
@@ -178,7 +212,16 @@ def main(
     runner.learn(num_learning_iterations=agent_cfg.max_iterations, init_at_random_ep_len=True)
 
     # Export policy as jit/onnx
-    resume_path = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
+    # Resolve latest checkpoint for export stage as well
+    load_run_regex = agent_cfg.load_run if agent_cfg.load_run not in (None, "", "-1") else ".*"
+    load_ckpt_regex = getattr(agent_cfg, "load_checkpoint", None)
+    if load_ckpt_regex in (None, "", "-1"):
+        load_ckpt_regex = r"model_.*\\.pt"
+    else:
+        if isinstance(load_ckpt_regex, (int, float)) or (isinstance(load_ckpt_regex, str) and load_ckpt_regex.isdigit()):
+            load_ckpt_regex = rf"model_{int(load_ckpt_regex)}\\.pt"
+    # reuse the fallback resolution for export stage as well
+    resume_path = _find_latest_ckpt_with_fallback(log_root_path, load_run_regex, load_ckpt_regex)
     runner.load(resume_path)
     # obtain the trained policy for inference
     policy = runner.get_inference_policy(device=env.unwrapped.device)

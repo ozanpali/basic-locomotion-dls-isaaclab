@@ -25,6 +25,13 @@ parser.add_argument("--num_envs", type=int, default=None, help="Number of enviro
 parser.add_argument("--task", type=str, default=None, help="Name of the task.")
 parser.add_argument("--seed", type=int, default=None, help="Seed used for the environment")
 parser.add_argument("--max_iterations", type=int, default=None, help="RL Policy training iterations.")
+# resume from checkpoint convenience (absolute path)
+parser.add_argument(
+    "--resume_path",
+    type=str,
+    default=None,
+    help="Absolute path to a saved checkpoint (.pt) to resume from. If provided, overrides load_run/load_checkpoint.",
+)
 # append RSL-RL cli arguments
 cli_args.add_rsl_rl_args(parser)
 # append AppLauncher cli args
@@ -128,11 +135,15 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # write git state to logs
     runner.add_git_repo_to_log(__file__)
     # save resume path before creating a new log_dir
-    if agent_cfg.resume:
-        # get path to previous checkpoint
-        resume_path = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
+    if agent_cfg.resume or args_cli.resume_path is not None:
+        if args_cli.resume_path is not None:
+            # Use the explicit path provided via CLI
+            resume_path = args_cli.resume_path
+        else:
+            # get path to previous checkpoint within experiment logs
+            resume_path = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
         print(f"[INFO]: Loading model checkpoint from: {resume_path}")
-        # load previously trained model
+        # load previously trained model (optimizer, lr sched, normalizer, etc.)
         runner.load(resume_path)
 
     # dump the configuration into log-directory
