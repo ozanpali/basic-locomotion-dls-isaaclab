@@ -396,9 +396,9 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     action_smoothness_reward_scale = -0.001 * (1-use_amp)
 
     # Feet reward scale
-    feet_air_time_reward_scale = 0.5 * (1-use_amp) * 0.0
+    feet_air_time_reward_scale = 0.5 * (1-use_amp)
 
-    feet_height_clearance_reward_scale = 0.25 * (1-use_amp) * 0.0
+    feet_height_clearance_reward_scale = 0.5 * (1-use_amp)
     feet_height_clearance_periodic_reward_scale = 0.25 * (1-use_amp) * 0.0
     
     feet_height_clearance_mujoco_reward_scale = 0.25 * (1-use_amp) * 0.0
@@ -429,14 +429,14 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
 
     #reward in the air punish when touch the ground
     feet_air_time_FL_failure_reward_scale = 0.5 * (1-use_amp)
-    feet_air_time_RL_failure_reward_scale = 0.5 * (1-use_amp) * 0.0
-    feet_air_time_FR_failure_reward_scale = 0.5 * (1-use_amp) * 0.0
-    feet_air_time_RR_failure_reward_scale = 0.5 * (1-use_amp) * 0.0
+    feet_air_time_RL_failure_reward_scale = 0.5 * (1-use_amp) 
+    feet_air_time_FR_failure_reward_scale = 0.5 * (1-use_amp)
+    feet_air_time_RR_failure_reward_scale = 0.5 * (1-use_amp)
     # Per-foot height clearance reward scales (allow different weighting per leg)
-    feet_height_clearance_excl_fl_reward_scale = 0.25 * (1-use_amp)
-    feet_height_clearance_excl_rl_reward_scale = 0.25 * (1-use_amp) * 0.0
-    feet_height_clearance_excl_fr_reward_scale = 0.25 * (1-use_amp) * 0.0
-    feet_height_clearance_excl_rr_reward_scale = 0.25 * (1-use_amp) * 0.0
+    feet_height_clearance_excl_fl_reward_scale = 0.5 * (1-use_amp)
+    feet_height_clearance_excl_rl_reward_scale = 0.5 * (1-use_amp)
+    feet_height_clearance_excl_fr_reward_scale = 0.5 * (1-use_amp)
+    feet_height_clearance_excl_rr_reward_scale = 0.5 * (1-use_amp)
 
 
 

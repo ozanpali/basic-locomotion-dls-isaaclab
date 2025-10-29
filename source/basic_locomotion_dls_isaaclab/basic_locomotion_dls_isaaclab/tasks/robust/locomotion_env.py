@@ -20,6 +20,7 @@ from isaaclab.sensors import ContactSensor, ContactSensorCfg, RayCaster, RayCast
 from isaaclab.sim import SimulationCfg
 from isaaclab.terrains import TerrainImporterCfg
 from isaaclab.utils import configclass
+from basic_locomotion_dls_isaaclab.tasks.custom_events import scale_joint_torque
 
 
 from .aliengo_env_cfg import AliengoFlatEnvCfg, AliengoRoughBlindEnvCfg, AliengoRoughVisionEnvCfg
@@ -72,6 +73,10 @@ class LocomotionEnv(DirectRLEnv):
             self._torque_scaled_mask_per_leg_joint = torch.zeros(
                 self.num_envs, 4, 3, dtype=torch.float, device=self.device
             )
+
+        # Per-env failure type persisted across the episode (0: none, 1: FL, 2: FR, 3: RL, 4: RR)
+        if not hasattr(self, "_failure_type"):
+            self._failure_type = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
 
         # RMA
         if(cfg.use_rma == True):
@@ -322,6 +327,9 @@ class LocomotionEnv(DirectRLEnv):
         # Create a binary per-leg mask (0/1) indicating whether ANY joint on the leg has torque scaling active
         # Shape: [num_envs, 4]; dtype: int (for clear logical use); cast to float when multiplying with rewards
         leg_any_scaled_int = (self._torque_scaled_mask_per_leg_joint.max(dim=2).values > 0.0).int()
+        # Compute a per-env gating factor that is 1.0 only when no leg is failed (no scaling active), else 0.0
+        # Vectorized for GPU: product over legs of (1 - flag)
+        gating_factor = (1.0 - leg_any_scaled_int.float()).prod(dim=1)
 
         # track_height
         height_data_scanner = self._height_scanner.data.ray_hits_w[..., 2]
@@ -695,6 +703,38 @@ class LocomotionEnv(DirectRLEnv):
         #print("Torque scaling mask RL leg joints:", leg_any_scaled_int[:, 2])
         #print("Torque scaling mask RR leg joints:", leg_any_scaled_int[:, 3])
         #print(" \n")
+        """
+        # DEBUG: print counts and samples every timestep for verification
+        try:
+            # leg_any_scaled_int is [num_envs, 4]
+            fl_count = int(torch.sum(leg_any_scaled_int[:, 0]).item())
+            fr_count = int(torch.sum(leg_any_scaled_int[:, 1]).item())
+            rl_count = int(torch.sum(leg_any_scaled_int[:, 2]).item())
+            rr_count = int(torch.sum(leg_any_scaled_int[:, 3]).item())
+
+            # Assigned failure counts
+            none_count = fl_assigned = 0
+            if hasattr(self, "_failure_type"):
+                none_count = int(torch.sum(self._failure_type == 0).item())
+                fl_assigned = int(torch.sum(self._failure_type == 1).item())
+
+            # Sample small per-env arrays for quick inspection
+            sample_n = min(16, self.num_envs)
+            sample_flags = leg_any_scaled_int[:sample_n, :].cpu().tolist()
+            assigned_sample = None
+            if hasattr(self, "_failure_type"):
+                assigned_sample = self._failure_type[:sample_n].cpu().tolist()
+
+            # Print a concise line and small samples
+            # print(
+            #     f"FailureCounts FL:{fl_count} FR:{fr_count} RL:{rl_count} RR:{rr_count} | "
+            #     f"Assigned none:{none_count} | "
+            #     f"Each legs failure flag in each environment:{sample_flags}  failure type in each environment:{assigned_sample}"
+            # )
+        except Exception:
+            # keep debug prints non-fatal
+            pass
+        """
         #print Feet air time
         #print("Feet air time:", feet_air_time * self.cfg.feet_air_time_reward_scale * self.step_dt * (1.0 - leg_any_scaled_int[:, 0].float()))        
     
@@ -722,17 +762,9 @@ class LocomotionEnv(DirectRLEnv):
             "joints_torques_l2": joints_torques * self.cfg.joints_torque_reward_scale * self.step_dt,
             "joints_energy_l1": joints_energy * self.cfg.joints_energy_reward_scale * self.step_dt,
 
-            "feet_air_time": feet_air_time * self.cfg.feet_air_time_reward_scale * self.step_dt,# *
-            #                (1.0 - leg_any_scaled_int[:, 0].float()) *
-            #                (1.0 - leg_any_scaled_int[:, 1].float()) *
-            #                (1.0 - leg_any_scaled_int[:, 2].float()) *
-            #                (1.0 - leg_any_scaled_int[:, 3].float()),
+            "feet_air_time": feet_air_time * gating_factor * self.cfg.feet_air_time_reward_scale * self.step_dt,
             
-            "feet_height_clearance": feet_height_clearance * self.cfg.feet_height_clearance_reward_scale * self.step_dt,# *
-            #                          (1.0 - leg_any_scaled_int[:, 0].float()) *
-            #                          (1.0 - leg_any_scaled_int[:, 1].float()) *
-            #                          (1.0 - leg_any_scaled_int[:, 2].float()) *
-            #                          (1.0 - leg_any_scaled_int[:, 3].float()),
+            "feet_height_clearance": feet_height_clearance * gating_factor * self.cfg.feet_height_clearance_reward_scale * self.step_dt,
             "feet_height_clearance_periodic": feet_height_clearance_periodic * self.cfg.feet_height_clearance_periodic_reward_scale * self.step_dt,
             "feet_height_clearance_mujoco": feet_height_clearance_mujoco * self.cfg.feet_height_clearance_mujoco_reward_scale * self.step_dt,
             "feet_height_clearance_mujoco_periodic": feet_height_clearance_mujoco_periodic * self.cfg.feet_height_clearance_mujoco_periodic_reward_scale * self.step_dt,
@@ -750,14 +782,14 @@ class LocomotionEnv(DirectRLEnv):
             #"feet_air_time_RL": feet_air_time_RL * self.cfg.feet_air_time_RL_reward_scale * self.step_dt,
             #"feet_air_time_RR": feet_air_time_RR * self.cfg.feet_air_time_RR_reward_scale * self.step_dt,
             # Gate terms by whether any torque scaling (hip/thigh/calf) is active on the corresponding leg
-            "feet_air_time_FL_failure": feet_air_time_FL_failure * self.cfg.feet_air_time_FL_failure_reward_scale * self.step_dt,# * (leg_any_scaled_int[:, 0].float()),
-            "feet_air_time_RL_failure": feet_air_time_RL_failure * self.cfg.feet_air_time_RL_failure_reward_scale * self.step_dt,# * (leg_any_scaled_int[:, 2].float()),
-            "feet_air_time_FR_failure": feet_air_time_FR_failure * self.cfg.feet_air_time_FR_failure_reward_scale * self.step_dt,# * (leg_any_scaled_int[:, 1].float()),
-            "feet_air_time_RR_failure": feet_air_time_RR_failure * self.cfg.feet_air_time_RR_failure_reward_scale * self.step_dt,# * (leg_any_scaled_int[:, 3].float()),
-            "feet_height_clearance_excl_fl": feet_height_clearance_excl_fl * self.cfg.feet_height_clearance_excl_fl_reward_scale * self.step_dt,# * (leg_any_scaled_int[:, 0].float()),
-            "feet_height_clearance_excl_rl": feet_height_clearance_excl_rl * self.cfg.feet_height_clearance_excl_rl_reward_scale * self.step_dt,# * (leg_any_scaled_int[:, 2].float()),
-            "feet_height_clearance_excl_fr": feet_height_clearance_excl_fr * self.cfg.feet_height_clearance_excl_fr_reward_scale * self.step_dt,# * (leg_any_scaled_int[:, 1].float()),
-            "feet_height_clearance_excl_rr": feet_height_clearance_excl_rr * self.cfg.feet_height_clearance_excl_rr_reward_scale * self.step_dt,# * (leg_any_scaled_int[:, 3].float()),
+            "feet_air_time_FL_failure": feet_air_time_FL_failure * self.cfg.feet_air_time_FL_failure_reward_scale * self.step_dt * (leg_any_scaled_int[:, 0].float()),
+            "feet_air_time_RL_failure": feet_air_time_RL_failure * self.cfg.feet_air_time_RL_failure_reward_scale * self.step_dt * (leg_any_scaled_int[:, 2].float()),
+            "feet_air_time_FR_failure": feet_air_time_FR_failure * self.cfg.feet_air_time_FR_failure_reward_scale * self.step_dt * (leg_any_scaled_int[:, 1].float()),
+            "feet_air_time_RR_failure": feet_air_time_RR_failure * self.cfg.feet_air_time_RR_failure_reward_scale * self.step_dt * (leg_any_scaled_int[:, 3].float()),
+            "feet_height_clearance_excl_fl": feet_height_clearance_excl_fl * self.cfg.feet_height_clearance_excl_fl_reward_scale * self.step_dt * (leg_any_scaled_int[:, 0].float()),
+            "feet_height_clearance_excl_rl": feet_height_clearance_excl_rl * self.cfg.feet_height_clearance_excl_rl_reward_scale * self.step_dt * (leg_any_scaled_int[:, 2].float()),
+            "feet_height_clearance_excl_fr": feet_height_clearance_excl_fr * self.cfg.feet_height_clearance_excl_fr_reward_scale * self.step_dt * (leg_any_scaled_int[:, 1].float()),
+            "feet_height_clearance_excl_rr": feet_height_clearance_excl_rr * self.cfg.feet_height_clearance_excl_rr_reward_scale * self.step_dt * (leg_any_scaled_int[:, 3].float()),
         }
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
         
@@ -867,6 +899,75 @@ class LocomotionEnv(DirectRLEnv):
             extras["Episode_Curriculum/terrain_levels"] = torch.mean(self._terrain.terrain_levels.float())
         
         self.extras["log"].update(extras)
+
+        # --- Apply per-episode randomized leg failure mask (torque scaling) ---
+        # Two-way failure sampling:
+        # 0: no failure, 1: FL failure (thigh + calf only; hip remains unscaled)
+        with torch.no_grad():
+            # Sample 2-way failure: map uniform u in [0,1) to bins of width 0.5 -> values 0..1
+            # 0: no failure, 1: FL failure
+            u = torch.rand(len(env_ids), device=self.device)
+            # Multiply by 2 and truncate to long to obtain integer bin in [0,1]
+            fail_type = (u * 2.0).to(torch.long)
+            # Persist failure type for these envs until next reset
+            self._failure_type[env_ids] = fail_type
+
+            """# Debug: print which envs were reset and their assigned fail_type
+            try:
+                env_ids_cpu = env_ids.cpu().tolist() if isinstance(env_ids, torch.Tensor) else env_ids
+                fail_type_cpu = fail_type.cpu().tolist() if isinstance(fail_type, torch.Tensor) else fail_type
+                # print(f"[reset] envs reset: {env_ids_cpu} assigned fail_type: {fail_type_cpu}")
+            except Exception:
+                # Non-fatal: don't interrupt reset if print fails
+                pass"""
+
+            # Clear any prior scaling for these envs: set ALL joints to scale 1.0
+            # Use exact joint names as present in the robot ('*_joint')
+            all_leg_names = [
+                "FL_hip_joint", "FL_thigh_joint", "FL_calf_joint",
+                "FR_hip_joint", "FR_thigh_joint", "FR_calf_joint",
+                "RL_hip_joint", "RL_thigh_joint", "RL_calf_joint",
+                "RR_hip_joint", "RR_thigh_joint", "RR_calf_joint",
+            ]
+            scale_joint_torque(
+                env=self,
+                env_ids=env_ids,
+                asset_cfg=SceneEntityCfg(name="robot", joint_ids=slice(None), joint_names=all_leg_names),
+                scale=1.0,
+            )
+
+            # Apply per-leg failures for envs where fail_type == 1 (FL only)
+            # Map leg codes to name prefixes
+            leg_map = [("FL", 1)]
+            for leg_prefix, code in leg_map:
+                mask_leg = fail_type == code
+                if not mask_leg.any():
+                    continue
+                envs_leg = env_ids[mask_leg]
+                # Find joint indices for this leg and scale them to zero
+                # Scale only thigh and calf (exclude hip)
+                pattern = rf"{leg_prefix}_(thigh|calf)_joint"
+                leg_joint_ids, _ = self._robot.find_joints(pattern)
+                if leg_joint_ids is None:
+                    continue
+                # Prefer passing plain Python lists into the config to avoid unnecessary GPU<->CPU hops
+                if isinstance(leg_joint_ids, torch.Tensor):
+                    leg_joint_ids_list = leg_joint_ids.detach().cpu().tolist()
+                else:
+                    # Ensure it's a list (find_joints may already return a list)
+                    leg_joint_ids_list = list(leg_joint_ids)
+                # Only scale thigh and calf (exact names)
+                joint_names = [f"{leg_prefix}_thigh_joint", f"{leg_prefix}_calf_joint"]
+                scale_joint_torque(
+                    env=self,
+                    env_ids=envs_leg,
+                    asset_cfg=SceneEntityCfg(
+                        name="robot",
+                        joint_ids=leg_joint_ids_list,
+                        joint_names=joint_names,
+                    ),
+                    scale=0.0,
+                )
 
 
 
