@@ -398,7 +398,7 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     # Feet reward scale
     feet_air_time_reward_scale = 0.5 * (1-use_amp)
 
-    feet_height_clearance_reward_scale = 0.5 * (1-use_amp)
+    feet_height_clearance_reward_scale = 0.5 * (1-use_amp) * 0.0
     feet_height_clearance_periodic_reward_scale = 0.25 * (1-use_amp) * 0.0
     
     feet_height_clearance_mujoco_reward_scale = 0.25 * (1-use_amp) * 0.0
@@ -412,7 +412,7 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     # This is used in loocmotion_env.py for the above reward
     desired_hip_offset = 0.083
     
-    feet_vertical_surface_contacts_reward_scale = -0.25 * (1-use_amp)# * 0.0
+    feet_vertical_surface_contacts_reward_scale = -0.25 * (1-use_amp) * 0.0
 
     # Front-left specific rewards (moved here so they are grouped with other feet rewards)
     # Reward for maintaining a desired height with the front-left (FL) foot
@@ -433,10 +433,10 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     feet_air_time_FR_failure_reward_scale = 0.5 * (1-use_amp)
     feet_air_time_RR_failure_reward_scale = 0.5 * (1-use_amp)
     # Per-foot height clearance reward scales (allow different weighting per leg)
-    feet_height_clearance_excl_fl_reward_scale = 0.5 * (1-use_amp)
-    feet_height_clearance_excl_rl_reward_scale = 0.5 * (1-use_amp)
-    feet_height_clearance_excl_fr_reward_scale = 0.5 * (1-use_amp)
-    feet_height_clearance_excl_rr_reward_scale = 0.5 * (1-use_amp)
+    feet_height_clearance_excl_fl_reward_scale = 0.5 * (1-use_amp) * 0.0
+    feet_height_clearance_excl_rl_reward_scale = 0.5 * (1-use_amp) * 0.0
+    feet_height_clearance_excl_fr_reward_scale = 0.5 * (1-use_amp) * 0.0
+    feet_height_clearance_excl_rr_reward_scale = 0.5 * (1-use_amp) * 0.0
 
 
 

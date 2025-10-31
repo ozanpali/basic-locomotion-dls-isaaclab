@@ -285,7 +285,7 @@ class LocomotionEnv(DirectRLEnv):
         # Append only the per-leg torque scaling flags (0/1) to the policy observation
         # Shape: [num_envs, 4]; order: [FL, FR, RL, RR]
         leg_any_scaled = (self._torque_scaled_mask_per_leg_joint.max(dim=2).values > 0.0).float()
-        #print("Leg any scaled:", leg_any_scaled)
+        #print("Leg any scaled fed to observations:", leg_any_scaled.tolist())
         obs = torch.cat((obs, leg_any_scaled), dim=-1)
 
 
@@ -686,9 +686,21 @@ class LocomotionEnv(DirectRLEnv):
         hip_to_base_h = torch.matmul(ROT_W2H.transpose(1,2), hip_to_base_w.transpose(1, 2))
         
         desired_hip_offset = self._desired_hip_offset
-        feet_to_hip_distance_x = torch.square(feet_to_base_h[:, 0] - hip_to_base_h[:, 0])
-        feet_to_hip_distance_y = torch.square(feet_to_base_h[:, 1] + desired_hip_offset.unsqueeze(0) - hip_to_base_h[:, 1])
-        feet_to_hip_distance = -torch.mean(torch.sqrt(feet_to_hip_distance_x + feet_to_hip_distance_y), dim=1)
+        # Compute per-leg distances in hip frame, then masked average across legs
+        delta_x = feet_to_base_h[:, 0] - hip_to_base_h[:, 0]
+        delta_y = feet_to_base_h[:, 1] + desired_hip_offset.unsqueeze(0) - hip_to_base_h[:, 1]
+        per_leg_dist = torch.sqrt(delta_x.pow(2) + delta_y.pow(2))  # [N,4]
+        # Exclude FL leg when its failure flag is active; otherwise include all legs
+        include_mask = torch.ones(self.num_envs, 4, dtype=torch.bool, device=self.device)
+        include_mask[:, 0] &= (leg_any_scaled_int[:, 0] == 0)
+        include_mask_f = include_mask.float()
+        # Compact, device-agnostic debug prints (env0 only)
+        """try:
+            print("Leg any scaled int:", leg_any_scaled_int.tolist())
+            print("Include mask for feet_to_hip:", include_mask.tolist())
+        except Exception:
+            pass"""
+        feet_to_hip_distance = -((per_leg_dist * include_mask_f).sum(dim=1) / include_mask_f.sum(dim=1).clamp(min=1.0))
         
 
         # Penalize feet hitting vertical surfaces  
@@ -703,7 +715,7 @@ class LocomotionEnv(DirectRLEnv):
         #print("Torque scaling mask RL leg joints:", leg_any_scaled_int[:, 2])
         #print("Torque scaling mask RR leg joints:", leg_any_scaled_int[:, 3])
         #print(" \n")
-        """
+        
         # DEBUG: print counts and samples every timestep for verification
         try:
             # leg_any_scaled_int is [num_envs, 4]
@@ -726,18 +738,20 @@ class LocomotionEnv(DirectRLEnv):
                 assigned_sample = self._failure_type[:sample_n].cpu().tolist()
 
             # Print a concise line and small samples
-            # print(
+            #print(
             #     f"FailureCounts FL:{fl_count} FR:{fr_count} RL:{rl_count} RR:{rr_count} | "
             #     f"Assigned none:{none_count} | "
-            #     f"Each legs failure flag in each environment:{sample_flags}  failure type in each environment:{assigned_sample}"
-            # )
+            #    f"Each legs failure flag in each environment:{sample_flags}  failure type in each environment:{assigned_sample}"
+            #)
         except Exception:
             # keep debug prints non-fatal
             pass
-        """
+        
         #print Feet air time
-        #print("Feet air time:", feet_air_time * self.cfg.feet_air_time_reward_scale * self.step_dt * (1.0 - leg_any_scaled_int[:, 0].float()))        
-    
+        #print("Feet air time:", (feet_air_time * gating_factor * self.cfg.feet_air_time_reward_scale * self.step_dt).tolist())
+        #print Feet air time excl FL
+        #print("Feet air time excl FL:", (feet_air_time_FL_failure * self.cfg.feet_air_time_FL_failure_reward_scale * self.step_dt * (leg_any_scaled_int[:, 0].float())).tolist())
+
         #print("Torque scaling mask FR leg joints:", self._torque_scaled_mask_per_leg_joint.max(dim=2).values[:, 1])
         #print("Torque scaling mask RL leg joints:", self._torque_scaled_mask_per_leg_joint.max(dim=2).values[:, 2])
         #print("Torque scaling mask RR leg joints:", self._torque_scaled_mask_per_leg_joint.max(dim=2).values[:, 3])
@@ -916,7 +930,7 @@ class LocomotionEnv(DirectRLEnv):
             try:
                 env_ids_cpu = env_ids.cpu().tolist() if isinstance(env_ids, torch.Tensor) else env_ids
                 fail_type_cpu = fail_type.cpu().tolist() if isinstance(fail_type, torch.Tensor) else fail_type
-                # print(f"[reset] envs reset: {env_ids_cpu} assigned fail_type: {fail_type_cpu}")
+                print(f"[reset] envs reset: {env_ids_cpu} assigned fail_type: {fail_type_cpu}")
             except Exception:
                 # Non-fatal: don't interrupt reset if print fails
                 pass"""
