@@ -363,6 +363,8 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
 
     # Desired tracking variables
     desired_base_height = 0.35
+    # Desired front-hip height above local terrain (used for commando front-hip tracking)
+    desired_front_hip_height = 0.35
     desired_feet_height = 0.05
 
     # Desired clip actions
@@ -378,18 +380,20 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     yaw_rate_reward_scale = 0.5
     z_vel_reward_scale = -2.0
     ang_vel_reward_scale = -0.25
-    orientation_reward_scale = -5.0
+    orientation_reward_scale = -5.0 * 0.0
     height_reward_scale = 1.0 * 0.0
+    # Front hip height reward scale (for commando front-hip height tracking)
+    front_hip_height_reward_scale = 1.0
     
     # Joint reward scale
-    joints_torque_reward_scale = -2.5e-6 * (1-use_amp)
-    joints_accel_reward_scale = -2.5e-7 * (1-use_amp)
-    joints_energy_reward_scale = -1e-4 * (1-use_amp)
+    joints_torque_reward_scale = -2.5e-6 * (1-use_amp) * 0.0
+    joints_accel_reward_scale = -2.5e-7 * (1-use_amp) * 0.0
+    joints_energy_reward_scale = -1e-4 * (1-use_amp) * 0.0
     joints_hip_position_reward_scale = -0.1 * (1-use_amp) * 0.0
     joints_thigh_position_reward_scale = -0.1 * (1-use_amp) * 0.0
     joints_calf_position_reward_scale = -0.001 * (1-use_amp) * 0.0
-   
-    
+
+
     # Undesired contacts reward scale
     undersired_contact_reward_scale = -1.0 * 0.0
     action_rate_reward_scale = -0.01 * (1-use_amp)
@@ -417,8 +421,11 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
 
     commando_undesired_contact_reward_scale = -1.0 * (1-use_amp)
     commando_feet_air_time_reward_scale = 0.5 * (1-use_amp)
-    commando_feet_slide_reward_scale = -0.25 * (1-use_amp)
+    commando_feet_slide_reward_scale = -0.25 * (1-use_amp) * 0.0
     commando_feet_to_hip_distance_reward_scale = 1.5 * (1-use_amp)
+    commando_joints_torque_reward_scale = -2.5e-6 * (1-use_amp)
+    commando_joints_accel_reward_scale = -2.5e-7 * (1-use_amp)
+    commando_joints_energy_reward_scale = -1e-4 * (1-use_amp)
     commando_joints_hip_position_reward_scale = -0.1 * (1-use_amp)
     commando_joints_thigh_position_reward_scale = -0.1 * (1-use_amp)
     commando_joints_calf_position_reward_scale = -0.001 * (1-use_amp)

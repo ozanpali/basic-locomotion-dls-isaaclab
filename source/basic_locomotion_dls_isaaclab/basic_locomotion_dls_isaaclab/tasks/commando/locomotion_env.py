@@ -136,10 +136,16 @@ class LocomotionEnv(DirectRLEnv):
                 "commando_feet_air_time",
                 "commando_feet_slide",
                 "commando_feet_to_hip_distance",
+                "commando_joints_torques_l2",
+                "commando_joints_acc_l2",
+                "commando_joints_energy_l1",
                 # commando front-only joint position rewards
                 "commando_joints_hip_pos_l2",
                 "commando_joints_thigh_pos_l2",
                 "commando_joints_calf_pos_l2",
+                # front-hip height above local terrain (mean across FL/FR)
+                "front_hip_height_above_ground_mean",
+                # (front-hip mean logged separately as "front_hip_height_above_ground_mean")
 
                 "feet_height_clearance_excl_fl",
                 "feet_height_clearance_excl_rl",
@@ -341,6 +347,58 @@ class LocomotionEnv(DirectRLEnv):
         height_error = torch.square(self.cfg.desired_base_height + mean_height_ray - self._robot.data.root_state_w[:, 2])
         height_error_mapped = torch.exp(-height_error / 0.01)
 
+        # --- Front-hip height above local terrain under each front hip ---
+        # Use the ray hits (x,y,z) produced by the height scanner and find the closest
+        # ray hit in XY to each front hip. This gives a per-front-hip ground z estimate
+        # so we can compute hip_z_world - ground_z.
+        # Note: height_data_scanner is the z component of ray_hits_w and has been
+        # cleaned (nan -> 0, clipped) above.
+        # Prefer per-hip nearest-ray ground lookup when scanner data is available and well-formed.
+        rays = getattr(self._height_scanner.data, "ray_hits_w", None)
+        if (
+            rays is not None
+            and isinstance(rays, torch.Tensor)
+            and rays.numel() > 0
+            and rays.shape[-1] >= 2
+            and rays.shape[1] > 0
+        ):
+            rays_xy = rays[..., :2]  # [N, n_rays, 2]
+            # hip positions in world XY for front hips (FL, FR)
+            hip_xy = self._robot.data.body_pos_w[:, self._hip_ids_robot[:2], :2]  # [N, 2, 2]
+
+            # Compute squared distances between each front hip and all rays: [N, 2, n_rays]
+            d2 = torch.sum((hip_xy.unsqueeze(2) - rays_xy.unsqueeze(1)) ** 2, dim=-1)
+            nearest_idx = torch.argmin(d2, dim=2)  # [N, 2]
+            nearest_idx = nearest_idx.long()
+
+            # Gather ground z for the nearest rays (height_data_scanner is [N, n_rays])
+            ground_z = height_data_scanner.gather(1, nearest_idx)  # [N, 2]
+
+            hip_z_world = self._robot.data.body_pos_w[:, self._hip_ids_robot[:2], 2]  # [N, 2]
+            front_hip_height_above_ground = hip_z_world - ground_z
+            # Clean potential numerical issues
+            front_hip_height_above_ground = torch.nan_to_num(
+                front_hip_height_above_ground, nan=0.0, posinf=5.0, neginf=-5.0
+            )
+            front_hip_height_above_ground_mean = torch.mean(front_hip_height_above_ground, dim=1)
+        else:
+            # Fallback: if scanner data not available or malformed, fall back to world z of hips minus mean ray
+            hip_z_world = self._robot.data.body_pos_w[:, self._hip_ids_robot[:2], 2]
+            front_hip_height_above_ground = hip_z_world - mean_height_ray.unsqueeze(1)
+            front_hip_height_above_ground = torch.nan_to_num(
+                front_hip_height_above_ground, nan=0.0, posinf=5.0, neginf=-5.0
+            )
+            front_hip_height_above_ground_mean = torch.mean(front_hip_height_above_ground, dim=1)
+
+        # Compute front-hip height error (desired - actual above-ground) and map it like base height
+        # Compute front-hip height error (desired - actual above-ground) and map it like base height
+        if hasattr(self.cfg, "desired_front_hip_height"):
+            desired_front = self.cfg.desired_front_hip_height
+        else:
+            desired_front = self.cfg.desired_base_height
+        front_hip_height_error = torch.square(desired_front - front_hip_height_above_ground_mean)
+        front_hip_height_error_mapped = torch.exp(-front_hip_height_error / 0.01)
+
 
         # linear velocity tracking
         lin_vel_error = torch.sum(torch.square(self._commands[:, :2] - self._robot.data.root_lin_vel_b[:, :2]), dim=1)
@@ -430,12 +488,54 @@ class LocomotionEnv(DirectRLEnv):
         joints_accel = torch.sum(torch.square(self._robot.data.joint_acc), dim=1)
 
 
+        # commando joint acceleration (front legs only across all joint types)
+        commando_front_only_accel = torch.cat(
+            [
+                self._robot.data.joint_acc[:, 0:2],   # hips FL, FR
+                self._robot.data.joint_acc[:, 4:6],   # thighs FL, FR
+                self._robot.data.joint_acc[:, 8:10],  # calves FL, FR
+            ],
+            dim=1,
+        )
+        commando_joints_accel = torch.sum(torch.square(commando_front_only_accel), dim=1)
+        
+        
         # joint torques
         joints_torques = torch.sum(torch.square(self._robot.data.applied_torque), dim=1)
+
+        # commando joint torques (front legs only across all joint types)
+        # Joint layout is grouped by type across legs:
+        #   hips:   indices [0:4]   -> [FL, FR, RL, RR]
+        #   thighs: indices [4:8]   -> [FL, FR, RL, RR]
+        #   calves: indices [8:12]  -> [FL, FR, RL, RR]
+        # For front-only, select FL, FR from each group and stack them: [0:2], [4:6], [8:10]
+        commando_front_only_torques = torch.cat(
+            [
+                self._robot.data.applied_torque[:, 0:2],   # hips FL, FR
+                self._robot.data.applied_torque[:, 4:6],   # thighs FL, FR
+                self._robot.data.applied_torque[:, 8:10],  # calves FL, FR
+            ],
+            dim=1,
+        )
+        commando_joints_torques = torch.sum(torch.square(commando_front_only_torques), dim=1)
+
+
 
 
         # energy = torque * velocity
         joints_energy = torch.sum(torch.abs(self._robot.data.applied_torque * self._robot.data.joint_vel), dim=1)
+
+
+        # commando joint energy (front legs only across all joint types)
+        commando_front_only_joint_vel = torch.cat(
+            [
+                self._robot.data.joint_vel[:, 0:2],   # hips FL, FR
+                self._robot.data.joint_vel[:, 4:6],   # thighs FL, FR
+                self._robot.data.joint_vel[:, 8:10],  # calves FL, FR
+            ],
+            dim=1,
+        )
+        commando_joints_energy = torch.sum(torch.abs(commando_front_only_torques * commando_front_only_joint_vel), dim=1)
 
         
         # hip position
@@ -708,6 +808,7 @@ class LocomotionEnv(DirectRLEnv):
             "feet_to_base_distance_l2": feet_to_base_distance * self.cfg.feet_to_base_distance_reward_scale * self.step_dt,
             "feet_to_hip_distance_l2": feet_to_hip_distance * self.cfg.feet_to_hip_distance_reward_scale * self.step_dt,
             "feet_vertical_surface_contacts": feet_vertical_surface_contacts * self.cfg.feet_vertical_surface_contacts_reward_scale * self.step_dt,
+            # (front-hip height error mapped is used above as track_height_exp)
             
             #commando rewards
             # Gate terms by whether any torque scaling (hip/thigh/calf) is active on the corresponding leg
@@ -715,9 +816,14 @@ class LocomotionEnv(DirectRLEnv):
             "commando_feet_air_time": commando_feet_air_time * self.cfg.commando_feet_air_time_reward_scale * self.step_dt,# * ( (leg_any_scaled_int[:, 2] + leg_any_scaled_int[:, 3]) > 0 ).float()
             "commando_feet_slide": commando_feet_slide * self.cfg.commando_feet_slide_reward_scale * self.step_dt,
             "commando_feet_to_hip_distance": commando_feet_to_hip_distance * self.cfg.commando_feet_to_hip_distance_reward_scale * self.step_dt,
+            "commando_joints_torques_l2": commando_joints_torques * self.cfg.commando_joints_torque_reward_scale * self.step_dt,
+            "commando_joints_acc_l2": commando_joints_accel * self.cfg.commando_joints_accel_reward_scale * self.step_dt,
+            "commando_joints_energy_l1": commando_joints_energy * self.cfg.commando_joints_energy_reward_scale * self.step_dt,
             "commando_joints_hip_pos_l2": commando_hip_joints_position_reward * self.cfg.commando_joints_hip_position_reward_scale * self.step_dt,
             "commando_joints_thigh_pos_l2": commando_thigh_joints_position_reward * self.cfg.commando_joints_thigh_position_reward_scale * self.step_dt,
             "commando_joints_calf_pos_l2": commando_calf_joints_position_reward * self.cfg.commando_joints_calf_position_reward_scale * self.step_dt,
+            # Use front-hip height error (mapped) as the single height tracking reward
+            "track_height_exp": front_hip_height_error_mapped * self.cfg.front_hip_height_reward_scale * self.step_dt,
             
             "feet_height_clearance_excl_fl": feet_height_clearance_excl_fl * self.cfg.feet_height_clearance_excl_fl_reward_scale * self.step_dt * (leg_any_scaled_int[:, 0].float()),
             "feet_height_clearance_excl_rl": feet_height_clearance_excl_rl * self.cfg.feet_height_clearance_excl_rl_reward_scale * self.step_dt * (leg_any_scaled_int[:, 2].float()),
@@ -729,6 +835,9 @@ class LocomotionEnv(DirectRLEnv):
         # Logging
         for key, value in rewards.items():
             self._episode_sums[key] += value
+        # Accumulate front-hip height above local terrain (mean across FL/FR)
+        # Accumulate front-hip height above local terrain (mean across FL/FR)
+        self._episode_sums["front_hip_height_above_ground_mean"] += front_hip_height_above_ground_mean * self.step_dt
         return reward
 
 
