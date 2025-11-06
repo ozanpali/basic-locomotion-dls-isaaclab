@@ -992,7 +992,7 @@ class LocomotionEnv(DirectRLEnv):
             #self._failure_type[env_ids] = fail_type
 
             # Always assign NO failure (code 0) for every env in env_ids
-            fail_type = torch.zeros(len(env_ids), device=self.device, dtype=torch.long)
+            fail_type = torch.ones(len(env_ids), device=self.device, dtype=torch.long)
             self._failure_type[env_ids] = fail_type
 
             """## Debug: print which envs were reset and their assigned fail_type
