@@ -66,18 +66,24 @@ class LocomotionEnv(DirectRLEnv):
         # Observation history
         self._observation_history = torch.zeros(self.num_envs, cfg.history_length, cfg.single_observation_space, device=self.device)
 
-        """# Per-leg, per-joint torque scaling activation mask [num_envs, 4 legs, 3 joints]
+        # Per-leg, per-joint torque scaling activation mask [num_envs, 4 legs, 3 joints]
         # legs: [FL, FR, RL, RR]; joints: [hip, thigh, calf]
         # Note: _setup_scene may have already created and populated this via custom_events.
         if not hasattr(self, "_torque_scaled_mask_per_leg_joint"):
             self._torque_scaled_mask_per_leg_joint = torch.zeros(
                 self.num_envs, 4, 3, dtype=torch.float, device=self.device
             )
+            """# Informative init print: per-leg (FL, FR, RL, RR) x per-joint (hip, thigh, calf) torque scaling mask
+            try:
+                #shape = tuple(self._torque_scaled_mask_per_leg_joint.shape)
+                #print(f"[init] _torque_scaled_mask_per_leg_joint allocated with shape={shape} (num_envs={self.num_envs}, legs=4, joints=3), device={self.device}")
+            except Exception:
+                pass"""
 
+        
         # Per-env failure type persisted across the episode (0: none, 1: FL, 2: FR, 3: RL, 4: RR)
         if not hasattr(self, "_failure_type"):
             self._failure_type = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
-        """
 
         # RMA
         if(cfg.use_rma == True):
@@ -146,6 +152,7 @@ class LocomotionEnv(DirectRLEnv):
                 # front-hip height above local terrain (mean across FL/FR)
                 "front_hip_height_above_ground_mean",
                 # (front-hip mean logged separately as "front_hip_height_above_ground_mean")
+                "commando_track_height_exp",
 
                 "feet_height_clearance_excl_fl",
                 "feet_height_clearance_excl_rl",
@@ -289,11 +296,13 @@ class LocomotionEnv(DirectRLEnv):
             obs_rma = self._get_rma(clock_data)
             obs = torch.cat((obs, obs_rma), dim=-1)
 
-        """# Append only the per-leg torque scaling flags (0/1) to the policy observation
-        # Shape: [num_envs, 4]; order: [FL, FR, RL, RR]
-        leg_any_scaled = (self._torque_scaled_mask_per_leg_joint.max(dim=2).values > 0.0).float()
-        #print("Leg any scaled fed to observations:", leg_any_scaled.tolist())
-        obs = torch.cat((obs, leg_any_scaled), dim=-1)"""
+        # Append back-failed flag as one-hot to the observation instead of per-leg flags
+        # back_failed_flag: 1 if any of RL/RR legs are torque-scaled, else 0
+        # One-hot shape: [num_envs, 2] -> [no_back_fail, back_fail]
+        leg_any_scaled_bool = (self._torque_scaled_mask_per_leg_joint.max(dim=2).values > 0.0)
+        back_failed_flag_obs = (leg_any_scaled_bool[:, 2] & leg_any_scaled_bool[:, 3]).to(torch.long)
+        back_failed_onehot = torch.nn.functional.one_hot(back_failed_flag_obs, num_classes=2).to(dtype=obs.dtype, device=obs.device)
+        obs = torch.cat((obs, back_failed_onehot), dim=-1)
 
 
         # Final observations dictionary
@@ -325,7 +334,7 @@ class LocomotionEnv(DirectRLEnv):
             )
             observations["amp"] = obs_amp
 
-
+        #print("Observation: ", observations["policy"][0].cpu().numpy())
         return observations
 
 
@@ -337,6 +346,10 @@ class LocomotionEnv(DirectRLEnv):
         # Compute a per-env gating factor that is 1.0 only when no leg is failed (no scaling active), else 0.0
         # Vectorized for GPU: product over legs of (1 - flag)
         gating_factor = (1.0 - leg_any_scaled_int.float()).prod(dim=1)
+
+        # Flag that is 1.0 only if BOTH rear legs (RL and RR) are failed (torque-scaled), else 0.0
+        # Rear leg indices are 2 (RL) and 3 (RR) in leg_any_scaled_int columns [FL, FR, RL, RR]
+        back_failed_flag = ((leg_any_scaled_int[:, 2] > 0) & (leg_any_scaled_int[:, 3] > 0)).float()
 
         # track_height
         height_data_scanner = self._height_scanner.data.ray_hits_w[..., 2]
@@ -397,7 +410,7 @@ class LocomotionEnv(DirectRLEnv):
         else:
             desired_front = self.cfg.desired_base_height
         front_hip_height_error = torch.square(desired_front - front_hip_height_above_ground_mean)
-        front_hip_height_error_mapped = torch.exp(-front_hip_height_error / 0.01)
+        commando_front_hip_height_error_mapped = torch.exp(-front_hip_height_error / 0.01)
 
 
         # linear velocity tracking
@@ -736,8 +749,8 @@ class LocomotionEnv(DirectRLEnv):
         #print("Torque scaling mask RR leg joints:", leg_any_scaled_int[:, 3])
         #print(" \n")
         
-        # DEBUG: print counts and samples every timestep for verification
-        """try:
+        """# DEBUG: print counts and samples every timestep for verification
+        try:
             # leg_any_scaled_int is [num_envs, 4]
             fl_count = int(torch.sum(leg_any_scaled_int[:, 0]).item())
             fr_count = int(torch.sum(leg_any_scaled_int[:, 1]).item())
@@ -750,22 +763,34 @@ class LocomotionEnv(DirectRLEnv):
                 none_count = int(torch.sum(self._failure_type == 0).item())
                 fl_assigned = int(torch.sum(self._failure_type == 1).item())
 
-            # Sample small per-env arrays for quick inspection
-            sample_n = min(16, self.num_envs)
-            sample_flags = leg_any_scaled_int[:sample_n, :].cpu().tolist()
-            assigned_sample = None
-            if hasattr(self, "_failure_type"):
-                assigned_sample = self._failure_type[:sample_n].cpu().tolist()
-
-            # Print a concise line and small samples
-            #print(
-            #     f"FailureCounts FL:{fl_count} FR:{fr_count} RL:{rl_count} RR:{rr_count} | "
-            #     f"Assigned none:{none_count} | "
-            #    f"Each legs failure flag in each environment:{sample_flags}  failure type in each environment:{assigned_sample}"
-            #)
+            # Build per-leg rows (FL, FR, RL, RR) with columns as environments; '1' means leg has scaling active
+            flags_cpu = leg_any_scaled_int.detach().cpu()
+            rows = flags_cpu.T  # [4, num_envs]
+            leg_labels = ["FL", "FR", "RL", "RR"]
+            # Align numbers so they start at the same column; prepend 'debug' per-line
+            left_tags = [f"debug     {lbl}:" for lbl in leg_labels]
+            back_failed_tag = "debug back_failed:"
+            commandodetector_tag = "debug commandodetector:"
+            col_start = max(len(tag) for tag in (left_tags + [back_failed_tag, commandodetector_tag]))
+            row_lines = []
+            for i, tag in enumerate(left_tags):
+                bits = ''.join('1' if int(v) > 0 else '0' for v in rows[i].tolist())
+                padding = ' ' * (col_start - len(tag) + 1)  # +1 space between tag and bits
+                # Disabled per request: don't print per-leg FL/FR/RL/RR debug lines
+                # row_lines.append(f"{tag}{padding}{bits}")
+            # Back-failed flag per env (1 if BOTH RL and RR failed)
+            back_failed_vec = (((flags_cpu[:, 2] > 0) & (flags_cpu[:, 3] > 0))).int()
+            back_failed_bits = ''.join('1' if int(v) > 0 else '0' for v in back_failed_vec.tolist())
+            padding = ' ' * (col_start - len(back_failed_tag) + 1)
+            row_lines.append(f"{back_failed_tag}{padding}{back_failed_bits}")
+            
+            # Disabled per request: don't print commandodetector debug line
+            # (Computation removed to avoid extra overhead.)
+            print("\n".join(row_lines))
         except Exception:
             # keep debug prints non-fatal
-            pass"""
+            pass
+        """
         
         #print Feet air time
         #print("Feet air time:", (feet_air_time * gating_factor * self.cfg.feet_air_time_reward_scale * self.step_dt).tolist())
@@ -777,53 +802,58 @@ class LocomotionEnv(DirectRLEnv):
         #print("Torque scaling mask RR leg joints:", self._torque_scaled_mask_per_leg_joint.max(dim=2).values[:, 3])
         #print(" \n")
 
+        # Toggle undesired contact rewards based on rear-leg failures:
+        # If BOTH rear legs (RL and RR) are failed (torque-scaled), enable commando variant and disable non-commando.
+        # Otherwise, enable non-commando and disable commando.
+        back_failed_flag = ((leg_any_scaled_int[:, 2] > 0) & (leg_any_scaled_int[:, 3] > 0)).float()
+
         rewards = {
-            "track_height_exp": height_error_mapped * self.cfg.height_reward_scale * self.step_dt,
+            "track_height_exp": height_error_mapped * self.cfg.height_reward_scale * self.step_dt * (1.0 - back_failed_flag),
             "track_lin_vel_xy_exp": lin_vel_error_mapped * self.cfg.lin_vel_reward_scale * self.step_dt,
             "track_lin_vel_z_l2": z_vel_error * self.cfg.z_vel_reward_scale * self.step_dt,
-            "track_orientation_l2": base_orientation * self.cfg.orientation_reward_scale * self.step_dt,
+            "track_orientation_l2": base_orientation * self.cfg.orientation_reward_scale * self.step_dt * (1.0 - back_failed_flag),
             "track_ang_vel_xy_l2": ang_vel_error * self.cfg.ang_vel_reward_scale * self.step_dt,
             "track_ang_vel_z_exp": yaw_rate_error_mapped * self.cfg.yaw_rate_reward_scale * self.step_dt,
 
-            "undesired_contacts": contacts * self.cfg.undersired_contact_reward_scale * self.step_dt,
+            "undesired_contacts": contacts * self.cfg.undersired_contact_reward_scale * self.step_dt * (1.0 - back_failed_flag),
             "action_rate_l2": action_rate * self.cfg.action_rate_reward_scale * self.step_dt,
             "action_smoothness_l2": action_smoothness * self.cfg.action_smoothness_reward_scale * self.step_dt,
 
-            "joints_hip_pos_l2": hip_joints_position_reward * self.cfg.joints_hip_position_reward_scale * self.step_dt,
-            "joints_thigh_pos_l2": thigh_joints_position_reward * self.cfg.joints_thigh_position_reward_scale * self.step_dt,
-            "joints_calf_pos_l2": calf_joints_position_reward * self.cfg.joints_calf_position_reward_scale * self.step_dt,
-            "joints_acc_l2": joints_accel * self.cfg.joints_accel_reward_scale * self.step_dt,
-            "joints_torques_l2": joints_torques * self.cfg.joints_torque_reward_scale * self.step_dt,
-            "joints_energy_l1": joints_energy * self.cfg.joints_energy_reward_scale * self.step_dt,
+            "joints_hip_pos_l2": hip_joints_position_reward * self.cfg.joints_hip_position_reward_scale * self.step_dt * (1.0 - back_failed_flag),
+            "joints_thigh_pos_l2": thigh_joints_position_reward * self.cfg.joints_thigh_position_reward_scale * self.step_dt * (1.0 - back_failed_flag),
+            "joints_calf_pos_l2": calf_joints_position_reward * self.cfg.joints_calf_position_reward_scale * self.step_dt * (1.0 - back_failed_flag),
+            "joints_acc_l2": joints_accel * self.cfg.joints_accel_reward_scale * self.step_dt * (1.0 - back_failed_flag),
+            "joints_torques_l2": joints_torques * self.cfg.joints_torque_reward_scale * self.step_dt * (1.0 - back_failed_flag),
+            "joints_energy_l1": joints_energy * self.cfg.joints_energy_reward_scale * self.step_dt * (1.0 - back_failed_flag),
 
-            "feet_air_time": feet_air_time * self.cfg.feet_air_time_reward_scale * self.step_dt,# * gating_factor,
+            "feet_air_time": feet_air_time * self.cfg.feet_air_time_reward_scale * self.step_dt * (1.0 - back_failed_flag),# * gating_factor,
             
             "feet_height_clearance": feet_height_clearance * self.cfg.feet_height_clearance_reward_scale * self.step_dt, #
             "feet_height_clearance_periodic": feet_height_clearance_periodic * self.cfg.feet_height_clearance_periodic_reward_scale * self.step_dt,
             "feet_height_clearance_mujoco": feet_height_clearance_mujoco * self.cfg.feet_height_clearance_mujoco_reward_scale * self.step_dt,
             "feet_height_clearance_mujoco_periodic": feet_height_clearance_mujoco_periodic * self.cfg.feet_height_clearance_mujoco_periodic_reward_scale * self.step_dt,
             
-            "feet_slide": feet_slide * self.cfg.feet_slide_reward_scale * self.step_dt,
+            "feet_slide": feet_slide * self.cfg.feet_slide_reward_scale * self.step_dt * (1.0 - back_failed_flag),
             "feet_contact_suggestion": feet_contact_suggestion * self.cfg.feet_contact_suggestion_reward_scale * self.step_dt,
             "feet_to_base_distance_l2": feet_to_base_distance * self.cfg.feet_to_base_distance_reward_scale * self.step_dt,
-            "feet_to_hip_distance_l2": feet_to_hip_distance * self.cfg.feet_to_hip_distance_reward_scale * self.step_dt,
+            "feet_to_hip_distance_l2": feet_to_hip_distance * self.cfg.feet_to_hip_distance_reward_scale * self.step_dt * (1.0 - back_failed_flag),
             "feet_vertical_surface_contacts": feet_vertical_surface_contacts * self.cfg.feet_vertical_surface_contacts_reward_scale * self.step_dt,
             # (front-hip height error mapped is used above as track_height_exp)
             
             #commando rewards
             # Gate terms by whether any torque scaling (hip/thigh/calf) is active on the corresponding leg
-            "commando_undesired_contacts": commando_contacts * self.cfg.commando_undesired_contact_reward_scale * self.step_dt,# * (leg_any_scaled_int.sum(dim=1) > 0).float(),
-            "commando_feet_air_time": commando_feet_air_time * self.cfg.commando_feet_air_time_reward_scale * self.step_dt,# * ( (leg_any_scaled_int[:, 2] + leg_any_scaled_int[:, 3]) > 0 ).float()
-            "commando_feet_slide": commando_feet_slide * self.cfg.commando_feet_slide_reward_scale * self.step_dt,
-            "commando_feet_to_hip_distance": commando_feet_to_hip_distance * self.cfg.commando_feet_to_hip_distance_reward_scale * self.step_dt,
-            "commando_joints_torques_l2": commando_joints_torques * self.cfg.commando_joints_torque_reward_scale * self.step_dt,
-            "commando_joints_acc_l2": commando_joints_accel * self.cfg.commando_joints_accel_reward_scale * self.step_dt,
-            "commando_joints_energy_l1": commando_joints_energy * self.cfg.commando_joints_energy_reward_scale * self.step_dt,
-            "commando_joints_hip_pos_l2": commando_hip_joints_position_reward * self.cfg.commando_joints_hip_position_reward_scale * self.step_dt,
-            "commando_joints_thigh_pos_l2": commando_thigh_joints_position_reward * self.cfg.commando_joints_thigh_position_reward_scale * self.step_dt,
-            "commando_joints_calf_pos_l2": commando_calf_joints_position_reward * self.cfg.commando_joints_calf_position_reward_scale * self.step_dt,
+            "commando_undesired_contacts": commando_contacts * self.cfg.commando_undesired_contact_reward_scale * self.step_dt * back_failed_flag,
+            "commando_feet_air_time": commando_feet_air_time * self.cfg.commando_feet_air_time_reward_scale * self.step_dt * back_failed_flag,# * ( (leg_any_scaled_int[:, 2] + leg_any_scaled_int[:, 3]) > 0 ).float()
+            "commando_feet_slide": commando_feet_slide * self.cfg.commando_feet_slide_reward_scale * self.step_dt * back_failed_flag,
+            "commando_feet_to_hip_distance": commando_feet_to_hip_distance * self.cfg.commando_feet_to_hip_distance_reward_scale * self.step_dt * back_failed_flag,
+            "commando_joints_torques_l2": commando_joints_torques * self.cfg.commando_joints_torque_reward_scale * self.step_dt * back_failed_flag,
+            "commando_joints_acc_l2": commando_joints_accel * self.cfg.commando_joints_accel_reward_scale * self.step_dt * back_failed_flag,
+            "commando_joints_energy_l1": commando_joints_energy * self.cfg.commando_joints_energy_reward_scale * self.step_dt * back_failed_flag,
+            "commando_joints_hip_pos_l2": commando_hip_joints_position_reward * self.cfg.commando_joints_hip_position_reward_scale * self.step_dt * back_failed_flag,
+            "commando_joints_thigh_pos_l2": commando_thigh_joints_position_reward * self.cfg.commando_joints_thigh_position_reward_scale * self.step_dt * back_failed_flag,
+            "commando_joints_calf_pos_l2": commando_calf_joints_position_reward * self.cfg.commando_joints_calf_position_reward_scale * self.step_dt * back_failed_flag,
             # Use front-hip height error (mapped) as the single height tracking reward
-            "track_height_exp": front_hip_height_error_mapped * self.cfg.front_hip_height_reward_scale * self.step_dt,
+            "commando_track_height_exp": commando_front_hip_height_error_mapped * self.cfg.commando_front_hip_height_reward_scale * self.step_dt * back_failed_flag,
             
             "feet_height_clearance_excl_fl": feet_height_clearance_excl_fl * self.cfg.feet_height_clearance_excl_fl_reward_scale * self.step_dt * (leg_any_scaled_int[:, 0].float()),
             "feet_height_clearance_excl_rl": feet_height_clearance_excl_rl * self.cfg.feet_height_clearance_excl_rl_reward_scale * self.step_dt * (leg_any_scaled_int[:, 2].float()),
@@ -946,31 +976,103 @@ class LocomotionEnv(DirectRLEnv):
         
         self.extras["log"].update(extras)
 
-        """# --- Apply per-episode randomized leg failure mask (torque scaling) ---
+        # --- Apply per-episode randomized leg failure mask (torque scaling) ---
         # Two-way failure sampling:
         # 0: no failure, 1: FL failure (thigh + calf only; hip remains unscaled)
         with torch.no_grad():
-            # Sample 2-way failure: map uniform u in [0,1) to bins of width 0.5 -> values 0..1
-            # 0: no failure, 1: FL failure
-            # DEBUG: Force scenario 0 (no failure) for all envs during debugging.
-            # To revert to stochastic sampling, restore the 4 lines below and remove the constant assignment.
-            # u = torch.rand(len(env_ids), device=self.device)
-            # fail_type = (u * 2.0).to(torch.long)
+            # Sample independent 2-way failures per env: 0 (no failure) or 1 (rear failure)
+            # Optional probability control via cfg.rear_failure_prob (default 0.5)
+            p_rear_fail = float(getattr(self.cfg, "rear_failure_prob", 0.5))
+            p_rear_fail = max(0.0, min(1.0, p_rear_fail))
+            if p_rear_fail in (0.0, 1.0):
+                fail_type = torch.full((len(env_ids),), int(p_rear_fail), dtype=torch.long, device=self.device)
+            else:
+                fail_type = (torch.rand(len(env_ids), device=self.device) < p_rear_fail).to(torch.long)
             # Persist failure type for these envs until next reset
-            # self._failure_type[env_ids] = fail_type
-
-            # Always assign NO failure (code 0) for every env in env_ids
-            fail_type = torch.zeros(len(env_ids), device=self.device, dtype=torch.long)
             self._failure_type[env_ids] = fail_type
 
-            ## Debug: print which envs were reset and their assigned fail_type
-            #try:
-            #    env_ids_cpu = env_ids.cpu().tolist() if isinstance(env_ids, torch.Tensor) else env_ids
-            #    fail_type_cpu = fail_type.cpu().tolist() if isinstance(fail_type, torch.Tensor) else fail_type
-            #    print(f"[reset] envs reset: {env_ids_cpu} assigned fail_type: {fail_type_cpu}")
-            #except Exception:
-            #    # Non-fatal: don't interrupt reset if print fails
-            #    pass
+            # Always assign NO failure (code 0) for every env in env_ids
+            #fail_type = torch.zeros(len(env_ids), device=self.device, dtype=torch.long)
+            #self._failure_type[env_ids] = fail_type
+
+            """## Debug: print which envs were reset and their assigned fail_type
+            try:
+                env_ids_cpu = env_ids.cpu().tolist() if isinstance(env_ids, torch.Tensor) else env_ids
+                fail_type_cpu = fail_type.cpu().tolist() if isinstance(fail_type, torch.Tensor) else fail_type
+                # Ensure lists for easy iteration
+                if not isinstance(env_ids_cpu, list):
+                    env_ids_cpu = list(env_ids_cpu)
+                if not isinstance(fail_type_cpu, list):
+                    fail_type_cpu = list(fail_type_cpu)
+
+                # One-hot encode env indices (relative to this reset batch) and failure types
+                # env one-hot: vector length = len(env_ids_cpu), 1 at position of that env within the reset list
+                # fail one-hot: vector length = num_types (0..max observed), 1 at index equal to the fail code
+                # Build global one-hot reset mask across all environments and per-failure-code masks
+                try:
+                    n_envs = int(self.num_envs)
+                    # reset_mask: length = num_envs, '1' where env was reset in this batch
+                    env_set = set(env_ids_cpu)
+                    reset_mask = ["1" if i in env_set else "0" for i in range(n_envs)]
+
+                    # Build a global view of failure types across all envs (use stored self._failure_type if present)
+                    if hasattr(self, "_failure_type") and isinstance(self._failure_type, torch.Tensor):
+                        global_fail_list = self._failure_type.detach().cpu().tolist()
+                    else:
+                        # Fallback: assume zeros
+                        global_fail_list = [0] * n_envs
+
+                    max_fail = int(max(global_fail_list)) if len(global_fail_list) > 0 else 0
+
+                    # Build a single-line failure-type string across all envs, one digit per env
+                    # Each character is the failure type for that env (e.g. '0','1',...)
+                    fail_digits = [str(int(global_fail_list[i])) if i < len(global_fail_list) else "0" for i in range(n_envs)]
+                    fail_line = "".join(fail_digits)
+
+                    # Build an informative env_ids string (compress if many or contiguous)
+                    env_ids_list = env_ids_cpu if isinstance(env_ids_cpu, list) else list(env_ids_cpu)
+                    try:
+                        n_envs = int(self.num_envs)
+                    except Exception:
+                        n_envs = len(env_ids_list)
+                    if len(env_ids_list) == n_envs and sorted(env_ids_list) == list(range(n_envs)):
+                        env_ids_str = f"all (0-{n_envs-1})"
+                    else:
+                        if len(env_ids_list) > 64:
+                            head = ",".join(str(i) for i in env_ids_list[:16])
+                            tail = ",".join(str(i) for i in env_ids_list[-16:])
+                            env_ids_str = f"{head},...,{tail}"
+                        else:
+                            env_ids_str = ",".join(str(i) for i in env_ids_list)
+
+                    # Aggregate counts for quick visibility
+                    try:
+                        # Prefer tensor ops if available
+                        t_failure_type = self._failure_type if isinstance(self._failure_type, torch.Tensor) else None
+                        if t_failure_type is not None:
+                            count_0 = int((t_failure_type == 0).sum().item())
+                            count_1 = int((t_failure_type == 1).sum().item())
+                        else:
+                            count_0 = global_fail_list.count(0)
+                            count_1 = global_fail_list.count(1)
+                    except Exception:
+                        count_0 = fail_line.count("0")
+                        count_1 = fail_line.count("1")
+
+                    lines = [
+                        "[reset] envs reset (global): env_ids=" + env_ids_str,
+                        "  reset_mask:           " + "".join(reset_mask),
+                        "  fail_types:           " + fail_line,
+                        f"  fail_counts:         0={count_0}, 1={count_1}",
+                    ]
+
+                    print("\n".join(lines))
+                except Exception:
+                    # Non-fatal: don't interrupt reset if print fails
+                    pass
+            except Exception:
+                # Non-fatal: don't interrupt reset if print fails
+                pass"""
 
             # Clear any prior scaling for these envs: set ALL joints to scale 1.0
             # Use exact joint names as present in the robot ('*_joint')
@@ -987,17 +1089,16 @@ class LocomotionEnv(DirectRLEnv):
                 scale=1.0,
             )
 
-            # Apply per-leg failures for envs where fail_type == 1 (FL only)
-            # Map leg codes to name prefixes
-            leg_map = [("FL", 1)]
+            # Apply per-env failures: when fail_type == 1, fail BOTH rear legs (RL & RR)
+            # For rear-leg failures we scale ALL joints (hip, thigh, calf) of RL and RR to 0.0.
+            leg_map = [("RL", 1), ("RR", 1)]
             for leg_prefix, code in leg_map:
                 mask_leg = fail_type == code
                 if not mask_leg.any():
                     continue
                 envs_leg = env_ids[mask_leg]
-                # Find joint indices for this leg and scale them to zero
-                # Scale only thigh and calf (exclude hip)
-                pattern = rf"{leg_prefix}_(thigh|calf)_joint"
+                # Find joint indices for this leg (hip/thigh/calf)
+                pattern = rf"{leg_prefix}_(hip|thigh|calf)_joint"
                 leg_joint_ids, _ = self._robot.find_joints(pattern)
                 if leg_joint_ids is None:
                     continue
@@ -1007,8 +1108,8 @@ class LocomotionEnv(DirectRLEnv):
                 else:
                     # Ensure it's a list (find_joints may already return a list)
                     leg_joint_ids_list = list(leg_joint_ids)
-                # Only scale thigh and calf (exact names)
-                joint_names = [f"{leg_prefix}_thigh_joint", f"{leg_prefix}_calf_joint"]
+                # Scale hip, thigh, and calf for this leg
+                joint_names = [f"{leg_prefix}_hip_joint", f"{leg_prefix}_thigh_joint", f"{leg_prefix}_calf_joint"]
                 scale_joint_torque(
                     env=self,
                     env_ids=envs_leg,
@@ -1018,7 +1119,7 @@ class LocomotionEnv(DirectRLEnv):
                         joint_names=joint_names,
                     ),
                     scale=0.0,
-                )"""
+                )
 
 
 

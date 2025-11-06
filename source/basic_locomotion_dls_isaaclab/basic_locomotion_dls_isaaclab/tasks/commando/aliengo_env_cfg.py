@@ -172,7 +172,6 @@ class EventCfg:
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=["FR_calf_joint"]), "scale": 0.3},
     )
 
-    """
     torque_scale_RL_hip = EventTerm(
         func=custom_events.scale_joint_torque,
         mode="startup",
@@ -210,6 +209,7 @@ class EventCfg:
         #interval_range_s=(5.0, 15.0),
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=["RR_calf_joint"]), "scale": 0.0},
     )
+    """
 
 
 
@@ -380,27 +380,25 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     yaw_rate_reward_scale = 0.5
     z_vel_reward_scale = -2.0
     ang_vel_reward_scale = -0.25
-    orientation_reward_scale = -5.0 * 0.0
-    height_reward_scale = 1.0 * 0.0
-    # Front hip height reward scale (for commando front-hip height tracking)
-    front_hip_height_reward_scale = 1.0
+    orientation_reward_scale = -5.0
+    height_reward_scale = 1.0
     
     # Joint reward scale
-    joints_torque_reward_scale = -2.5e-6 * (1-use_amp) * 0.0
-    joints_accel_reward_scale = -2.5e-7 * (1-use_amp) * 0.0
-    joints_energy_reward_scale = -1e-4 * (1-use_amp) * 0.0
-    joints_hip_position_reward_scale = -0.1 * (1-use_amp) * 0.0
-    joints_thigh_position_reward_scale = -0.1 * (1-use_amp) * 0.0
-    joints_calf_position_reward_scale = -0.001 * (1-use_amp) * 0.0
+    joints_torque_reward_scale = -2.5e-6 * (1-use_amp)
+    joints_accel_reward_scale = -2.5e-7 * (1-use_amp)
+    joints_energy_reward_scale = -1e-4 * (1-use_amp)
+    joints_hip_position_reward_scale = -0.1 * (1-use_amp)
+    joints_thigh_position_reward_scale = -0.1 * (1-use_amp)
+    joints_calf_position_reward_scale = -0.001 * (1-use_amp)
 
 
     # Undesired contacts reward scale
-    undersired_contact_reward_scale = -1.0 * 0.0
+    undersired_contact_reward_scale = -1.0
     action_rate_reward_scale = -0.01 * (1-use_amp)
     action_smoothness_reward_scale = -0.001 * (1-use_amp)
 
     # Feet reward scale
-    feet_air_time_reward_scale = 0.5 * (1-use_amp) * 0.0
+    feet_air_time_reward_scale = 0.5 * (1-use_amp)
 
     feet_height_clearance_reward_scale = 0.5 * (1-use_amp) * 0.0
     feet_height_clearance_periodic_reward_scale = 0.25 * (1-use_amp) * 0.0
@@ -412,7 +410,7 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     feet_contact_suggestion_reward_scale =  0.25 * (1-use_amp) * 0.0
     feet_to_base_distance_reward_scale = 0.25 * (1-use_amp) * 0.0
     
-    feet_to_hip_distance_reward_scale = 1.5 * (1-use_amp) * 0.0
+    feet_to_hip_distance_reward_scale = 1.5 * (1-use_amp)
     # This is used in loocmotion_env.py for the above reward
     desired_hip_offset = 0.083
     
@@ -429,6 +427,8 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     commando_joints_hip_position_reward_scale = -0.1 * (1-use_amp)
     commando_joints_thigh_position_reward_scale = -0.1 * (1-use_amp)
     commando_joints_calf_position_reward_scale = -0.001 * (1-use_amp)
+    # Front hip height reward scale (for commando front-hip height tracking)
+    commando_front_hip_height_reward_scale = 1.0
 
 
     # Per-foot height clearance reward scales (allow different weighting per leg)
