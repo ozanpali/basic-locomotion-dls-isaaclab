@@ -65,7 +65,9 @@ done
 
 # Ordered list from first to last commit (as you provided)
 COMMITS=(
-  6f0c6bfd1808ada52102dc768ebb93cedcf1f14e
+  a37434a4503711c24f15e27636a3f442ddb4ee1d
+  37d9b8a1f18e358f8c327820782c5d71dfde28a2
+  0b0ed25472854e453ad8d05c951cc934b3aae19b
 )
 
 # --- Helpers ---
@@ -144,7 +146,7 @@ for COMMIT in "${COMMITS[@]}"; do
   # Fix typo: use SUBJECT when building the suffix
   RUN_SUFFIX=$(subject_to_camelcase "${SUBJECT}")
   # Build run name: include iterations, envs, short commit id and sanitized commit subject
-  RUN_NAME="LPC_${MAX_ITER}Iter_${NUM_ENVS}Env_${SHORT_COMMIT}_${RUN_SUFFIX}"
+  RUN_NAME="RPC_${MAX_ITER}Iter_${NUM_ENVS}Env_${SHORT_COMMIT}_${RUN_SUFFIX}"
 
   info "Commit subject: ${SUBJECT}"
   info "Run name     : ${RUN_NAME}"
