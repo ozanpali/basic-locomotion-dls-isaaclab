@@ -303,7 +303,7 @@ class LocomotionEnv(DirectRLEnv):
         back_failed_flag_obs = (leg_any_scaled_bool[:, 2] & leg_any_scaled_bool[:, 3]).to(torch.long)
         back_failed_onehot = torch.nn.functional.one_hot(back_failed_flag_obs, num_classes=2).to(dtype=obs.dtype, device=obs.device)
         obs = torch.cat((obs, back_failed_onehot), dim=-1)
-
+        #print("Back-failed onehot added to obs:", back_failed_onehot[0].cpu().numpy())
 
         # Final observations dictionary
         observations = {"policy": obs}    
@@ -576,6 +576,7 @@ class LocomotionEnv(DirectRLEnv):
         commando_thigh_joints_position_error = torch.square(
             commando_thigh_joints_position - self._robot.data.default_joint_pos[:, 4:6]
         )
+        #print("default_thigh:", self._robot.data.default_joint_pos[:, 4:6].cpu().numpy()) # default_thigh: [[0.9 0.9] [0.9 0.9]]
         commando_thigh_joints_position_reward = torch.sum(commando_thigh_joints_position_error, dim=1)
 
 
