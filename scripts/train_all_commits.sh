@@ -8,10 +8,10 @@
 set -u
 
 # --- Config you asked for (defaults, can be overridden via CLI) ---
-TASK="Robust-Aliengo-Flat"
+TASK="Commando-Aliengo-Flat"
 NUM_ENVS="8192"
 HEADLESS_FLAG="--headless"
-LOG_PROJECT_NAME="Robust-Aliengo-Flat"
+LOG_PROJECT_NAME="Commando-Aliengo-Flat"
 # default max iterations (can be overridden by --max-iterations)
 MAX_ITER="1000"
 TRAIN_SCRIPT="scripts/rsl_rl/train.py"
