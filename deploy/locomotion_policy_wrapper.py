@@ -205,7 +205,7 @@ class LocomotionPolicyWrapper:
         
         # Append per-leg flags to match training input shape; in deployment (MuJoCo) we default to zeros.
         # Order: [FL, FR, RL, RR]; dtype float32 0/1.
-        leg_any_scaled = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)
+        leg_any_scaled = np.array([0.0, 1.0], dtype=np.float32)
         obs = np.concatenate((obs, leg_any_scaled), axis=0)
             
         

@@ -263,8 +263,6 @@ policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-22_02-36-20_RPC_3000Iter_8
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-22_15-19-36_LPC_1500Iter_8192Env_95f329a8_test1_fl_always_up_hip_failure_5_15_seconds_scale_0.3"
 
 
-policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-24_17-40-40_kalorifer"
-
 
 
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-26_17-30-35_LegFlagIsInBothActorCritic"
@@ -273,11 +271,13 @@ policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-26_17-30-35_LegFlagIsInBot
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-26_17-44-55_LegFlagIsInBothActorCritic"
 
 
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-11-04_18-06-44_commando4novembercombinations"
 
 
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-29_14-58-29_2000Iter_8192Env_5failuretype_onefailureforeachleg"
-policy_folder_path = "logs/rsl_rl/flat_direct/2025-10-29_16-45-47_1000Iter_8192Env_2failuretype_onefailureorFLthighcalffailure_clearancescale0.5"
-
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-11-07_02-10-52_RPC_2000Iter_8192Env_a37434a4_2case_training_test1_fine_and_rear_legs_fail_scenarios_with_event_in_reset.rewar"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-11-07_03-33-12_RPC_2000Iter_8192Env_37d9b8a1_2case_training_test2_fine_scenario_with_event_in_reset.rewards_and_observations_"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-11-07_04-50-51_RPC_2000Iter_8192Env_0b0ed254_2case_training_test3_rear_legs_fail_scenario_with_event_in_reset.rewards_and_obs"
 
 
 
