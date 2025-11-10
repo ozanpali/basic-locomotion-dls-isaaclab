@@ -421,14 +421,14 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     commando_feet_air_time_reward_scale = 0.5 * (1-use_amp)
     commando_feet_slide_reward_scale = -0.25 * (1-use_amp) * 0.0
     commando_feet_to_hip_distance_reward_scale = 1.5 * (1-use_amp)
-    commando_joints_torque_reward_scale = -5.0e-6 * (1-use_amp)
+    commando_joints_torque_reward_scale = -2.5e-6 * (1-use_amp)
     commando_joints_accel_reward_scale = -2.5e-7 * (1-use_amp)
     commando_joints_energy_reward_scale = -1e-4 * (1-use_amp)
     commando_joints_hip_position_reward_scale = -0.1 * (1-use_amp)
     commando_joints_thigh_position_reward_scale = -0.1 * (1-use_amp)
     commando_joints_calf_position_reward_scale = -0.001 * (1-use_amp)
     # Front hip height reward scale (for commando front-hip height tracking)
-    commando_front_hip_height_reward_scale = 1.0
+    commando_front_hip_height_reward_scale = 1.0 * (1-use_amp)
 
 
     # Per-foot height clearance reward scales (allow different weighting per leg)

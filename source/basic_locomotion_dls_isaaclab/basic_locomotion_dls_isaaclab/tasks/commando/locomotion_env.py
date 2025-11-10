@@ -303,7 +303,8 @@ class LocomotionEnv(DirectRLEnv):
         back_failed_flag_obs = (leg_any_scaled_bool[:, 2] & leg_any_scaled_bool[:, 3]).to(torch.long)
         back_failed_onehot = torch.nn.functional.one_hot(back_failed_flag_obs, num_classes=2).to(dtype=obs.dtype, device=obs.device)
         obs = torch.cat((obs, back_failed_onehot), dim=-1)
-        #print("Back-failed onehot added to obs:", back_failed_onehot[0].cpu().numpy())
+        #print("Back-failed onehot added to obs:", back_failed_onehot[0].cpu().numpy())  #Back-failed onehot added to obs: [0. 1.]
+
 
         # Final observations dictionary
         observations = {"policy": obs}    
@@ -959,6 +960,51 @@ class LocomotionEnv(DirectRLEnv):
         self._robot.write_root_pose_to_sim(default_root_state[:, :7], env_ids)
         self._robot.write_root_velocity_to_sim(default_root_state[:, 7:], env_ids)
         self._robot.write_joint_state_to_sim(joint_pos, joint_vel, None, env_ids)
+
+        # ------------------------------------------------------------------
+        # Episode-long rear leg disable via drive gains (stiffness/damping)
+        # We zero stiffness & damping for RL/RR joints in environments whose
+        # sampled failure type == 1 (current convention in this file). This
+        # prevents actuators from generating restorative torques even if
+        # position targets are still updated. For non-failed envs we restore
+        # the default gains to ensure normal actuation.
+        # Joint ordering (12 DOF quadruped):
+        #   hips  [0:4]  -> FL, FR, RL, RR
+        #   thighs[4:8]  -> FL, FR, RL, RR
+        #   calves[8:12] -> FL, FR, RL, RR
+        # Rear leg joint indices: RL(hip=2, thigh=6, calf=10), RR(hip=3, thigh=7, calf=11)
+        rear_joint_indices = [2, 3, 6, 7, 10, 11]
+        with torch.no_grad():
+            # Ensure env_ids is a tensor (may be slice earlier)
+            if isinstance(env_ids, slice):
+                active_env_ids = self._robot._ALL_INDICES
+            else:
+                active_env_ids = env_ids
+            # Determine which of the resetting envs have rear-leg failure code == 1
+            failure_type_subset = self._failure_type[active_env_ids]
+            rear_failed_mask = failure_type_subset == 1
+            # Env ids with rear failure
+            if torch.any(rear_failed_mask):
+                rear_failed_envs = active_env_ids[rear_failed_mask]
+                # Zero gains for rear-leg joints (shape will broadcast inside writer)
+                self._robot.write_joint_stiffness_to_sim(
+                    0.0, joint_ids=rear_joint_indices, env_ids=rear_failed_envs
+                )
+                self._robot.write_joint_damping_to_sim(
+                    0.0, joint_ids=rear_joint_indices, env_ids=rear_failed_envs
+                )
+            # Restore defaults for envs without rear failure (in case previous episode had failure)
+            if torch.any(~rear_failed_mask):
+                normal_envs = active_env_ids[~rear_failed_mask]
+                default_stiffness_restore = self._robot.data.default_joint_stiffness[normal_envs][:, rear_joint_indices]
+                default_damping_restore = self._robot.data.default_joint_damping[normal_envs][:, rear_joint_indices]
+                self._robot.write_joint_stiffness_to_sim(
+                    default_stiffness_restore, joint_ids=rear_joint_indices, env_ids=normal_envs
+                )
+                self._robot.write_joint_damping_to_sim(
+                    default_damping_restore, joint_ids=rear_joint_indices, env_ids=normal_envs
+                )
+        # ------------------------------------------------------------------
         
         # Logging
         extras = dict()
@@ -983,18 +1029,18 @@ class LocomotionEnv(DirectRLEnv):
         with torch.no_grad():
             # Sample independent 2-way failures per env: 0 (no failure) or 1 (rear failure)
             # Optional probability control via cfg.rear_failure_prob (default 0.5)
-            #p_rear_fail = float(getattr(self.cfg, "rear_failure_prob", 0.5))
-            #p_rear_fail = max(0.0, min(1.0, p_rear_fail))
-            #if p_rear_fail in (0.0, 1.0):
-            #    fail_type = torch.full((len(env_ids),), int(p_rear_fail), dtype=torch.long, device=self.device)
-            #else:
-            #    fail_type = (torch.rand(len(env_ids), device=self.device) < p_rear_fail).to(torch.long)
+            p_rear_fail = float(getattr(self.cfg, "rear_failure_prob", 0.5))
+            p_rear_fail = max(0.0, min(1.0, p_rear_fail))
+            if p_rear_fail in (0.0, 1.0):
+                fail_type = torch.full((len(env_ids),), int(p_rear_fail), dtype=torch.long, device=self.device)
+            else:
+                fail_type = (torch.rand(len(env_ids), device=self.device) < p_rear_fail).to(torch.long)
             # Persist failure type for these envs until next reset
-            #self._failure_type[env_ids] = fail_type
+            self._failure_type[env_ids] = fail_type
 
             # Always assign NO failure (code 0) for every env in env_ids
-            fail_type = torch.ones(len(env_ids), device=self.device, dtype=torch.long)
-            self._failure_type[env_ids] = fail_type
+            #fail_type = torch.ones(len(env_ids), device=self.device, dtype=torch.long)
+            #self._failure_type[env_ids] = fail_type
 
             """## Debug: print which envs were reset and their assigned fail_type
             try:

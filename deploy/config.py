@@ -279,8 +279,7 @@ policy_folder_path = "logs/rsl_rl/flat_direct/2025-11-07_02-10-52_RPC_2000Iter_8
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-11-07_03-33-12_RPC_2000Iter_8192Env_37d9b8a1_2case_training_test2_fine_scenario_with_event_in_reset.rewards_and_observations_"
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-11-07_04-50-51_RPC_2000Iter_8192Env_0b0ed254_2case_training_test3_rear_legs_fail_scenario_with_event_in_reset.rewards_and_obs"
 
-
-
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-11-07_04-50-51_RPC_2000Iter_8192Env_0b0ed254_2case_training_test3_rear_legs_fail_scenario_with_event_in_reset.rewards_and_obs/"
 
 #policy_folder_path = dir_path + "/../tested_policies/" + robot + "/aliengo_stop_and_go_correct_offset"
 
