@@ -406,7 +406,7 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     feet_height_clearance_mujoco_reward_scale = 0.25 * (1-use_amp) * 0.0
     feet_height_clearance_mujoco_periodic_reward_scale = 0.25 * (1-use_amp) * 0.0
 
-    feet_slide_reward_scale = -0.25 * (1-use_amp) * 0.0
+    feet_slide_reward_scale = -0.25 * (1-use_amp)
     feet_contact_suggestion_reward_scale =  0.25 * (1-use_amp) * 0.0
     feet_to_base_distance_reward_scale = 0.25 * (1-use_amp) * 0.0
     
