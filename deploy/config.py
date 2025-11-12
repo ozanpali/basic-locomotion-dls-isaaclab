@@ -1,3 +1,4 @@
+from selectors import _PollLikeSelector
 import sys
 import os 
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -289,7 +290,32 @@ policy_folder_path = "logs/rsl_rl/flat_direct/2025-11-11_23-18-23_2casefailureor
 
 
 
-#policy_folder_path = dir_path + "/../tested_policies/" + robot + "/aliengo_stop_and_go_correct_offset"
+
+# serial test for multitask
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-11-12_03-21-04_RPC_1000Iter_8192Env_4a83767f_2case_test1_just_back_legs_failure_scene"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-11-12_04-02-24_RPC_1000Iter_8192Env_131f97e2_2case_test2_no_failure_scene"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-11-12_04-42-29_RPC_1000Iter_8192Env_bf76e5bb_2case_test3_both_no_failure_and_back_legs_failure_scenes"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-11-12_05-24-21_RPC_1000Iter_8192Env_e716f398_2case_test1_just_back_legs_failure_scene"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-11-12_06-05-34_RPC_1000Iter_8192Env_a3ce2158_2case_test2_no_failure_scene"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-11-12_06-45-40_RPC_1000Iter_8192Env_bb3943a2_2case_test3_both_no_failure_and_back_legs_failure_scenes"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-11-12_07-27-43_RPC_1000Iter_8192Env_bfaa73ad_2case_test1_just_back_legs_failure_scene"
+"""
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-11-12_08-11-08_RPC_1000Iter_8192Env_0352b299_2case_test2_no_failure_scene"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-11-12_08-51-34_RPC_1000Iter_8192Env_521afcb5_2case_test3_both_no_failure_and_back_legs_failure_scenes"
+"""
+
+
+
+"""
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-11-12_12-39-18_newtrystiffnesafterrandomassignment"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-11-12_13-24-19_newtrystiffnesafterrandomassignmentselfcollusionfalse"
+"""
+
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-11-12_15-09-53_origfeettohipslidedeactivatedmovedstiffnessanddampingremoveddisabledsinglelegfailureairtimeandclearanceobonehot2dimcollusionfallse"
+
+
+
+#policy_folder_path = dir_path + "/../tested_policies/" + rologs/rsl_rl/flat_direct/2025-1bot + "/aliengo_stop_and_go_correct_offset"
 
 #policy_folder_path = dir_path + "/../tested_policies/" + robot + "/go2_5asymm"
 

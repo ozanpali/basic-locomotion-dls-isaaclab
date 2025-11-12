@@ -144,7 +144,6 @@ if __name__ == '__main__':
         tau.FL[1] *= 1 # scale FL thigh torque by 0.3 during failure
         tau.FL[2] *= 1 # scale FL calf torque by 0.3 during failure
 
-        tau.RL *= 0
         #tau.RL[0] *= 1 # scale RL hip torque by 0.3 during failure
         #tau.RL[1] *= 1 # scale RL thigh torque by 0.3 during failure
         #tau.RL[2] *= 1 # scale RL calf torque by 0.3 during failure
@@ -153,7 +152,8 @@ if __name__ == '__main__':
         tau.FR[1] *= 1 # scale FR thigh torque by 0.3 during failure
         tau.FR[2] *= 1 # scale FR calf torque by 0.3 during failure
 
-        tau.RR *= 0
+        #tau.RL *= 0
+        #tau.RR *= 0
         #tau.RR[0] *= 1 # scale RR hip torque by 0.3 during failure
         #tau.RR[1] *= 1 # scale RR thigh torque by 0.3 during failure
         #tau.RR[2] *= 1 # scale RR calf torque by 0.3 during failure
