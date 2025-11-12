@@ -65,9 +65,15 @@ done
 
 # Ordered list from first to last commit (as you provided)
 COMMITS=(
-  a37434a4503711c24f15e27636a3f442ddb4ee1d
-  37d9b8a1f18e358f8c327820782c5d71dfde28a2
-  0b0ed25472854e453ad8d05c951cc934b3aae19b
+  4a83767ffe1e27ba68d53340da9e83b7f6c6efcc  # 2case test1: just back legs failure scene
+  131f97e23ba27d5fe0438e8b9f2254aa52bee412  # 2case test2: no failure scene
+  bf76e5bb3748c902bbf60db15dfa072923f86147  # 2case test3: both no failure and back legs failure scenes
+  e716f39881e4ac44db36e66ca2211082e8cb7e7b  # 2case test1: just back legs failure scene
+  a3ce21587dafe9d1a8ca5a30984b2ca833d94fbf  # 2case test2: no failure scene
+  bb3943a21ac16a89b54907306e9880b140bbb156  # 2case test3: both no failure and back legs failure scenes
+  bfaa73add432e8c2a6fab6552e2714d4d9ab2720  # 2case test1: just back legs failure scene
+  0352b2993d3a2584ed5df8c4b9ac3f3d64087715  # 2case test2: no failure scene
+  521afcb58f2406aec432ec8483d1df87bb441bb9  # 2case test3: both no failure and back legs failure scenes
 )
 
 # --- Helpers ---
