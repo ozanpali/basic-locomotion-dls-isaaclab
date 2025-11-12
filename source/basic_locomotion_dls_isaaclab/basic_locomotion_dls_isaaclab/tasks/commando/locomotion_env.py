@@ -1029,18 +1029,18 @@ class LocomotionEnv(DirectRLEnv):
         with torch.no_grad():
             # Sample independent 2-way failures per env: 0 (no failure) or 1 (rear failure)
             # Optional probability control via cfg.rear_failure_prob (default 0.5)
-            p_rear_fail = float(getattr(self.cfg, "rear_failure_prob", 0.5))
-            p_rear_fail = max(0.0, min(1.0, p_rear_fail))
-            if p_rear_fail in (0.0, 1.0):
-                fail_type = torch.full((len(env_ids),), int(p_rear_fail), dtype=torch.long, device=self.device)
-            else:
-                fail_type = (torch.rand(len(env_ids), device=self.device) < p_rear_fail).to(torch.long)
+            #p_rear_fail = float(getattr(self.cfg, "rear_failure_prob", 0.5))
+            #p_rear_fail = max(0.0, min(1.0, p_rear_fail))
+            #if p_rear_fail in (0.0, 1.0):
+            #    fail_type = torch.full((len(env_ids),), int(p_rear_fail), dtype=torch.long, device=self.device)
+            #else:
+            #    fail_type = (torch.rand(len(env_ids), device=self.device) < p_rear_fail).to(torch.long)
             # Persist failure type for these envs until next reset
-            self._failure_type[env_ids] = fail_type
+            #self._failure_type[env_ids] = fail_type
 
             # Always assign NO failure (code 0) for every env in env_ids
-            #fail_type = torch.zeros(len(env_ids), device=self.device, dtype=torch.long)
-            #self._failure_type[env_ids] = fail_type
+            fail_type = torch.ones(len(env_ids), device=self.device, dtype=torch.long)
+            self._failure_type[env_ids] = fail_type
 
             """## Debug: print which envs were reset and their assigned fail_type
             try:
