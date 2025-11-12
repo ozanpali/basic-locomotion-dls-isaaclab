@@ -219,6 +219,69 @@ class LocomotionEnv(DirectRLEnv):
 
     def _apply_action(self):
         self._robot.set_joint_position_target(self._processed_actions)
+        # Enforce joint torque scaling every control step if rear-leg failure is active
+        # This guarantees episode-long disable even under position control.
+        self._enforce_joint_torque_scaling_each_step()
+
+    def _enforce_joint_torque_scaling_each_step(self) -> None:
+        """Re-apply joint torque scaling for failed legs every step.
+
+        Rationale: Under position control, PD drives can override one-off scaling if other
+        properties change at runtime. Re-applying the torque scale at each step ensures rear
+        legs remain torque-free for the entire episode when failure is active.
+
+        Behavior: When an environment's sampled failure type is 1 (rear failure), set torque
+        scale to 0.0 for RL and RR hip/thigh/calf joints in that environment. No-op otherwise.
+        """
+        # Optional runtime toggle via config; default to enabled
+        if hasattr(self, "cfg") and hasattr(self.cfg, "enforce_torque_scaling_each_step"):
+            if not bool(self.cfg.enforce_torque_scaling_each_step):
+                return
+
+        # If failure types are not initialized yet, nothing to enforce
+        if not hasattr(self, "_failure_type"):
+            return
+
+        with torch.no_grad():
+            # Determine which envs currently have rear-leg failure active
+            active_env_ids = self._robot._ALL_INDICES
+            failure_type_subset = self._failure_type[active_env_ids]
+            rear_failed_mask = failure_type_subset == 1
+            if not torch.any(rear_failed_mask):
+                return
+
+            rear_failed_envs = active_env_ids[rear_failed_mask]
+
+            # Cache rear leg joint IDs once to avoid pattern searches every step
+            if not hasattr(self, "_rear_leg_joint_ids_map"):
+                self._rear_leg_joint_ids_map = {}
+                for leg_prefix in ("RL", "RR"):
+                    pattern = rf"{leg_prefix}_(hip|thigh|calf)_joint"
+                    leg_joint_ids, _ = self._robot.find_joints(pattern)
+                    if isinstance(leg_joint_ids, torch.Tensor):
+                        leg_joint_ids_list = leg_joint_ids.detach().cpu().tolist()
+                    elif leg_joint_ids is None:
+                        leg_joint_ids_list = []
+                    else:
+                        leg_joint_ids_list = list(leg_joint_ids)
+                    self._rear_leg_joint_ids_map[leg_prefix] = leg_joint_ids_list
+
+            # Apply zero torque scaling to the rear joints for all rear-failed envs
+            for leg_prefix in ("RL", "RR"):
+                leg_joint_ids_list = self._rear_leg_joint_ids_map.get(leg_prefix, [])
+                if not leg_joint_ids_list:
+                    continue
+                joint_names = [f"{leg_prefix}_hip_joint", f"{leg_prefix}_thigh_joint", f"{leg_prefix}_calf_joint"]
+                scale_joint_torque(
+                    env=self,
+                    env_ids=rear_failed_envs,
+                    asset_cfg=SceneEntityCfg(
+                        name="robot",
+                        joint_ids=leg_joint_ids_list,
+                        joint_names=joint_names,
+                    ),
+                    scale=0.0,
+                )
 
 
 
