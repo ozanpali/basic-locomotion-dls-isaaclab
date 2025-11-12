@@ -138,6 +138,7 @@ class LocomotionEnv(DirectRLEnv):
                 "feet_to_hip_distance_l2",
                 "feet_vertical_surface_contacts",
 
+                "commando_base_orientation",
                 "commando_undesired_contacts",
                 "commando_feet_air_time",
                 "commando_feet_slide",
@@ -453,7 +454,7 @@ class LocomotionEnv(DirectRLEnv):
         terrain_pitch = -torch.atan2(delta_z, delta_s)
         #terrain_pitch = torch.atan2(torch.sin(terrain_pitch), torch.cos(terrain_pitch))
 
-        """cols_right = torch.arange(0, height_data_scanner.shape[1]//2, 1).unsqueeze(1) 
+        cols_right = torch.arange(0, height_data_scanner.shape[1]//2, 1).unsqueeze(1) 
         cols_right = cols_right.flatten().to(height_data_scanner.device)
         selected_height_data_right = height_data_scanner[:, cols_right]
 
@@ -465,7 +466,7 @@ class LocomotionEnv(DirectRLEnv):
         delta_s_roll = torch.tensor((height_map_y_points-1)* height_map_resolution).to(self.device)
         terrain_roll = torch.atan2(delta_z_roll, delta_s_roll)
         # TODO check if we need roll in base frame
-        """
+        
 
 
         root_roll_w, root_pitch_w, _ = math_utils.euler_xyz_from_quat(self._robot.data.root_quat_w)
@@ -474,6 +475,8 @@ class LocomotionEnv(DirectRLEnv):
         
         base_orientation =  torch.square(terrain_pitch - root_pitch_w)# + torch.square(terrain_roll - root_roll_w)
 
+        # commando orientation (front roll only)
+        commando_base_orientation = torch.square(terrain_roll - root_roll_w)
 
         # angular velocity x/y tracking
         ang_vel_error = torch.sum(torch.square(self._robot.data.root_ang_vel_b[:, :2]), dim=1)
@@ -869,6 +872,7 @@ class LocomotionEnv(DirectRLEnv):
             
             #commando rewards
             # Gate terms by whether any torque scaling (hip/thigh/calf) is active on the corresponding leg
+            "commando_base_orientation": commando_base_orientation * self.cfg.commando_base_orientation_reward_scale * self.step_dt * back_failed_flag,
             "commando_undesired_contacts": commando_contacts * self.cfg.commando_undesired_contact_reward_scale * self.step_dt * back_failed_flag,
             "commando_feet_air_time": commando_feet_air_time * self.cfg.commando_feet_air_time_reward_scale * self.step_dt * back_failed_flag,# * ( (leg_any_scaled_int[:, 2] + leg_any_scaled_int[:, 3]) > 0 ).float()
             "commando_feet_slide": commando_feet_slide * self.cfg.commando_feet_slide_reward_scale * self.step_dt * back_failed_flag,

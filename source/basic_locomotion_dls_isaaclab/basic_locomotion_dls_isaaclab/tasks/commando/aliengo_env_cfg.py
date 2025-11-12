@@ -417,6 +417,7 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     feet_vertical_surface_contacts_reward_scale = -0.25 * (1-use_amp) * 0.0
 
 
+    commando_base_orientation_reward_scale = -5.0 * (1-use_amp)
     commando_undesired_contact_reward_scale = -1.0 * (1-use_amp)
     commando_feet_air_time_reward_scale = 0.5 * (1-use_amp)
     commando_feet_slide_reward_scale = -0.25 * (1-use_amp) * 0.0
