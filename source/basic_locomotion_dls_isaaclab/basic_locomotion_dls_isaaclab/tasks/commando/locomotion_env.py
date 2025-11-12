@@ -735,21 +735,27 @@ class LocomotionEnv(DirectRLEnv):
         hip_to_base_h = torch.matmul(ROT_W2H.transpose(1,2), hip_to_base_w.transpose(1, 2))
         
         desired_hip_offset = self._desired_hip_offset
-        # Compute per-leg distances in hip frame, then masked average across legs
+        feet_to_hip_distance_x = torch.square(feet_to_base_h[:, 0] - hip_to_base_h[:, 0])
+        feet_to_hip_distance_y = torch.square(feet_to_base_h[:, 1] + desired_hip_offset.unsqueeze(0) - hip_to_base_h[:, 1])
+        feet_to_hip_distance = -torch.mean(torch.sqrt(feet_to_hip_distance_x + feet_to_hip_distance_y), dim=1)
+
+
+        # up is original feet to hip distance reward, gpt(but modified to exclude failed legs from the average)
+        # # Compute per-leg distances in hip frame, then masked average across legs
         delta_x = feet_to_base_h[:, 0] - hip_to_base_h[:, 0]
         delta_y = feet_to_base_h[:, 1] + desired_hip_offset.unsqueeze(0) - hip_to_base_h[:, 1]
         per_leg_dist = torch.sqrt(delta_x.pow(2) + delta_y.pow(2))  # [N,4]
-        # Exclude FL leg when its failure flag is active; otherwise include all legs
-        include_mask = torch.ones(self.num_envs, 4, dtype=torch.bool, device=self.device)
-        include_mask[:, 0] &= (leg_any_scaled_int[:, 0] == 0)
-        include_mask_f = include_mask.float()
-        # Compact, device-agnostic debug prints (env0 only)
-        """try:
-            print("Leg any scaled int:", leg_any_scaled_int.tolist())
-            print("Include mask for feet_to_hip:", include_mask.tolist())
-        except Exception:
-            pass"""
-        feet_to_hip_distance = -((per_leg_dist * include_mask_f).sum(dim=1) / include_mask_f.sum(dim=1).clamp(min=1.0))
+        # # Exclude FL leg when its failure flag is active; otherwise include all legs
+        # include_mask = torch.ones(self.num_envs, 4, dtype=torch.bool, device=self.device)
+        # include_mask[:, 0] &= (leg_any_scaled_int[:, 0] == 0)
+        # include_mask_f = include_mask.float()
+        # # Compact, device-agnostic debug prints (env0 only)
+        # """try:
+        #     print("Leg any scaled int:", leg_any_scaled_int.tolist())
+        #     print("Include mask for feet_to_hip:", include_mask.tolist())
+        # except Exception:
+        #     pass"""
+        # feet_to_hip_distance = -((per_leg_dist * include_mask_f).sum(dim=1) / include_mask_f.sum(dim=1).clamp(min=1.0))
 
 
         # Commando version of feet-to-hip distance: use only front legs (FL, FR), exclude back legs (RL, RR)
