@@ -419,7 +419,7 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
 
     commando_undesired_contact_reward_scale = -1.0 * (1-use_amp)
     commando_feet_air_time_reward_scale = 0.5 * (1-use_amp)
-    commando_feet_slide_reward_scale = -0.25 * (1-use_amp)
+    commando_feet_slide_reward_scale = -0.25 * (1-use_amp) * 0.0
     commando_feet_to_hip_distance_reward_scale = 1.5 * (1-use_amp)
     commando_joints_torque_reward_scale = -2.5e-6 * (1-use_amp)
     commando_joints_accel_reward_scale = -2.5e-7 * (1-use_amp)
@@ -432,10 +432,10 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
 
 
     # Per-foot height clearance reward scales (allow different weighting per leg)
-    feet_height_clearance_excl_fl_reward_scale = 0.5 * (1-use_amp) * 0.0
-    feet_height_clearance_excl_rl_reward_scale = 0.5 * (1-use_amp) * 0.0
-    feet_height_clearance_excl_fr_reward_scale = 0.5 * (1-use_amp) * 0.0
-    feet_height_clearance_excl_rr_reward_scale = 0.5 * (1-use_amp) * 0.0
+    #feet_height_clearance_excl_fl_reward_scale = 0.5 * (1-use_amp) * 0.0
+    #feet_height_clearance_excl_rl_reward_scale = 0.5 * (1-use_amp) * 0.0
+    #feet_height_clearance_excl_fr_reward_scale = 0.5 * (1-use_amp) * 0.0
+    #feet_height_clearance_excl_rr_reward_scale = 0.5 * (1-use_amp) * 0.0
 
 
 

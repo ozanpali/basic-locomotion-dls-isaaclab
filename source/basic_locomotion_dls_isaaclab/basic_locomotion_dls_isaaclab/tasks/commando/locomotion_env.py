@@ -80,7 +80,7 @@ class LocomotionEnv(DirectRLEnv):
             except Exception:
                 pass"""
 
-        
+        ############################## LOOK HERE ##############################
         # Per-env failure type persisted across the episode (0: none, 1: FL, 2: FR, 3: RL, 4: RR)
         if not hasattr(self, "_failure_type"):
             self._failure_type = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
@@ -154,10 +154,8 @@ class LocomotionEnv(DirectRLEnv):
                 # (front-hip mean logged separately as "front_hip_height_above_ground_mean")
                 "commando_track_height_exp",
 
-                "feet_height_clearance_excl_fl",
-                "feet_height_clearance_excl_rl",
-                "feet_height_clearance_excl_fr",
-                "feet_height_clearance_excl_rr"
+                #"feet_air_time_FL_failure",
+                #"feet_height_clearance_excl_fl",
             ]
         }
         # Get specific body indices
@@ -296,6 +294,14 @@ class LocomotionEnv(DirectRLEnv):
             obs_rma = self._get_rma(clock_data)
             obs = torch.cat((obs, obs_rma), dim=-1)
 
+
+        # # Append only the per-leg torque scaling flags (0/1) to the policy observation
+        # # Shape: [num_envs, 4]; order: [FL, FR, RL, RR]
+        # leg_any_scaled = (self._torque_scaled_mask_per_leg_joint.max(dim=2).values > 0.0).float()
+        # #print("Leg any scaled fed to observations:", leg_any_scaled.tolist())
+        # obs = torch.cat((obs, leg_any_scaled), dim=-1)
+
+        
         # Append back-failed flag as one-hot to the observation instead of per-leg flags
         # back_failed_flag: 1 if any of RL/RR legs are torque-scaled, else 0
         # One-hot shape: [num_envs, 2] -> [no_back_fail, back_fail]
@@ -603,6 +609,19 @@ class LocomotionEnv(DirectRLEnv):
         )
 
 
+        # # FL feet failure airtime
+        # active_feet_excluding_FL = [1, 2, 3]
+        # feet_air_time_excluding_FL = torch.sum(
+        #     (last_air_time[:, active_feet_excluding_FL] - 0.5) * first_contact[:, active_feet_excluding_FL], dim=1
+        # ) * (torch.norm(self._commands[:, :2], dim=1) > 0.1)
+        # # Contact flags (reuse forces tensor). Threshold > 1.0 indicates contact.
+        # contacts_foot = self._contact_sensor.data.net_forces_w_history[:, :, self._feet_ids, :].norm(dim=-1).max(dim=1)[0] > 1.0
+        # fl_in_air = (~contacts_foot[:, 0]).float()
+        # fl_contact = contacts_foot[:, 0].float()
+        # fl_air_reward = 10.0 * fl_in_air
+        # fl_penalty = -10.0 * fl_contact
+        # feet_air_time_FL_failure = (feet_air_time_excluding_FL + fl_air_reward + fl_penalty)
+
         # RL and RR feet failure airtime combined
         active_feet_excluding_RL_RR = [0, 1]
         commando_feet_air_time = torch.sum(
@@ -857,10 +876,10 @@ class LocomotionEnv(DirectRLEnv):
             # Use front-hip height error (mapped) as the single height tracking reward
             "commando_track_height_exp": commando_front_hip_height_error_mapped * self.cfg.commando_front_hip_height_reward_scale * self.step_dt * back_failed_flag,
             
-            "feet_height_clearance_excl_fl": feet_height_clearance_excl_fl * self.cfg.feet_height_clearance_excl_fl_reward_scale * self.step_dt * (leg_any_scaled_int[:, 0].float()),
-            "feet_height_clearance_excl_rl": feet_height_clearance_excl_rl * self.cfg.feet_height_clearance_excl_rl_reward_scale * self.step_dt * (leg_any_scaled_int[:, 2].float()),
-            "feet_height_clearance_excl_fr": feet_height_clearance_excl_fr * self.cfg.feet_height_clearance_excl_fr_reward_scale * self.step_dt * (leg_any_scaled_int[:, 1].float()),
-            "feet_height_clearance_excl_rr": feet_height_clearance_excl_rr * self.cfg.feet_height_clearance_excl_rr_reward_scale * self.step_dt * (leg_any_scaled_int[:, 3].float()),
+
+
+            #"feet_air_time_FL_failure": feet_air_time_FL_failure * self.cfg.feet_air_time_FL_failure_reward_scale * self.step_dt * (leg_any_scaled_int[:, 0].float()),
+            #"feet_height_clearance_excl_fl": feet_height_clearance_excl_fl * self.cfg.feet_height_clearance_excl_fl_reward_scale * self.step_dt * (leg_any_scaled_int[:, 0].float()),
         }
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
         
@@ -960,51 +979,6 @@ class LocomotionEnv(DirectRLEnv):
         self._robot.write_root_pose_to_sim(default_root_state[:, :7], env_ids)
         self._robot.write_root_velocity_to_sim(default_root_state[:, 7:], env_ids)
         self._robot.write_joint_state_to_sim(joint_pos, joint_vel, None, env_ids)
-
-        # ------------------------------------------------------------------
-        # Episode-long rear leg disable via drive gains (stiffness/damping)
-        # We zero stiffness & damping for RL/RR joints in environments whose
-        # sampled failure type == 1 (current convention in this file). This
-        # prevents actuators from generating restorative torques even if
-        # position targets are still updated. For non-failed envs we restore
-        # the default gains to ensure normal actuation.
-        # Joint ordering (12 DOF quadruped):
-        #   hips  [0:4]  -> FL, FR, RL, RR
-        #   thighs[4:8]  -> FL, FR, RL, RR
-        #   calves[8:12] -> FL, FR, RL, RR
-        # Rear leg joint indices: RL(hip=2, thigh=6, calf=10), RR(hip=3, thigh=7, calf=11)
-        rear_joint_indices = [2, 3, 6, 7, 10, 11]
-        with torch.no_grad():
-            # Ensure env_ids is a tensor (may be slice earlier)
-            if isinstance(env_ids, slice):
-                active_env_ids = self._robot._ALL_INDICES
-            else:
-                active_env_ids = env_ids
-            # Determine which of the resetting envs have rear-leg failure code == 1
-            failure_type_subset = self._failure_type[active_env_ids]
-            rear_failed_mask = failure_type_subset == 1
-            # Env ids with rear failure
-            if torch.any(rear_failed_mask):
-                rear_failed_envs = active_env_ids[rear_failed_mask]
-                # Zero gains for rear-leg joints (shape will broadcast inside writer)
-                self._robot.write_joint_stiffness_to_sim(
-                    0.0, joint_ids=rear_joint_indices, env_ids=rear_failed_envs
-                )
-                self._robot.write_joint_damping_to_sim(
-                    0.0, joint_ids=rear_joint_indices, env_ids=rear_failed_envs
-                )
-            # Restore defaults for envs without rear failure (in case previous episode had failure)
-            if torch.any(~rear_failed_mask):
-                normal_envs = active_env_ids[~rear_failed_mask]
-                default_stiffness_restore = self._robot.data.default_joint_stiffness[normal_envs][:, rear_joint_indices]
-                default_damping_restore = self._robot.data.default_joint_damping[normal_envs][:, rear_joint_indices]
-                self._robot.write_joint_stiffness_to_sim(
-                    default_stiffness_restore, joint_ids=rear_joint_indices, env_ids=normal_envs
-                )
-                self._robot.write_joint_damping_to_sim(
-                    default_damping_restore, joint_ids=rear_joint_indices, env_ids=normal_envs
-                )
-        # ------------------------------------------------------------------
         
         # Logging
         extras = dict()
@@ -1167,6 +1141,32 @@ class LocomotionEnv(DirectRLEnv):
                     ),
                     scale=0.0,
                 )
+
+            # ------------------------------------------------------------------
+            # Episode-long rear leg disable via drive gains (stiffness/damping)
+            # Place AFTER torque scaling to ensure gains reflect final failure config.
+            # We zero stiffness & damping for RL/RR joints in environments whose
+            # sampled failure type == 1. For non-failed envs we restore defaults.
+            # Joint ordering (12 DOF quadruped): hips[0:4], thighs[4:8], calves[8:12]
+            # Rear leg joint indices: RL(hip=2, thigh=6, calf=10), RR(hip=3, thigh=7, calf=11)
+            rear_joint_indices = [2, 3, 6, 7, 10, 11]
+            # Ensure env_ids is a tensor (may be slice earlier)
+            active_env_ids = self._robot._ALL_INDICES if isinstance(env_ids, slice) else env_ids
+            failure_type_subset = self._failure_type[active_env_ids]
+            rear_failed_mask = failure_type_subset == 1
+            # Zero gains for rear-failed envs
+            if torch.any(rear_failed_mask):
+                rear_failed_envs = active_env_ids[rear_failed_mask]
+                self._robot.write_joint_stiffness_to_sim(0.0, joint_ids=rear_joint_indices, env_ids=rear_failed_envs)
+                self._robot.write_joint_damping_to_sim(0.0, joint_ids=rear_joint_indices, env_ids=rear_failed_envs)
+            # Restore defaults for non-failed envs
+            if torch.any(~rear_failed_mask):
+                normal_envs = active_env_ids[~rear_failed_mask]
+                default_stiffness_restore = self._robot.data.default_joint_stiffness[normal_envs][:, rear_joint_indices]
+                default_damping_restore = self._robot.data.default_joint_damping[normal_envs][:, rear_joint_indices]
+                self._robot.write_joint_stiffness_to_sim(default_stiffness_restore, joint_ids=rear_joint_indices, env_ids=normal_envs)
+                self._robot.write_joint_damping_to_sim(default_damping_restore, joint_ids=rear_joint_indices, env_ids=normal_envs)
+            # ------------------------------------------------------------------
 
 
 
