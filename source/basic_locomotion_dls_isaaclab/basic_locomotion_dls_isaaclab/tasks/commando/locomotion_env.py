@@ -143,9 +143,9 @@ class LocomotionEnv(DirectRLEnv):
                 "commando_feet_air_time",
                 "commando_feet_slide",
                 "commando_feet_to_hip_distance",
-                #"commando_joints_torques_l2",
-                #"commando_joints_acc_l2",
-                #"commando_joints_energy_l1",
+                "commando_joints_torques_l2",
+                "commando_joints_acc_l2",
+                "commando_joints_energy_l1",
                 # commando front-only joint position rewards
                 "commando_joints_hip_pos_l2",
                 "commando_joints_thigh_pos_l2",
@@ -580,7 +580,7 @@ class LocomotionEnv(DirectRLEnv):
         # joint acceleration
         joints_accel = torch.sum(torch.square(self._robot.data.joint_acc), dim=1)
 
-        """
+        
         # commando joint acceleration (front legs only across all joint types)
         commando_front_only_accel = torch.cat(
             [
@@ -591,13 +591,13 @@ class LocomotionEnv(DirectRLEnv):
             dim=1,
         )
         commando_joints_accel = torch.sum(torch.square(commando_front_only_accel), dim=1)
-        """
+
         
         # joint torques
         joints_torques = torch.sum(torch.square(self._robot.data.applied_torque), dim=1)
 
 
-        """
+        
         # commando joint torques (front legs only across all joint types)
         # Joint layout is grouped by type across legs:
         #   hips:   indices [0:4]   -> [FL, FR, RL, RR]
@@ -613,7 +613,7 @@ class LocomotionEnv(DirectRLEnv):
             dim=1,
         )
         commando_joints_torques = torch.sum(torch.square(commando_front_only_torques), dim=1)
-        """
+        
 
 
 
@@ -621,7 +621,7 @@ class LocomotionEnv(DirectRLEnv):
         joints_energy = torch.sum(torch.abs(self._robot.data.applied_torque * self._robot.data.joint_vel), dim=1)
 
 
-        """
+        
         # commando joint energy (front legs only across all joint types)
         commando_front_only_joint_vel = torch.cat(
             [
@@ -632,7 +632,7 @@ class LocomotionEnv(DirectRLEnv):
             dim=1,
         )
         commando_joints_energy = torch.sum(torch.abs(commando_front_only_torques * commando_front_only_joint_vel), dim=1)
-        """
+        
 
         
         # hip position
@@ -938,9 +938,9 @@ class LocomotionEnv(DirectRLEnv):
             "commando_feet_air_time": commando_feet_air_time * self.cfg.commando_feet_air_time_reward_scale * self.step_dt * back_failed_flag,# * ( (leg_any_scaled_int[:, 2] + leg_any_scaled_int[:, 3]) > 0 ).float()
             "commando_feet_slide": commando_feet_slide * self.cfg.commando_feet_slide_reward_scale * self.step_dt * back_failed_flag,
             "commando_feet_to_hip_distance": commando_feet_to_hip_distance * self.cfg.commando_feet_to_hip_distance_reward_scale * self.step_dt * back_failed_flag,
-            #"commando_joints_torques_l2": commando_joints_torques * self.cfg.commando_joints_torque_reward_scale * self.step_dt * back_failed_flag,
-            #"commando_joints_acc_l2": commando_joints_accel * self.cfg.commando_joints_accel_reward_scale * self.step_dt * back_failed_flag,
-            #"commando_joints_energy_l1": commando_joints_energy * self.cfg.commando_joints_energy_reward_scale * self.step_dt * back_failed_flag,
+            "commando_joints_torques_l2": commando_joints_torques * self.cfg.commando_joints_torque_reward_scale * self.step_dt * back_failed_flag,
+            "commando_joints_acc_l2": commando_joints_accel * self.cfg.commando_joints_accel_reward_scale * self.step_dt * back_failed_flag,
+            "commando_joints_energy_l1": commando_joints_energy * self.cfg.commando_joints_energy_reward_scale * self.step_dt * back_failed_flag,
             "commando_joints_hip_pos_l2": commando_hip_joints_position_reward * self.cfg.commando_joints_hip_position_reward_scale * self.step_dt * back_failed_flag,
             "commando_joints_thigh_pos_l2": commando_thigh_joints_position_reward * self.cfg.commando_joints_thigh_position_reward_scale * self.step_dt * back_failed_flag,
             "commando_joints_calf_pos_l2": commando_calf_joints_position_reward * self.cfg.commando_joints_calf_position_reward_scale * self.step_dt * back_failed_flag,
@@ -1073,7 +1073,7 @@ class LocomotionEnv(DirectRLEnv):
         # 0: no failure, 1: FL failure (thigh + calf only; hip remains unscaled)
         # Sample independent 2-way failures per env: 0 (no failure) or 1 (rear failure)
         # Optional probability control via cfg.rear_failure_prob (default 0.5)
-        p_rear_fail = float(getattr(self.cfg, "rear_failure_prob", 1.0))
+        p_rear_fail = float(getattr(self.cfg, "rear_failure_prob", 0.5))
         p_rear_fail = max(0.0, min(1.0, p_rear_fail))
         if p_rear_fail in (0.0, 1.0):
             fail_type = torch.full((len(env_ids),), int(p_rear_fail), dtype=torch.long, device=self.device)
