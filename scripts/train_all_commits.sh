@@ -65,9 +65,15 @@ done
 
 # Ordered list from first to last commit (as you provided)
 COMMITS=(
-  3cc020caa1cc5d5a31aa1c2b06929e7ce4b066fd
-  8cbba472f6d327676b10fe3ae6515bc661b4adbc
-  d855078780f2f298c8f7b93872f14e70eef63d66
+  831c2fd00bbbd7d079ad45a4532207c4b10689e4
+  035a94c16415cd0cf2917f638fd15f286426aa7b
+  41dc966bfee7ce931fe4d339203e2bb14ba3e79c
+  388f299f0765e2d91832b6adebecf5add9184cdb
+  bb09eb063eed486a9b1710ff36b0c499090b6863
+  7b693bde39a159e6c00049a784cadeda8d6d3121
+  6b778c34bcb84f49900b1a77fcddef02b4ad43f0
+  ea08f6bf81de0082c8680b4bd99af4db04d81b92
+  a8040b6c58b0a0aedd6fba0060c45ec7c9fa9361
 )
 
 # --- Helpers ---
