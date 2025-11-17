@@ -186,15 +186,16 @@ def scale_joint_torque(
     scale: float = 1.0,
 ):
     """
-    Scale joint efforts for selected joints and update a per-leg, per-joint activation mask.
+    #"#"#"
+    #Scale joint efforts for selected joints and update a per-leg, per-joint activation mask.
 
-    Behavior
-    - Multiplies computed joint efforts by `scale` for targeted joints.
-    - Safe to call repeatedly. Patches actuator.compute only once per actuator.
-    - Interval-friendly: when called with a subset `env_ids`, sets those envs to `scale`
-      and resets the complement envs to 1.0 for the targeted joints (acts like a gate).
-    - Updates env._torque_scaled_mask_per_leg_joint[env, leg(FL/FR/RL/RR), joint(hip/thigh/calf)].
-    """
+    #Behavior
+    #- Multiplies computed joint efforts by `scale` for targeted joints.
+    #- Safe to call repeatedly. Patches actuator.compute only once per actuator.
+    #- Interval-friendly: when called with a subset `env_ids`, sets those envs to `scale`
+    #  and resets the complement envs to 1.0 for the targeted joints (acts like a gate).
+    #- Updates env._torque_scaled_mask_per_leg_joint[env, leg(FL/FR/RL/RR), joint(hip/thigh/calf)].
+    #"#"#"
     # locate articulation
     asset: Articulation = env.scene[asset_cfg.name]
 
@@ -291,3 +292,4 @@ def scale_joint_torque(
     except Exception:
         # do not break the event on tracking failure
         pass
+        """
