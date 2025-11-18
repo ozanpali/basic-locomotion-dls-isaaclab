@@ -1281,6 +1281,39 @@ class LocomotionEnv(DirectRLEnv):
             # Legs: RL=2, RR=3; Joints: hip=0, thigh=1, calf=2
             self._torque_scaled_mask_per_leg_joint[rear_failed_envs, 2, :] = 1.0
             self._torque_scaled_mask_per_leg_joint[rear_failed_envs, 3, :] = 1.0
+            # Also attempt to apply actuator-side torque scaling (set efforts -> 0.0) for rear joints
+            # Use the shared helper in tasks.custom_events.scale_joint_torque when available so
+            # actuator.compute is patched in a consistent way across the codebase.
+            try:
+                # Import helper (prefer relative import within package; fallback to absolute)
+                try:
+                    from ..custom_events import scale_joint_torque
+                except Exception:
+                    from basic_locomotion_dls_isaaclab.tasks.custom_events import scale_joint_torque
+
+                # RL joints: indices at positions 0,2,4 in rear_joint_indices
+                rl_joint_ids = [rear_joint_indices[0], rear_joint_indices[2], rear_joint_indices[4]]
+                rl_names = ["RL_hip_joint", "RL_thigh_joint", "RL_calf_joint"]
+                # RR joints: indices at positions 1,3,5 in rear_joint_indices
+                rr_joint_ids = [rear_joint_indices[1], rear_joint_indices[3], rear_joint_indices[5]]
+                rr_names = ["RR_hip_joint", "RR_thigh_joint", "RR_calf_joint"]
+
+                # Apply zero scaling to rear legs for the failed envs
+                scale_joint_torque(
+                    env=self,
+                    env_ids=rear_failed_envs,
+                    asset_cfg=SceneEntityCfg(name="robot", joint_ids=rl_joint_ids, joint_names=rl_names),
+                    scale=0.0,
+                )
+                scale_joint_torque(
+                    env=self,
+                    env_ids=rear_failed_envs,
+                    asset_cfg=SceneEntityCfg(name="robot", joint_ids=rr_joint_ids, joint_names=rr_names),
+                    scale=0.0,
+                )
+            except Exception:
+                # Do not break reset flow if scaling helper is unavailable or errors occur
+                pass
         # Restore defaults for non-failed envs
         if torch.any(~rear_failed_mask):
             normal_envs = env_ids[~rear_failed_mask]
@@ -1292,6 +1325,33 @@ class LocomotionEnv(DirectRLEnv):
             if hasattr(self, "_torque_scaled_mask_per_leg_joint"):
                 self._torque_scaled_mask_per_leg_joint[normal_envs, 2, :] = 0.0
                 self._torque_scaled_mask_per_leg_joint[normal_envs, 3, :] = 0.0
+            # Also attempt to restore actuator-side torque scaling (set efforts -> 1.0) for rear joints
+            try:
+                try:
+                    from ..custom_events import scale_joint_torque
+                except Exception:
+                    from basic_locomotion_dls_isaaclab.tasks.custom_events import scale_joint_torque
+
+                rl_joint_ids = [rear_joint_indices[0], rear_joint_indices[2], rear_joint_indices[4]]
+                rl_names = ["RL_hip_joint", "RL_thigh_joint", "RL_calf_joint"]
+                rr_joint_ids = [rear_joint_indices[1], rear_joint_indices[3], rear_joint_indices[5]]
+                rr_names = ["RR_hip_joint", "RR_thigh_joint", "RR_calf_joint"]
+
+                scale_joint_torque(
+                    env=self,
+                    env_ids=normal_envs,
+                    asset_cfg=SceneEntityCfg(name="robot", joint_ids=rl_joint_ids, joint_names=rl_names),
+                    scale=1.0,
+                )
+                scale_joint_torque(
+                    env=self,
+                    env_ids=normal_envs,
+                    asset_cfg=SceneEntityCfg(name="robot", joint_ids=rr_joint_ids, joint_names=rr_names),
+                    scale=1.0,
+                )
+            except Exception:
+                # Non-fatal: don't interrupt reset if scaling helper is unavailable or errors occur
+                pass
         # ------------------------------------------------------------------
 
 
