@@ -146,10 +146,11 @@ class LocomotionEnv(DirectRLEnv):
                 "commando_joints_torques_l2",
                 "commando_joints_acc_l2",
                 "commando_joints_energy_l1",
-                # commando front-only joint position rewards
                 "commando_joints_hip_pos_l2",
                 "commando_joints_thigh_pos_l2",
                 "commando_joints_calf_pos_l2",
+                "commando_action_rate_l2",
+                "commando_action_smoothness_l2",
                 # front-hip height above local terrain (mean across FL/FR)
                 #"front_hip_height_above_ground_mean",
                 # (front-hip mean logged separately as "front_hip_height_above_ground_mean")
@@ -436,7 +437,6 @@ class LocomotionEnv(DirectRLEnv):
         height_error_mapped = torch.exp(-height_error / 0.01)
         
 
-        
         # --- Front-hip height above local terrain under each front hip ---
         # Use the ray hits (x,y,z) produced by the height scanner and find the closest
         # ray hit in XY to each front hip. This gives a per-front-hip ground z estimate
@@ -490,7 +490,6 @@ class LocomotionEnv(DirectRLEnv):
         commando_front_hip_height_error_mapped = torch.exp(-front_hip_height_error / 0.01)
         
 
-
         # linear velocity tracking
         lin_vel_error = torch.sum(torch.square(self._commands[:, :2] - self._robot.data.root_lin_vel_b[:, :2]), dim=1)
         lin_vel_error_mapped = torch.exp(-lin_vel_error / 0.25)
@@ -502,6 +501,7 @@ class LocomotionEnv(DirectRLEnv):
 
         # flat orientation
         #base_orientation = torch.sum(torch.square(self._robot.data.projected_gravity_b[:, :2]), dim=1)
+
 
         # terrain orientation
         height_map_resolution = self._height_scanner.cfg.pattern_cfg.resolution
@@ -538,12 +538,12 @@ class LocomotionEnv(DirectRLEnv):
         # TODO check if we need roll in base frame
         
 
-
         root_roll_w, root_pitch_w, _ = math_utils.euler_xyz_from_quat(self._robot.data.root_quat_w)
         root_roll_w = torch.atan2(torch.sin(root_roll_w), torch.cos(root_roll_w))
         root_pitch_w = torch.atan2(torch.sin(root_pitch_w), torch.cos(root_pitch_w))
         
         base_orientation =  torch.square(terrain_pitch - root_pitch_w)# + torch.square(terrain_roll - root_roll_w)
+
 
         # commando orientation (front roll only)
         commando_base_orientation = torch.square(terrain_roll - root_roll_w)
@@ -560,6 +560,22 @@ class LocomotionEnv(DirectRLEnv):
         # action rate
         action_rate = torch.sum(torch.square(self._actions - self._previous_actions), dim=1)
         action_smoothness = torch.sum(torch.square(self._actions - 2*self._previous_actions + self._previous_previous_actions), dim=1)
+        
+        
+        # Commando (front-only) action metrics: consider only FL and FR joints across hip/thigh/calf
+        # Joint ordering: hips[0:4]=[FL,FR,RL,RR], thighs[4:8]=[FL,FR,RL,RR], calves[8:12]=[FL,FR,RL,RR]
+        front_action_indices = [0, 1, 4, 5, 8, 9]
+        commando_action_rate = torch.sum(
+            torch.square(self._actions[:, front_action_indices] - self._previous_actions[:, front_action_indices]), dim=1
+        )
+        commando_action_smoothness = torch.sum(
+            torch.square(
+                self._actions[:, front_action_indices]
+                - 2 * self._previous_actions[:, front_action_indices]
+                + self._previous_previous_actions[:, front_action_indices]
+            ),
+            dim=1,
+        )
         
         
         # undersired contacts
@@ -596,7 +612,6 @@ class LocomotionEnv(DirectRLEnv):
         # joint torques
         joints_torques = torch.sum(torch.square(self._robot.data.applied_torque), dim=1)
 
-
         
         # commando joint torques (front legs only across all joint types)
         # Joint layout is grouped by type across legs:
@@ -615,11 +630,8 @@ class LocomotionEnv(DirectRLEnv):
         commando_joints_torques = torch.sum(torch.square(commando_front_only_torques), dim=1)
         
 
-
-
         # energy = torque * velocity
         joints_energy = torch.sum(torch.abs(self._robot.data.applied_torque * self._robot.data.joint_vel), dim=1)
-
 
         
         # commando joint energy (front legs only across all joint types)
@@ -633,7 +645,6 @@ class LocomotionEnv(DirectRLEnv):
         )
         commando_joints_energy = torch.sum(torch.abs(commando_front_only_torques * commando_front_only_joint_vel), dim=1)
         
-
         
         # hip position
         hip_joints_position = self._robot.data.joint_pos[:,0:4]
@@ -907,8 +918,8 @@ class LocomotionEnv(DirectRLEnv):
             "track_ang_vel_z_exp": yaw_rate_error_mapped * self.cfg.yaw_rate_reward_scale * self.step_dt,
 
             "undesired_contacts": contacts * self.cfg.undersired_contact_reward_scale * self.step_dt * (1.0 - back_failed_flag),
-            "action_rate_l2": action_rate * self.cfg.action_rate_reward_scale * self.step_dt,
-            "action_smoothness_l2": action_smoothness * self.cfg.action_smoothness_reward_scale * self.step_dt,
+            "action_rate_l2": action_rate * self.cfg.action_rate_reward_scale * self.step_dt * (1.0 - back_failed_flag),
+            "action_smoothness_l2": action_smoothness * self.cfg.action_smoothness_reward_scale * self.step_dt * (1.0 - back_failed_flag),
 
             "joints_hip_pos_l2": hip_joints_position_reward * self.cfg.joints_hip_position_reward_scale * self.step_dt * (1.0 - back_failed_flag),
             "joints_thigh_pos_l2": thigh_joints_position_reward * self.cfg.joints_thigh_position_reward_scale * self.step_dt * (1.0 - back_failed_flag),
@@ -944,6 +955,8 @@ class LocomotionEnv(DirectRLEnv):
             "commando_joints_hip_pos_l2": commando_hip_joints_position_reward * self.cfg.commando_joints_hip_position_reward_scale * self.step_dt * back_failed_flag,
             "commando_joints_thigh_pos_l2": commando_thigh_joints_position_reward * self.cfg.commando_joints_thigh_position_reward_scale * self.step_dt * back_failed_flag,
             "commando_joints_calf_pos_l2": commando_calf_joints_position_reward * self.cfg.commando_joints_calf_position_reward_scale * self.step_dt * back_failed_flag,
+            "commando_action_rate_l2": commando_action_rate * self.cfg.commando_action_rate_reward_scale * self.step_dt * back_failed_flag,
+            "commando_action_smoothness_l2": commando_action_smoothness * self.cfg.commando_action_smoothness_reward_scale * self.step_dt * back_failed_flag,
             # Use front-hip height error (mapped) as the single height tracking reward
             "commando_track_height_exp": commando_front_hip_height_error_mapped * self.cfg.commando_front_hip_height_reward_scale * self.step_dt * back_failed_flag,
             
