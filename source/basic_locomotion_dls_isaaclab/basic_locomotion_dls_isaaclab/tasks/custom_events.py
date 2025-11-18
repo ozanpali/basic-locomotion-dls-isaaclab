@@ -185,7 +185,7 @@ def scale_joint_torque(
     asset_cfg: SceneEntityCfg,
     scale: float = 1.0,
 ):
-    """
+    
     #"#"#"
     #Scale joint efforts for selected joints and update a per-leg, per-joint activation mask.
 
@@ -292,4 +292,4 @@ def scale_joint_torque(
     except Exception:
         # do not break the event on tracking failure
         pass
-        """
+        
