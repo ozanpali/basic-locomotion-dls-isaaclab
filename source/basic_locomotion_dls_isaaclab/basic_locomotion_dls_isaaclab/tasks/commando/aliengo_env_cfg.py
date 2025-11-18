@@ -364,7 +364,7 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     # Desired tracking variables
     desired_base_height = 0.35
     # Desired front-hip height above local terrain (used for commando front-hip tracking)
-    desired_front_hip_height = 0.35
+    desired_front_hip_height = 0.25
     desired_feet_height = 0.05
 
     # Desired clip actions
