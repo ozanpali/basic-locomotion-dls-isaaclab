@@ -1033,9 +1033,22 @@ class LocomotionEnv(DirectRLEnv):
         
         # Sample new commands
         self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-1.0, 1.0)
+        # Per-command base scaling
         self._commands[env_ids, 0] *= 0.5
         self._commands[env_ids, 1] *= 0.25 
         self._commands[env_ids, 2] *= 0.3 
+        # If this env has rear legs disabled for the episode (failure type == 1),
+        # further reduce commanded magnitudes by 0.5 for those envs only.
+        try:
+            # self._failure_type persists per-env from earlier sampling in this reset
+            if hasattr(self, "_failure_type"):
+                rear_failed_subset = self._failure_type[env_ids] == 1
+                if torch.any(rear_failed_subset):
+                    # apply to first 3 command channels only
+                    self._commands[env_ids[rear_failed_subset], :3] *= 0.5
+        except Exception:
+            # Non-fatal: keep original commands if anything goes wrong
+            pass
 
         # Reset swing peak
         self._swing_peak[env_ids] = torch.tensor([0.0, 0.0, 0.0, 0.0], device=self.device)
@@ -1377,6 +1390,15 @@ class LocomotionEnv(DirectRLEnv):
         commands_resample[:, 0] *= 0.5
         commands_resample[:, 1] *= 0.25 
         commands_resample[:, 2] *= 0.3 
+        # Further scale resampled commands for envs with rear-leg failure
+        try:
+            if hasattr(self, "_failure_type"):
+                rear_failed_all = (self._failure_type == 1)
+                if torch.any(rear_failed_all):
+                    commands_resample[rear_failed_all, :3] *= 0.5
+        except Exception:
+            pass
+
         self._commands[:, :3] = self._commands[:, :3] * ~resample_time.unsqueeze(1).expand(-1, 3) + commands_resample * resample_time.unsqueeze(1).expand(-1, 3)
 
         # Stop
@@ -1392,6 +1414,15 @@ class LocomotionEnv(DirectRLEnv):
         commands_resample_2[:, 0] *= 0.5
         commands_resample_2[:, 1] *= 0.25 
         commands_resample_2[:, 2] *= 0.3 
+        # Further scale resampled commands for envs with rear-leg failure
+        try:
+            if hasattr(self, "_failure_type"):
+                rear_failed_all = (self._failure_type == 1)
+                if torch.any(rear_failed_all):
+                    commands_resample_2[rear_failed_all, :3] *= 0.5
+        except Exception:
+            pass
+
         self._commands[:, :3] = self._commands[:, :3] * ~resample_time_2.unsqueeze(1).expand(-1, 3) + commands_resample_2 * resample_time_2.unsqueeze(1).expand(-1, 3)        
 
         # Took some envs, and put to zero the vel
