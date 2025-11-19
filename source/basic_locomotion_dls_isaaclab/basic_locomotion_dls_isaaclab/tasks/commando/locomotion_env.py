@@ -834,8 +834,23 @@ class LocomotionEnv(DirectRLEnv):
 
 
         # Commando version of feet-to-hip distance: use only front legs (FL, FR), exclude back legs (RL, RR)
-        commando_front_dist_mean = per_leg_dist[:, 0:2].mean(dim=1)
-        commando_feet_to_hip_distance = -commando_front_dist_mean
+        # Keep commando front feet 1cm back of hip position (towards back leg)
+        try:
+            #print("Computing commando feet-to-hip distance.")
+            # create a small backward offset (in meters) for front legs only
+            back_offset = torch.tensor([-0.01, -0.01, 0.0, 0.0], device=self.device)
+            commando_desired_hip_offset = desired_hip_offset + back_offset
+            # compute per-leg distances using the commando desired hip offset for the y component
+            commando_delta_x = feet_to_base_h[:, 0] - hip_to_base_h[:, 0]
+            commando_delta_y = feet_to_base_h[:, 1] + commando_desired_hip_offset.unsqueeze(0) - hip_to_base_h[:, 1]
+            commando_per_leg_dist = torch.sqrt(commando_delta_x.pow(2) + commando_delta_y.pow(2))
+            commando_front_dist_mean = commando_per_leg_dist[:, 0:2].mean(dim=1)
+            commando_feet_to_hip_distance = -commando_front_dist_mean
+        except Exception:
+            #print("Error computing commando feet-to-hip distance.")
+            # Fallback to original front-only mean if anything goes wrong
+            commando_front_dist_mean = per_leg_dist[:, 0:2].mean(dim=1)
+            commando_feet_to_hip_distance = -commando_front_dist_mean
         
 
         # Penalize feet hitting vertical surfaces  
@@ -1037,6 +1052,7 @@ class LocomotionEnv(DirectRLEnv):
         self._commands[env_ids, 0] *= 0.5
         self._commands[env_ids, 1] *= 0.25 
         self._commands[env_ids, 2] *= 0.3 
+        """
         # If this env has rear legs disabled for the episode (failure type == 1),
         # further reduce commanded magnitudes by 0.5 for those envs only.
         try:
@@ -1049,6 +1065,7 @@ class LocomotionEnv(DirectRLEnv):
         except Exception:
             # Non-fatal: keep original commands if anything goes wrong
             pass
+        """
 
         # Reset swing peak
         self._swing_peak[env_ids] = torch.tensor([0.0, 0.0, 0.0, 0.0], device=self.device)
@@ -1307,6 +1324,7 @@ class LocomotionEnv(DirectRLEnv):
             # Legs: RL=2, RR=3; Joints: hip=0, thigh=1, calf=2
             self._torque_scaled_mask_per_leg_joint[rear_failed_envs, 2, :] = 1.0
             self._torque_scaled_mask_per_leg_joint[rear_failed_envs, 3, :] = 1.0
+            """
             # Also attempt to apply actuator-side torque scaling (set efforts -> 0.0) for rear joints
             # Use the shared helper in tasks.custom_events.scale_joint_torque when available so
             # actuator.compute is patched in a consistent way across the codebase.
@@ -1340,6 +1358,7 @@ class LocomotionEnv(DirectRLEnv):
             except Exception:
                 # Do not break reset flow if scaling helper is unavailable or errors occur
                 pass
+            """
         # Restore defaults for non-failed envs
         if torch.any(~rear_failed_mask):
             normal_envs = env_ids[~rear_failed_mask]
@@ -1351,6 +1370,7 @@ class LocomotionEnv(DirectRLEnv):
             if hasattr(self, "_torque_scaled_mask_per_leg_joint"):
                 self._torque_scaled_mask_per_leg_joint[normal_envs, 2, :] = 0.0
                 self._torque_scaled_mask_per_leg_joint[normal_envs, 3, :] = 0.0
+            """
             # Also attempt to restore actuator-side torque scaling (set efforts -> 1.0) for rear joints
             try:
                 try:
@@ -1378,6 +1398,7 @@ class LocomotionEnv(DirectRLEnv):
             except Exception:
                 # Non-fatal: don't interrupt reset if scaling helper is unavailable or errors occur
                 pass
+            """
         # ------------------------------------------------------------------
 
 
@@ -1390,6 +1411,7 @@ class LocomotionEnv(DirectRLEnv):
         commands_resample[:, 0] *= 0.5
         commands_resample[:, 1] *= 0.25 
         commands_resample[:, 2] *= 0.3 
+        """
         # Further scale resampled commands for envs with rear-leg failure
         try:
             if hasattr(self, "_failure_type"):
@@ -1398,7 +1420,7 @@ class LocomotionEnv(DirectRLEnv):
                     commands_resample[rear_failed_all, :3] *= 0.5
         except Exception:
             pass
-
+        """
         self._commands[:, :3] = self._commands[:, :3] * ~resample_time.unsqueeze(1).expand(-1, 3) + commands_resample * resample_time.unsqueeze(1).expand(-1, 3)
 
         # Stop
@@ -1414,6 +1436,7 @@ class LocomotionEnv(DirectRLEnv):
         commands_resample_2[:, 0] *= 0.5
         commands_resample_2[:, 1] *= 0.25 
         commands_resample_2[:, 2] *= 0.3 
+        """
         # Further scale resampled commands for envs with rear-leg failure
         try:
             if hasattr(self, "_failure_type"):
@@ -1422,7 +1445,7 @@ class LocomotionEnv(DirectRLEnv):
                     commands_resample_2[rear_failed_all, :3] *= 0.5
         except Exception:
             pass
-
+        """
         self._commands[:, :3] = self._commands[:, :3] * ~resample_time_2.unsqueeze(1).expand(-1, 3) + commands_resample_2 * resample_time_2.unsqueeze(1).expand(-1, 3)        
 
         # Took some envs, and put to zero the vel
