@@ -1324,7 +1324,7 @@ class LocomotionEnv(DirectRLEnv):
             # Legs: RL=2, RR=3; Joints: hip=0, thigh=1, calf=2
             self._torque_scaled_mask_per_leg_joint[rear_failed_envs, 2, :] = 1.0
             self._torque_scaled_mask_per_leg_joint[rear_failed_envs, 3, :] = 1.0
-            """
+            
             # Also attempt to apply actuator-side torque scaling (set efforts -> 0.0) for rear joints
             # Use the shared helper in tasks.custom_events.scale_joint_torque when available so
             # actuator.compute is patched in a consistent way across the codebase.
@@ -1358,7 +1358,7 @@ class LocomotionEnv(DirectRLEnv):
             except Exception:
                 # Do not break reset flow if scaling helper is unavailable or errors occur
                 pass
-            """
+            
         # Restore defaults for non-failed envs
         if torch.any(~rear_failed_mask):
             normal_envs = env_ids[~rear_failed_mask]
@@ -1370,7 +1370,7 @@ class LocomotionEnv(DirectRLEnv):
             if hasattr(self, "_torque_scaled_mask_per_leg_joint"):
                 self._torque_scaled_mask_per_leg_joint[normal_envs, 2, :] = 0.0
                 self._torque_scaled_mask_per_leg_joint[normal_envs, 3, :] = 0.0
-            """
+            
             # Also attempt to restore actuator-side torque scaling (set efforts -> 1.0) for rear joints
             try:
                 try:
@@ -1398,7 +1398,7 @@ class LocomotionEnv(DirectRLEnv):
             except Exception:
                 # Non-fatal: don't interrupt reset if scaling helper is unavailable or errors occur
                 pass
-            """
+            
         # ------------------------------------------------------------------
 
 
