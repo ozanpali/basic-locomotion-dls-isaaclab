@@ -1116,7 +1116,7 @@ class LocomotionEnv(DirectRLEnv):
         # 0: no failure, 1: FL failure (thigh + calf only; hip remains unscaled)
         # Sample independent 2-way failures per env: 0 (no failure) or 1 (rear failure)
         # Optional probability control via cfg.rear_failure_prob (default 0.5)
-        p_rear_fail = float(getattr(self.cfg, "rear_failure_prob", 1.0))
+        p_rear_fail = float(getattr(self.cfg, "rear_failure_prob", 0.5))
         p_rear_fail = max(0.0, min(1.0, p_rear_fail))
         if p_rear_fail in (0.0, 1.0):
             fail_type = torch.full((len(env_ids),), int(p_rear_fail), dtype=torch.long, device=self.device)
