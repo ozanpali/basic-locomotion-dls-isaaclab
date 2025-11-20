@@ -374,10 +374,10 @@ class LocomotionEnv(DirectRLEnv):
         # Append back-failed flag as one-hot to the observation instead of per-leg flags
         # back_failed_flag: 1 if any of RL/RR legs are torque-scaled, else 0
         # One-hot shape: [num_envs, 2] -> [no_back_fail, back_fail]
-        leg_any_scaled_bool = (self._torque_scaled_mask_per_leg_joint.max(dim=2).values > 0.0)
-        back_failed_flag_obs = (leg_any_scaled_bool[:, 2] & leg_any_scaled_bool[:, 3]).to(torch.long)
-        back_failed_onehot = torch.nn.functional.one_hot(back_failed_flag_obs, num_classes=2).to(dtype=obs.dtype, device=obs.device)
-        obs = torch.cat((obs, back_failed_onehot), dim=-1)
+        #leg_any_scaled_bool = (self._torque_scaled_mask_per_leg_joint.max(dim=2).values > 0.0)
+        #back_failed_flag_obs = (leg_any_scaled_bool[:, 2] & leg_any_scaled_bool[:, 3]).to(torch.long)
+        #back_failed_onehot = torch.nn.functional.one_hot(back_failed_flag_obs, num_classes=2).to(dtype=obs.dtype, device=obs.device)
+        #obs = torch.cat((obs, back_failed_onehot), dim=-1)
         #print("Back-failed onehot added to obs:", back_failed_onehot[0].cpu().numpy())  #Back-failed onehot added to obs: [0. 1.]
 
 
@@ -1625,7 +1625,7 @@ class LocomotionEnv(DirectRLEnv):
         delta_z = mean_height_ray_front - mean_height_ray_back
         delta_s = torch.tensor(distance_between_front_and_back).to(self.device)
         terrain_pitch = -torch.atan2(delta_z, delta_s)
-
+        
         obs_privileged = torch.cat(( 
                             #hip_stiffness/default_stiffness, thigh_stiffness/default_stiffness, calf_stiffness/default_stiffness, #P gain
                             #hip_damping/default_damping, thigh_damping/default_damping, calf_damping/default_damping, #D gain
@@ -1637,4 +1637,10 @@ class LocomotionEnv(DirectRLEnv):
                             #hip_armature, thigh_armature, calf_armature
                             ) 
                         , dim=-1)
+
+        leg_any_scaled_bool = (self._torque_scaled_mask_per_leg_joint.max(dim=2).values > 0.0)
+        back_failed_flag_obs = (leg_any_scaled_bool[:, 2] & leg_any_scaled_bool[:, 3]).to(torch.long)
+        back_failed_onehot = torch.nn.functional.one_hot(back_failed_flag_obs, num_classes=2).to(dtype=obs_privileged.dtype, device=obs_privileged.device)
+        obs_privileged = torch.cat((obs_privileged, back_failed_onehot), dim=-1)
+
         return obs_privileged

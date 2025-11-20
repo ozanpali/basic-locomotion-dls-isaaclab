@@ -284,7 +284,7 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
         #state_space += 12 # armature
         #state_space += 1 # restitution
         state_space += 2 #base pitch and height
-        state_space += 4 # per-leg torque-scale failure flags (FL, FR, RL, RR)
+        state_space += 2 #back_failed one-hot (2)
 
     use_amp = False
 
