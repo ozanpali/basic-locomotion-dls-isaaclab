@@ -1301,6 +1301,8 @@ class LocomotionEnv(DirectRLEnv):
 
         # Persist failure type for these envs until next reset
         self._failure_type[env_ids] = fail_type
+        #print("Assigned failure types for reset envs:", fail_type.tolist())
+        #print("_failure_type: " + str(self._failure_type.tolist()))
 
         # DEBUG override (temporary): force each reset env to either failure
         # code 3 or 0. This is useful during development to inspect mask/flag
@@ -1319,12 +1321,12 @@ class LocomotionEnv(DirectRLEnv):
         self._failure_type[env_ids] = fail_type"""
 
 
-        # Debug override: force all reset envs to a single failure code.
+        """# Debug override: force all reset envs to a single failure code.
         # Set to 6 to exercise FL thigh+calf failure (mapping: _set(fail_type == 6, 0, [1,2])).
         # Replace or remove this forced assignment when sampling should be active.
         forced = torch.full((len(env_ids),), 27, dtype=torch.long, device=self.device)
         fail_type = forced
-        self._failure_type[env_ids] = fail_type
+        self._failure_type[env_ids] = fail_type"""
 
         
         # Enforce per-leg, per-joint masks according to the chosen code.
