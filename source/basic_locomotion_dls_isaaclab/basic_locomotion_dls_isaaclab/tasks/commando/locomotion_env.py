@@ -379,14 +379,13 @@ class LocomotionEnv(DirectRLEnv):
         # obs = torch.cat((obs, leg_any_scaled), dim=-1)
 
         
-        # Append back-failed flag as one-hot to the observation instead of per-leg flags
-        # back_failed_flag: 1 if any of RL/RR legs are torque-scaled, else 0
-        # One-hot shape: [num_envs, 2] -> [no_back_fail, back_fail]
-        leg_any_scaled_bool = (self._torque_scaled_mask_per_leg_joint.max(dim=2).values > 0.0)
-        back_failed_flag_obs = (leg_any_scaled_bool[:, 2] & leg_any_scaled_bool[:, 3]).to(torch.long)
-        back_failed_onehot = torch.nn.functional.one_hot(back_failed_flag_obs, num_classes=2).to(dtype=obs.dtype, device=obs.device)
-        obs = torch.cat((obs, back_failed_onehot), dim=-1)
-        #print("Back-failed onehot added to obs:", back_failed_onehot[0].cpu().numpy())  #Back-failed onehot added to obs: [0. 1.]
+        # Append the full failure-type one-hot (30 codes: 0..29) to the policy observation.
+        # This provides per-environment explicit failure code information to the policy.
+        # self._failure_type is persisted per-env in _reset_idx and contains integers in [0,29].
+        failure_onehot = torch.nn.functional.one_hot(self._failure_type, num_classes=30).to(dtype=obs.dtype, device=obs.device)
+        obs = torch.cat((obs, failure_onehot), dim=-1)
+        #print("Back-failed onehot added to obs:", failure_onehot[0].cpu().numpy())  #onehot added to obs: [0. 1.]
+
 
 
         # Final observations dictionary
@@ -1234,19 +1233,208 @@ class LocomotionEnv(DirectRLEnv):
         self.extras["log"].update(extras)
 
         # --- Apply per-episode randomized leg failure mask (torque scaling) ---
-        # Two-way failure sampling:
-        # 0: no failure, 1: FL failure (thigh + calf only; hip remains unscaled)
-        # Sample independent 2-way failures per env: 0 (no failure) or 1 (rear failure)
-        # Optional probability control via cfg.rear_failure_prob (default 0.5)
-        p_rear_fail = float(getattr(self.cfg, "rear_failure_prob", 0.5))
-        p_rear_fail = max(0.0, min(1.0, p_rear_fail))
-        if p_rear_fail in (0.0, 1.0):
-            fail_type = torch.full((len(env_ids),), int(p_rear_fail), dtype=torch.long, device=self.device)
+        # We now support a rich set of failure types (0..29) describing which
+        # leg and which joint(s) are torque-scaled for the entire episode.
+        # By default we sample uniformly among [0..29] for envs in this reset.
+        # Optionally the user can provide `cfg.failure_type_probs` as an iterable
+        # of length 30 summing to 1.0 to control sampling probabilities.
+        num_types = 30
+        probs_cfg = getattr(self.cfg, "failure_type_probs", None)
+        if probs_cfg is not None:
+            try:
+                probs = torch.as_tensor(list(probs_cfg), dtype=torch.float, device=self.device)
+                if probs.numel() == num_types and probs.sum() > 0:
+                    probs = probs / probs.sum()
+                    # sample per-env according to probs
+                    # multinomial expects rows = batches; expand to (len(env_ids), num_types)
+                    fail_type = torch.multinomial(probs.unsqueeze(0).expand(len(env_ids), -1), 1).squeeze(1).to(torch.long)
+                else:
+                    fail_type = torch.randint(0, num_types, (len(env_ids),), device=self.device)
+            except Exception:
+                fail_type = torch.randint(0, num_types, (len(env_ids),), device=self.device)
         else:
-            fail_type = (torch.rand(len(env_ids), device=self.device) < p_rear_fail).to(torch.long)
+            # uniform sampling across failure types
+            fail_type = torch.randint(0, num_types, (len(env_ids),), device=self.device)
+
         # Persist failure type for these envs until next reset
         self._failure_type[env_ids] = fail_type
 
+        # DEBUG override (temporary): force each reset env to either failure
+        # code 3 or 0. This is useful during development to inspect mask/flag
+        # behavior for code 3 specifically while leaving some envs intact.
+        # Remove or gate this before running production training.
+        """# Force all reset envs to failure type 6 for debugging/inspection.
+        # NOTE: this is a temporary debug override — remove or gate this
+        # before running production training.
+        forced = torch.full((len(env_ids),), 6, dtype=torch.long, device=self.device)"""
+        # Per-env random choice between 0 and 3. Multiply a {0,1} randint by 3
+        # to produce values in {0,3} with equal probability.
+        forced = (torch.randint(0, 2, (len(env_ids),), device=self.device) * 29).to(torch.long)
+        fail_type = forced
+        self._failure_type[env_ids] = fail_type
+
+        
+        # Enforce per-leg, per-joint masks according to the chosen code.
+        # Joint indices: 0=hip, 1=thigh, 2=calf
+        if not hasattr(self, "_torque_scaled_mask_per_leg_joint"):
+            self._torque_scaled_mask_per_leg_joint = torch.zeros(
+                (self.num_envs, 4, 3), dtype=torch.float, device=self.device
+            )
+
+        # Clear any prior mask for the envs being reset
+        self._torque_scaled_mask_per_leg_joint[env_ids, :, :] = 0.0
+
+        # Helper to set joints for a given leg index and env subset
+        def _set(env_mask, leg_idx, joint_idxs):
+            if not env_mask.any():
+                return
+            envs_sel = env_ids[env_mask]
+            # Map leg_idx and joint_idxs to joint names (e.g. "RL_hip_joint")
+            leg_prefixes = ["FL", "FR", "RL", "RR"]
+            joint_name_map = {0: "hip", 1: "thigh", 2: "calf"}
+            joint_names = [f"{leg_prefixes[leg_idx]}_{joint_name_map[j]}_joint" for j in joint_idxs]
+
+            # Prefer the shared helper which patches actuators and updates the mask
+            try:
+                from ..custom_events import scale_joint_torque
+            except Exception:
+                from basic_locomotion_dls_isaaclab.tasks.custom_events import scale_joint_torque
+
+            # First ensure actuator scaling is reset to 1.0 for these envs (explicitly for all leg joints)
+            # Make joint selection explicit: pass joint_ids=slice(None) to indicate all joints
+            try:
+                all_leg_names = [
+                    "FL_hip_joint", "FL_thigh_joint", "FL_calf_joint",
+                    "FR_hip_joint", "FR_thigh_joint", "FR_calf_joint",
+                    "RL_hip_joint", "RL_thigh_joint", "RL_calf_joint",
+                    "RR_hip_joint", "RR_thigh_joint", "RR_calf_joint",
+                ]
+                scale_joint_torque(
+                    env=self,
+                    env_ids=envs_sel,
+                    asset_cfg=SceneEntityCfg(name="robot", joint_ids=slice(None), joint_names=all_leg_names),
+                    scale=1.0,
+                )
+            except Exception:
+                # non-fatal; continue to attempt to set the specific joints
+                print("Warning: could not reset all leg joint torque scaling to 1.0")
+                pass
+
+            # Now apply zero-scaling to the requested joint names for the selected envs.
+            # IMPORTANT: resolve exact joint ids for each joint name so we don't accidentally
+            # scale entire actuators (which own multiple leg joints). scale_joint_torque
+            # uses asset_cfg.joint_ids to limit which specific joint indices are written.
+            joint_ids_list = []
+            for jn in joint_names:
+                try:
+                    ids, _ = self._robot.find_joints(fr"^{jn}$")
+                except Exception:
+                    ids = None
+                if ids is None:
+                    continue
+                if isinstance(ids, torch.Tensor):
+                    # pick the first matching id (exact name match should give one)
+                    if ids.numel() > 0:
+                        joint_ids_list.extend([int(x) for x in ids.view(-1).tolist()])
+                elif isinstance(ids, (list, tuple)):
+                    joint_ids_list.extend([int(x) for x in ids])
+                else:
+                    try:
+                        joint_ids_list.append(int(ids))
+                    except Exception:
+                        pass
+
+            # Deduplicate while preserving order
+            seen = set()
+            joint_ids_unique = []
+            for x in joint_ids_list:
+                if x not in seen:
+                    seen.add(x)
+                    joint_ids_unique.append(x)
+
+            if len(joint_ids_unique) > 0:
+                scale_joint_torque(
+                    env=self,
+                    env_ids=envs_sel,
+                    asset_cfg=SceneEntityCfg(name="robot", joint_ids=joint_ids_unique, joint_names=joint_names),
+                    scale=0.0,
+                )
+            else:
+                # If we couldn't resolve joint ids, fall back to name-only call (best-effort)
+                scale_joint_torque(
+                    env=self,
+                    env_ids=envs_sel,
+                    asset_cfg=SceneEntityCfg(name="robot", joint_names=joint_names),
+                    scale=0.0,
+                )
+
+
+        # Map codes to masks (explicit for clarity)
+        # FL codes: 1..7
+        _set(fail_type == 1, 0, [0])            # FL hip
+        _set(fail_type == 2, 0, [1])            # FL thigh
+        _set(fail_type == 3, 0, [2])            # FL calf
+        _set(fail_type == 4, 0, [0, 1])         # FL hip+thigh
+        _set(fail_type == 5, 0, [0, 2])         # FL hip+calf
+        _set(fail_type == 6, 0, [1, 2])         # FL thigh+calf (new)
+        _set(fail_type == 7, 0, [0, 1, 2])      # FL hip+thigh+calf
+
+        # FR codes: 8..14 (offset +7)
+        _set(fail_type == 8, 1, [0])
+        _set(fail_type == 9, 1, [1])
+        _set(fail_type == 10, 1, [2])
+        _set(fail_type == 11, 1, [0, 1])
+        _set(fail_type == 12, 1, [0, 2])
+        _set(fail_type == 13, 1, [1, 2])
+        _set(fail_type == 14, 1, [0, 1, 2])
+
+        # RL codes: 15..21 (offset +14)
+        _set(fail_type == 15, 2, [0])
+        _set(fail_type == 16, 2, [1])
+        _set(fail_type == 17, 2, [2])
+        _set(fail_type == 18, 2, [0, 1])
+        _set(fail_type == 19, 2, [0, 2])
+        _set(fail_type == 20, 2, [1, 2])
+        _set(fail_type == 21, 2, [0, 1, 2])
+
+        # RR codes: 22..28 (offset +21)
+        _set(fail_type == 22, 3, [0])
+        _set(fail_type == 23, 3, [1])
+        _set(fail_type == 24, 3, [2])
+        _set(fail_type == 25, 3, [0, 1])
+        _set(fail_type == 26, 3, [0, 2])
+        _set(fail_type == 27, 3, [1, 2])
+        _set(fail_type == 28, 3, [0, 1, 2])
+
+        # Both rear legs full failure: 29 -> RL & RR all joints
+        if (fail_type == 29).any():
+            envs_rear_both = env_ids[fail_type == 29]
+            self._torque_scaled_mask_per_leg_joint[envs_rear_both, 2, :] = 1.0
+            self._torque_scaled_mask_per_leg_joint[envs_rear_both, 3, :] = 1.0
+
+        # Restore actuator scaling and clear masks for envs with NO failure (code 0)
+        if (fail_type == 0).any():
+            envs_none = env_ids[fail_type == 0]
+            # Clear mask entries for these envs
+            self._torque_scaled_mask_per_leg_joint[envs_none, :, :] = 0.0
+            # Try to restore actuator-side scaling to 1.0 for all leg joints
+            try:
+                from ..custom_events import scale_joint_torque
+            except Exception:
+                from basic_locomotion_dls_isaaclab.tasks.custom_events import scale_joint_torque
+
+            all_leg_names = [
+                "FL_hip_joint", "FL_thigh_joint", "FL_calf_joint",
+                "FR_hip_joint", "FR_thigh_joint", "FR_calf_joint",
+                "RL_hip_joint", "RL_thigh_joint", "RL_calf_joint",
+                "RR_hip_joint", "RR_thigh_joint", "RR_calf_joint",
+            ]
+            scale_joint_torque(
+                env=self,
+                env_ids=envs_none,
+                asset_cfg=SceneEntityCfg(name="robot", joint_names=all_leg_names),
+                scale=1.0,
+                )
         # Always assign NO failure (code 0) for every env in env_ids
         #fail_type = torch.zeros(len(env_ids), device=self.device, dtype=torch.long)
         #self._failure_type[env_ids] = fail_type
@@ -1280,10 +1468,26 @@ class LocomotionEnv(DirectRLEnv):
 
                 max_fail = int(max(global_fail_list)) if len(global_fail_list) > 0 else 0
 
-                # Build a single-line failure-type string across all envs, one digit per env
-                # Each character is the failure type for that env (e.g. '0','1',...)
-                fail_digits = [str(int(global_fail_list[i])) if i < len(global_fail_list) else "0" for i in range(n_envs)]
-                fail_line = "".join(fail_digits)
+                # Build a single-line failure-type string across all envs.
+                # We format each failure code followed by a single space. For the
+                # reset_mask line we emit one space after each mask item when the
+                # failure code is single-digit and two spaces when the failure code
+                # is two-digit so columns align visually.
+                fail_entries = []
+                reset_mask_entries = []
+                for i in range(n_envs):
+                    code = int(global_fail_list[i]) if i < len(global_fail_list) else 0
+                    # fail_types: always single space separator
+                    fail_entries.append(f"{code} ")
+                    # reset_mask: leave 2 spaces when code is two-digit, else 1 space
+                    mask_char = "1" if i in env_set else "0"
+                    if code >= 10:
+                        reset_mask_entries.append(mask_char + "  ")
+                    else:
+                        reset_mask_entries.append(mask_char + " ")
+
+                fail_line = "".join(fail_entries).rstrip()
+                reset_mask = "".join(reset_mask_entries).rstrip()
 
                 # Build an informative env_ids string (compress if many or contiguous)
                 env_ids_list = env_ids_cpu if isinstance(env_ids_cpu, list) else list(env_ids_cpu)
@@ -1431,7 +1635,8 @@ class LocomotionEnv(DirectRLEnv):
         # Use the failure assignment sampled for THIS reset batch only
         # (don't touch envs outside env_ids; restore defaults only where current fail_type==0)
         failure_type_subset = fail_type  # shape: [len(env_ids)]
-        rear_failed_mask = failure_type_subset == 1
+        # Rear-both failure now uses code 29 (both RL & RR disabled)
+        rear_failed_mask = failure_type_subset == 29
         # Zero gains for rear-failed envs
         if torch.any(rear_failed_mask):
             rear_failed_envs = env_ids[rear_failed_mask]
