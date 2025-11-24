@@ -746,8 +746,37 @@ class LocomotionEnv(DirectRLEnv):
 
 
         # calf position
-        calf_joints_position = self._robot.data.joint_pos[:,8:12]
-        calf_joints_position_error = torch.square(calf_joints_position - self._robot.data.default_joint_pos[:,8:12])
+        calf_joints_position = self._robot.data.joint_pos[:, 8:12]
+        # Default calf target positions (per-env)
+        calf_target_positions = self._robot.data.default_joint_pos[:, 8:12].clone()
+
+        # Overwrite calf targets based on per-env failure_type.
+        # Failure code ranges:
+        # 1..7   -> FL (index 0)
+        # 8..14  -> FR (index 1)
+        # 15..21 -> RL (index 2)
+        # 22..28 -> RR (index 3)
+        # Use `self._failure_type` directly (it is assigned in _reset_idx before rewards are computed).
+        # Use the per-env failure_type and move it to the same device as the
+        # calf target tensor (unconditionally) to avoid a conditional branch.
+        ft = self._failure_type.to(device=calf_target_positions.device)
+
+        fl_mask = (ft >= 1) & (ft <= 7)
+        fr_mask = (ft >= 8) & (ft <= 14)
+        rl_mask = (ft >= 15) & (ft <= 21)
+        rr_mask = (ft >= 22) & (ft <= 28)
+
+        # Apply overrides where appropriate
+        if fl_mask.any():
+            calf_target_positions[fl_mask, 0] = -2.5
+        if fr_mask.any():
+            calf_target_positions[fr_mask, 1] = -2.5
+        if rl_mask.any():
+            calf_target_positions[rl_mask, 2] = -2.5
+        if rr_mask.any():
+            calf_target_positions[rr_mask, 3] = -2.5
+
+        calf_joints_position_error = torch.square(calf_joints_position - calf_target_positions)
         calf_joints_position_reward = torch.sum(calf_joints_position_error,dim=1)
 
 
@@ -943,17 +972,28 @@ class LocomotionEnv(DirectRLEnv):
         delta_x = feet_to_base_h[:, 0] - hip_to_base_h[:, 0]
         delta_y = feet_to_base_h[:, 1] + desired_hip_offset.unsqueeze(0) - hip_to_base_h[:, 1]
         per_leg_dist = torch.sqrt(delta_x.pow(2) + delta_y.pow(2))  # [N,4]
-        # # Exclude FL leg when its failure flag is active; otherwise include all legs
-        # include_mask = torch.ones(self.num_envs, 4, dtype=torch.bool, device=self.device)
-        # include_mask[:, 0] &= (leg_any_scaled_int[:, 0] == 0)
-        # include_mask_f = include_mask.float()
-        # # Compact, device-agnostic debug prints (env0 only)
-        # """try:
-        #     print("Leg any scaled int:", leg_any_scaled_int.tolist())
-        #     print("Include mask for feet_to_hip:", include_mask.tolist())
-        # except Exception:
-        #     pass"""
-        # feet_to_hip_distance = -((per_leg_dist * include_mask_f).sum(dim=1) / include_mask_f.sum(dim=1).clamp(min=1.0))
+        # Compute masked per-leg average distance excluding legs based on failure_type ranges:
+        #   FL excluded when failure_type in [1..7]
+        #   FR excluded when failure_type in [8..14]
+        #   RL excluded when failure_type in [15..21]
+        #   RR excluded when failure_type in [22..28]
+        include_mask = torch.ones(self.num_envs, 4, dtype=torch.bool, device=self.device)
+        # Use the failure-type masks computed earlier (ft -> fl_mask, fr_mask, rl_mask, rr_mask)
+        # Move them to the current device and apply directly. We remove the try/except
+        # to ensure deterministic behavior and fail fast on programming errors.
+        fl_mask_dev = fl_mask.to(device=self.device)
+        fr_mask_dev = fr_mask.to(device=self.device)
+        rl_mask_dev = rl_mask.to(device=self.device)
+        rr_mask_dev = rr_mask.to(device=self.device)
+
+        include_mask[:, 0] &= ~fl_mask_dev
+        include_mask[:, 1] &= ~fr_mask_dev
+        include_mask[:, 2] &= ~rl_mask_dev
+        include_mask[:, 3] &= ~rr_mask_dev
+
+        include_mask_f = include_mask.float()
+        # Compute masked average; avoid divide-by-zero by clamping denominator to 1.0
+        feet_to_hip_distance = -((per_leg_dist * include_mask_f).sum(dim=1) / include_mask_f.sum(dim=1).clamp(min=1.0))
 
 
         # Commando version of feet-to-hip distance: use only front legs (FL, FR), exclude back legs (RL, RR)
@@ -1958,4 +1998,8 @@ class LocomotionEnv(DirectRLEnv):
                             #hip_armature, thigh_armature, calf_armature
                             ) 
                         , dim=-1)
+
+        # Note: the explicit 6-way reward-case one-hot previously appended here
+        # has been moved to the policy observation as a full 30-way failure-type
+        # one-hot. Keep privileged observation focused on privileged sensor data.
         return obs_privileged
