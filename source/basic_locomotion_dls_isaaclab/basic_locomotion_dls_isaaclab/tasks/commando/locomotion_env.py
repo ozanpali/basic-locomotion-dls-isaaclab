@@ -426,14 +426,80 @@ class LocomotionEnv(DirectRLEnv):
 
         # Create a binary per-leg mask (0/1) indicating whether ANY joint on the leg has torque scaling active
         # Shape: [num_envs, 4]; dtype: int (for clear logical use); cast to float when multiplying with rewards
-        leg_any_scaled_int = (self._torque_scaled_mask_per_leg_joint.max(dim=2).values > 0.0).int()
+        leg_any_scaled_int = (self._torque_scaled_mask_per_leg_joint.max(dim=2).values > 0.0).int()  # torch.int, shape [num_envs, 4]
         # Compute a per-env gating factor that is 1.0 only when no leg is failed (no scaling active), else 0.0
         # Vectorized for GPU: product over legs of (1 - flag)
-        gating_factor = (1.0 - leg_any_scaled_int.float()).prod(dim=1)
+        gating_factor = (1.0 - leg_any_scaled_int.float()).prod(dim=1)  # torch.float, shape [num_envs]
+        # Explicit variable for "4-leg" mode: True when there is NO leg failure (all four legs active)
+        four_leg_active_bool = (leg_any_scaled_int.sum(dim=1) == 0)  # torch.bool tensor shape [num_envs]
+        four_leg_active = four_leg_active_bool.float()  # float version for reward scaling if needed
+        # NOTE: gating_factor == four_leg_active; kept both for clarity until refactor
+        # Front-left (FL) leg failure active (first index is 1)
+        fl_failed_bool = (leg_any_scaled_int[:, 0] > 0)  # torch.bool tensor shape [num_envs]
+        fl_failed = fl_failed_bool.float()  # float representation if needed for reward scaling
+        # Front-right (FR) leg failure active (second index)
+        fr_failed_bool = (leg_any_scaled_int[:, 1] > 0)  # torch.bool, shape [num_envs]
+        fr_failed = fr_failed_bool.float()  # torch.float, shape [num_envs]
+        # Rear-left (RL) leg failure active (third index)
+        rl_failed_bool = (leg_any_scaled_int[:, 2] > 0)  # torch.bool, shape [num_envs]
+        rl_failed = rl_failed_bool.float()  # torch.float, shape [num_envs]
+        # Rear-right (RR) leg failure active (fourth index)
+        rr_failed_bool = (leg_any_scaled_int[:, 3] > 0)  # torch.bool, shape [num_envs]
+        rr_failed = rr_failed_bool.float()  # torch.float, shape [num_envs]
+
+        # "Only" flags: true when this leg is failed AND all other legs are NOT failed
+        # These are useful to detect mutually-exclusive single-leg failure cases.
+        # Each *_only_failed_bool is a torch.bool tensor with shape [num_envs].
+        try:
+            fl_only_failed_bool = fl_failed_bool & ~(fr_failed_bool | rl_failed_bool | rr_failed_bool)  # torch.bool, shape [num_envs]
+            fr_only_failed_bool = fr_failed_bool & ~(fl_failed_bool | rl_failed_bool | rr_failed_bool)  # torch.bool, shape [num_envs]
+            rl_only_failed_bool = rl_failed_bool & ~(fl_failed_bool | fr_failed_bool | rr_failed_bool)  # torch.bool, shape [num_envs]
+            rr_only_failed_bool = rr_failed_bool & ~(fl_failed_bool | fr_failed_bool | rl_failed_bool)  # torch.bool, shape [num_envs]
+        except Exception:
+            # Fallback in case tensors are not boolean or shapes mismatch; coerce and compute safely
+            fl_only_failed_bool = (leg_any_scaled_int[:, 0] > 0) & (
+                (leg_any_scaled_int[:, 1] == 0) & (leg_any_scaled_int[:, 2] == 0) & (leg_any_scaled_int[:, 3] == 0)
+            )  # torch.bool, shape [num_envs]
+            fr_only_failed_bool = (leg_any_scaled_int[:, 1] > 0) & (
+                (leg_any_scaled_int[:, 0] == 0) & (leg_any_scaled_int[:, 2] == 0) & (leg_any_scaled_int[:, 3] == 0)
+            )  # torch.bool, shape [num_envs]
+            rl_only_failed_bool = (leg_any_scaled_int[:, 2] > 0) & (
+                (leg_any_scaled_int[:, 0] == 0) & (leg_any_scaled_int[:, 1] == 0) & (leg_any_scaled_int[:, 3] == 0)
+            )  # torch.bool, shape [num_envs]
+            rr_only_failed_bool = (leg_any_scaled_int[:, 3] > 0) & (
+                (leg_any_scaled_int[:, 0] == 0) & (leg_any_scaled_int[:, 1] == 0) & (leg_any_scaled_int[:, 2] == 0)
+            )  # torch.bool, shape [num_envs]
+
+        # Float versions for reward scaling/aggregation
+        # Each *_only_failed is a torch.float tensor with shape [num_envs].
+        fl_only_failed = fl_only_failed_bool.float()  # torch.float, shape [num_envs]
+        fr_only_failed = fr_only_failed_bool.float()  # torch.float, shape [num_envs]
+        rl_only_failed = rl_only_failed_bool.float()  # torch.float, shape [num_envs]
+        rr_only_failed = rr_only_failed_bool.float()  # torch.float, shape [num_envs]
+
+        # --- Per-environment reward case id (6 cases) ---
+        # Cases (int):
+        # 0 = all four legs active (no scaling)
+        # 1 = FL-only failed
+        # 2 = FR-only failed
+        # 3 = RL-only failed
+        # 4 = RR-only failed
+        # 5 = both rear legs failed (commando)
+        case_id = torch.full((self.num_envs,), 0, dtype=torch.long, device=self.device)
+        case_id[four_leg_active_bool] = 0
+        case_id[fl_only_failed_bool] = 1
+        case_id[fr_only_failed_bool] = 2
+        case_id[rl_only_failed_bool] = 3
+        case_id[rr_only_failed_bool] = 4
+        # rear-both (commando) takes precedence over single-leg flags where both rear legs are scaled
+        rear_both_mask = (leg_any_scaled_int[:, 2] > 0) & (leg_any_scaled_int[:, 3] > 0)
+        case_id[rear_both_mask] = 5
+        # store for debugging/inspection
+        self._reward_case = case_id
 
         # Flag that is 1.0 only if BOTH rear legs (RL and RR) are failed (torque-scaled), else 0.0
         # Rear leg indices are 2 (RL) and 3 (RR) in leg_any_scaled_int columns [FL, FR, RL, RR]
-        back_failed_flag = ((leg_any_scaled_int[:, 2] > 0) & (leg_any_scaled_int[:, 3] > 0)).float()
+        back_failed_flag = ((leg_any_scaled_int[:, 2] > 0) & (leg_any_scaled_int[:, 3] > 0)).float()  # torch.float, shape [num_envs]
 
         # track_height
         height_data_scanner = self._height_scanner.data.ray_hits_w[..., 2]
