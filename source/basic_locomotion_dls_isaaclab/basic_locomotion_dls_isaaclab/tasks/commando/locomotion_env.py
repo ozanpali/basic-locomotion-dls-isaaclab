@@ -489,11 +489,8 @@ class LocomotionEnv(DirectRLEnv):
             front_hip_height_above_ground_mean = torch.mean(front_hip_height_above_ground, dim=1)
 
         # Compute front-hip height error (desired - actual above-ground) and map it like base height
-        # Compute front-hip height error (desired - actual above-ground) and map it like base height
-        if hasattr(self.cfg, "desired_front_hip_height"):
-            desired_front = self.cfg.desired_front_hip_height
-        else:
-            desired_front = self.cfg.desired_base_height
+        # Use desired_front_hip_height from cfg explicitly. If missing, allow exception to surface.
+        desired_front = self.cfg.desired_front_hip_height
         front_hip_height_error = torch.square(desired_front - front_hip_height_above_ground_mean)
         commando_front_hip_height_error_mapped = torch.exp(-front_hip_height_error / 0.01)
         
@@ -896,22 +893,15 @@ class LocomotionEnv(DirectRLEnv):
 
         # Commando version of feet-to-hip distance: use only front legs (FL, FR), exclude back legs (RL, RR)
         # Keep commando front feet 1cm back of hip position (towards back leg)
-        try:
-            #print("Computing commando feet-to-hip distance.")
-            # create a small backward offset (in meters) for front legs only
-            back_offset = torch.tensor([-0.01, -0.01, 0.0, 0.0], device=self.device)
-            commando_desired_hip_offset = desired_hip_offset + back_offset
-            # compute per-leg distances using the commando desired hip offset for the y component
-            commando_delta_x = feet_to_base_h[:, 0] - hip_to_base_h[:, 0]
-            commando_delta_y = feet_to_base_h[:, 1] + commando_desired_hip_offset.unsqueeze(0) - hip_to_base_h[:, 1]
-            commando_per_leg_dist = torch.sqrt(commando_delta_x.pow(2) + commando_delta_y.pow(2))
-            commando_front_dist_mean = commando_per_leg_dist[:, 0:2].mean(dim=1)
-            commando_feet_to_hip_distance = -commando_front_dist_mean
-        except Exception:
-            #print("Error computing commando feet-to-hip distance.")
-            # Fallback to original front-only mean if anything goes wrong
-            commando_front_dist_mean = per_leg_dist[:, 0:2].mean(dim=1)
-            commando_feet_to_hip_distance = -commando_front_dist_mean
+        # Deterministic computation (no try/except): apply a small backward offset for front hips
+        back_offset = torch.tensor([-0.01, -0.01, 0.0, 0.0], device=self.device)
+        commando_desired_hip_offset = desired_hip_offset + back_offset
+        # compute per-leg distances using the commando desired hip offset for the y component
+        commando_delta_x = feet_to_base_h[:, 0] - hip_to_base_h[:, 0]
+        commando_delta_y = feet_to_base_h[:, 1] + commando_desired_hip_offset.unsqueeze(0) - hip_to_base_h[:, 1]
+        commando_per_leg_dist = torch.sqrt(commando_delta_x.pow(2) + commando_delta_y.pow(2))
+        commando_front_dist_mean = commando_per_leg_dist[:, 0:2].mean(dim=1)
+        commando_feet_to_hip_distance = -commando_front_dist_mean
         
 
         # Penalize feet hitting vertical surfaces  
@@ -1394,36 +1384,33 @@ class LocomotionEnv(DirectRLEnv):
             # Also attempt to apply actuator-side torque scaling (set efforts -> 0.0) for rear joints
             # Use the shared helper in tasks.custom_events.scale_joint_torque when available so
             # actuator.compute is patched in a consistent way across the codebase.
+            # Import helper (prefer relative import within package; fallback to absolute)
             try:
-                # Import helper (prefer relative import within package; fallback to absolute)
-                try:
-                    from ..custom_events import scale_joint_torque
-                except Exception:
-                    from basic_locomotion_dls_isaaclab.tasks.custom_events import scale_joint_torque
-
-                # RL joints: indices at positions 0,2,4 in rear_joint_indices
-                rl_joint_ids = [rear_joint_indices[0], rear_joint_indices[2], rear_joint_indices[4]]
-                rl_names = ["RL_hip_joint", "RL_thigh_joint", "RL_calf_joint"]
-                # RR joints: indices at positions 1,3,5 in rear_joint_indices
-                rr_joint_ids = [rear_joint_indices[1], rear_joint_indices[3], rear_joint_indices[5]]
-                rr_names = ["RR_hip_joint", "RR_thigh_joint", "RR_calf_joint"]
-
-                # Apply zero scaling to rear legs for the failed envs
-                scale_joint_torque(
-                    env=self,
-                    env_ids=rear_failed_envs,
-                    asset_cfg=SceneEntityCfg(name="robot", joint_ids=rl_joint_ids, joint_names=rl_names),
-                    scale=0.0,
-                )
-                scale_joint_torque(
-                    env=self,
-                    env_ids=rear_failed_envs,
-                    asset_cfg=SceneEntityCfg(name="robot", joint_ids=rr_joint_ids, joint_names=rr_names),
-                    scale=0.0,
-                )
+                from ..custom_events import scale_joint_torque
             except Exception:
-                # Do not break reset flow if scaling helper is unavailable or errors occur
-                pass
+                from basic_locomotion_dls_isaaclab.tasks.custom_events import scale_joint_torque
+
+            # RL joints: indices at positions 0,2,4 in rear_joint_indices
+            rl_joint_ids = [rear_joint_indices[0], rear_joint_indices[2], rear_joint_indices[4]]
+            rl_names = ["RL_hip_joint", "RL_thigh_joint", "RL_calf_joint"]
+            # RR joints: indices at positions 1,3,5 in rear_joint_indices
+            rr_joint_ids = [rear_joint_indices[1], rear_joint_indices[3], rear_joint_indices[5]]
+            rr_names = ["RR_hip_joint", "RR_thigh_joint", "RR_calf_joint"]
+
+            # Apply zero scaling to rear legs for the failed envs
+            scale_joint_torque(
+                env=self,
+                env_ids=rear_failed_envs,
+                asset_cfg=SceneEntityCfg(name="robot", joint_ids=rl_joint_ids, joint_names=rl_names),
+                scale=0.0,
+            )
+            scale_joint_torque(
+                env=self,
+                env_ids=rear_failed_envs,
+                asset_cfg=SceneEntityCfg(name="robot", joint_ids=rr_joint_ids, joint_names=rr_names),
+                scale=0.0,
+            )
+
             
         # Restore defaults for non-failed envs
         if torch.any(~rear_failed_mask):
@@ -1439,31 +1426,28 @@ class LocomotionEnv(DirectRLEnv):
             
             # Also attempt to restore actuator-side torque scaling (set efforts -> 1.0) for rear joints
             try:
-                try:
-                    from ..custom_events import scale_joint_torque
-                except Exception:
-                    from basic_locomotion_dls_isaaclab.tasks.custom_events import scale_joint_torque
-
-                rl_joint_ids = [rear_joint_indices[0], rear_joint_indices[2], rear_joint_indices[4]]
-                rl_names = ["RL_hip_joint", "RL_thigh_joint", "RL_calf_joint"]
-                rr_joint_ids = [rear_joint_indices[1], rear_joint_indices[3], rear_joint_indices[5]]
-                rr_names = ["RR_hip_joint", "RR_thigh_joint", "RR_calf_joint"]
-
-                scale_joint_torque(
-                    env=self,
-                    env_ids=normal_envs,
-                    asset_cfg=SceneEntityCfg(name="robot", joint_ids=rl_joint_ids, joint_names=rl_names),
-                    scale=1.0,
-                )
-                scale_joint_torque(
-                    env=self,
-                    env_ids=normal_envs,
-                    asset_cfg=SceneEntityCfg(name="robot", joint_ids=rr_joint_ids, joint_names=rr_names),
-                    scale=1.0,
-                )
+                from ..custom_events import scale_joint_torque
             except Exception:
-                # Non-fatal: don't interrupt reset if scaling helper is unavailable or errors occur
-                pass
+                from basic_locomotion_dls_isaaclab.tasks.custom_events import scale_joint_torque
+
+            rl_joint_ids = [rear_joint_indices[0], rear_joint_indices[2], rear_joint_indices[4]]
+            rl_names = ["RL_hip_joint", "RL_thigh_joint", "RL_calf_joint"]
+            rr_joint_ids = [rear_joint_indices[1], rear_joint_indices[3], rear_joint_indices[5]]
+            rr_names = ["RR_hip_joint", "RR_thigh_joint", "RR_calf_joint"]
+
+            scale_joint_torque(
+                env=self,
+                env_ids=normal_envs,
+                asset_cfg=SceneEntityCfg(name="robot", joint_ids=rl_joint_ids, joint_names=rl_names),
+                scale=1.0,
+            )
+            scale_joint_torque(
+                env=self,
+                env_ids=normal_envs,
+                asset_cfg=SceneEntityCfg(name="robot", joint_ids=rr_joint_ids, joint_names=rr_names),
+                scale=1.0,
+            )
+
             
         # ------------------------------------------------------------------
 

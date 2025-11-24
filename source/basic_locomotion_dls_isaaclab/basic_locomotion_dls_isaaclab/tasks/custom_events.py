@@ -185,17 +185,16 @@ def scale_joint_torque(
     asset_cfg: SceneEntityCfg,
     scale: float = 1.0,
 ):
-    
-    #"#"#"
-    #Scale joint efforts for selected joints and update a per-leg, per-joint activation mask.
+    """
+    Scale joint efforts for selected joints and update a per-leg, per-joint activation mask.
 
-    #Behavior
-    #- Multiplies computed joint efforts by `scale` for targeted joints.
-    #- Safe to call repeatedly. Patches actuator.compute only once per actuator.
-    #- Interval-friendly: when called with a subset `env_ids`, sets those envs to `scale`
-    #  and resets the complement envs to 1.0 for the targeted joints (acts like a gate).
-    #- Updates env._torque_scaled_mask_per_leg_joint[env, leg(FL/FR/RL/RR), joint(hip/thigh/calf)].
-    #"#"#"
+    Behavior
+    - Multiplies computed joint efforts by `scale` for targeted joints.
+    - Safe to call repeatedly. Patches actuator.compute only once per actuator.
+    - Interval-friendly: when called with a subset `env_ids`, sets those envs to `scale`
+      and resets the complement envs to 1.0 for the targeted joints (acts like a gate).
+    - Updates env._torque_scaled_mask_per_leg_joint[env, leg(FL/FR/RL/RR), joint(hip/thigh/calf)].
+    """
     # locate articulation
     asset: Articulation = env.scene[asset_cfg.name]
 
@@ -245,51 +244,46 @@ def scale_joint_torque(
         actuator.torque_scale[env_ids.unsqueeze(1), joint_idx] = float(scale)
 
     # update per-leg, per-joint mask used by rewards/observations
-    try:
-        # lazily initialize the mask on the env
-        if not hasattr(env, "_torque_scaled_mask_per_leg_joint"):
-            env._torque_scaled_mask_per_leg_joint = torch.zeros(
-                (env.scene.num_envs, 4, 3), dtype=torch.float, device=asset.device
-            )
+    # lazily initialize the mask on the env
+    if not hasattr(env, "_torque_scaled_mask_per_leg_joint"):
+        env._torque_scaled_mask_per_leg_joint = torch.zeros(
+            (env.scene.num_envs, 4, 3), dtype=torch.float, device=asset.device
+        )
 
-        # turn joint names (if provided) into leg/joint indices
-        target_names = getattr(asset_cfg, "joint_names", None)
-        if target_names is None:
-            names: list[str] = []
-        elif isinstance(target_names, str):
-            names = [target_names]
-        else:
-            names = list(target_names)
+    # turn joint names (if provided) into leg/joint indices
+    target_names = getattr(asset_cfg, "joint_names", None)
+    if target_names is None:
+        names: list[str] = []
+    elif isinstance(target_names, str):
+        names = [target_names]
+    else:
+        names = list(target_names)
 
-        def _leg_idx(n: str) -> int | None:
-            if n.startswith("FL_"):
-                return 0
-            if n.startswith("FR_"):
-                return 1
-            if n.startswith("RL_"):
-                return 2
-            if n.startswith("RR_"):
-                return 3
-            return None
+    def _leg_idx(n: str) -> int | None:
+        if n.startswith("FL_"):
+            return 0
+        if n.startswith("FR_"):
+            return 1
+        if n.startswith("RL_"):
+            return 2
+        if n.startswith("RR_"):
+            return 3
+        return None
 
-        def _joint_idx(n: str) -> int | None:
-            if "hip" in n:
-                return 0
-            if "thigh" in n:
-                return 1
-            if "calf" in n:
-                return 2
-            return None
+    def _joint_idx(n: str) -> int | None:
+        if "hip" in n:
+            return 0
+        if "thigh" in n:
+            return 1
+        if "calf" in n:
+            return 2
+        return None
 
-        active_val = 1.0 if abs(float(scale) - 1.0) > 1e-6 else 0.0
-        for jn in names:
-            li = _leg_idx(jn)
-            ji = _joint_idx(jn)
-            if li is None or ji is None:
-                continue
-            # set active envs to active_val; do NOT reset complement here to avoid flicker
-            env._torque_scaled_mask_per_leg_joint[env_ids, li, ji] = active_val
-    except Exception:
-        # do not break the event on tracking failure
-        pass
-        
+    active_val = 1.0 if abs(float(scale) - 1.0) > 1e-6 else 0.0
+    for jn in names:
+        li = _leg_idx(jn)
+        ji = _joint_idx(jn)
+        if li is None or ji is None:
+            continue
+        # set active envs to active_val; do NOT reset complement here to avoid flicker
+        env._torque_scaled_mask_per_leg_joint[env_ids, li, ji] = active_val
