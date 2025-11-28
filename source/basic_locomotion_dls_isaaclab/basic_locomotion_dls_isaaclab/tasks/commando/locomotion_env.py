@@ -30,6 +30,13 @@ from .b2_env_cfg import B2FlatEnvCfg, B2RoughVisionEnvCfg, B2RoughBlindEnvCfg
 
 from basic_locomotion_dls_isaaclab.tasks.supervised_learning_networks import SimpleNN
 
+# Prefer a single import of the helper so it's resolved once at module import time.
+try:
+    from ..custom_events import scale_joint_torque
+except Exception:
+    from basic_locomotion_dls_isaaclab.tasks.custom_events import scale_joint_torque
+
+
 class LocomotionEnv(DirectRLEnv):
     cfg: AliengoFlatEnvCfg | AliengoRoughBlindEnvCfg | AliengoRoughVisionEnvCfg | Go2FlatEnvCfg | Go2RoughVisionEnvCfg | Go2RoughBlindEnvCfg | HyQRealFlatEnvCfg | HyQRealRoughVisionEnvCfg | HyQRealRoughBlindEnvCfg
 
@@ -750,7 +757,9 @@ class LocomotionEnv(DirectRLEnv):
 
         # calf position
         calf_joints_position = self._robot.data.joint_pos[:, 8:12]
-        # Default calf target positions (per-env)
+        calf_joints_position_error = torch.square(calf_joints_position - self._robot.data.default_joint_pos[:, 8:12])
+        calf_joints_position_reward = torch.sum(calf_joints_position_error,dim=1)
+        """# Default calf target positions (per-env)
         calf_target_positions = self._robot.data.default_joint_pos[:, 8:12].clone()
 
         # Overwrite calf targets based on per-env failure_type.
@@ -781,6 +790,7 @@ class LocomotionEnv(DirectRLEnv):
 
         calf_joints_position_error = torch.square(calf_joints_position - calf_target_positions)
         calf_joints_position_reward = torch.sum(calf_joints_position_error,dim=1)
+        """
 
 
         # commando calf position (front-only: indices 8 and 9)
@@ -970,7 +980,7 @@ class LocomotionEnv(DirectRLEnv):
         feet_to_hip_distance = -torch.mean(torch.sqrt(feet_to_hip_distance_x + feet_to_hip_distance_y), dim=1)
 
 
-        # up is original feet to hip distance reward, gpt(but modified to exclude failed legs from the average)
+        """# up is original feet to hip distance reward, gpt(but modified to exclude failed legs from the average)
         # # Compute per-leg distances in hip frame, then masked average across legs
         delta_x = feet_to_base_h[:, 0] - hip_to_base_h[:, 0]
         delta_y = feet_to_base_h[:, 1] + desired_hip_offset.unsqueeze(0) - hip_to_base_h[:, 1]
@@ -981,23 +991,33 @@ class LocomotionEnv(DirectRLEnv):
         #   RL excluded when failure_type in [15..21]
         #   RR excluded when failure_type in [22..28]
         include_mask = torch.ones(self.num_envs, 4, dtype=torch.bool, device=self.device)
-        # Use the failure-type masks computed earlier (ft -> fl_mask, fr_mask, rl_mask, rr_mask)
-        # Move them to the current device and apply directly. We remove the try/except
-        # to ensure deterministic behavior and fail fast on programming errors.
-        fl_mask_dev = fl_mask.to(device=self.device)
-        fr_mask_dev = fr_mask.to(device=self.device)
-        rl_mask_dev = rl_mask.to(device=self.device)
-        rr_mask_dev = rr_mask.to(device=self.device)
+        # Use the failure-type masks computed earlier (ft -> fl_mask, fr_mask, rl_mask, rr_mask
+        # Failure code ranges:
+        # 1..7   -> FL (index 0)
+        # 8..14  -> FR (index 1)
+        # 15..21 -> RL (index 2)
+        # 22..28 -> RR (index 3)
+        # Use `self._failure_type` directly (it is assigned in _reset_idx before rewards are computed).
+        # Use the per-env failure_type and move it to the same device as the
+        # calf target tensor (unconditionally) to avoid a conditional branch.
+        # Move per-env failure_type to the common device once, then derive masks.
+        ft = self._failure_type.to(device=self.device)
+        fl_mask = (ft >= 1) & (ft <= 7)
+        fr_mask = (ft >= 8) & (ft <= 14)
+        rl_mask = (ft >= 15) & (ft <= 21)
+        rr_mask = (ft >= 22) & (ft <= 28)
 
-        include_mask[:, 0] &= ~fl_mask_dev
-        include_mask[:, 1] &= ~fr_mask_dev
-        include_mask[:, 2] &= ~rl_mask_dev
-        include_mask[:, 3] &= ~rr_mask_dev
+        # fl_mask/fr_mask/etc. are already on the correct device (inherited from ft).
+        include_mask[:, 0] &= ~fl_mask
+        include_mask[:, 1] &= ~fr_mask
+        include_mask[:, 2] &= ~rl_mask
+        include_mask[:, 3] &= ~rr_mask
 
         include_mask_f = include_mask.float()
+        #print(include_mask_f)
         # Compute masked average; avoid divide-by-zero by clamping denominator to 1.0
         feet_to_hip_distance = -((per_leg_dist * include_mask_f).sum(dim=1) / include_mask_f.sum(dim=1).clamp(min=1.0))
-
+        """
 
         # Commando version of feet-to-hip distance: use only front legs (FL, FR), exclude back legs (RL, RR)
         # Keep commando front feet 1cm back of hip position (towards back leg)
@@ -1102,9 +1122,9 @@ class LocomotionEnv(DirectRLEnv):
             "joints_torques_l2": joints_torques * self.cfg.joints_torque_reward_scale * self.step_dt * (1.0 - back_failed_flag),
             "joints_energy_l1": joints_energy * self.cfg.joints_energy_reward_scale * self.step_dt * (1.0 - back_failed_flag),
 
-            "feet_air_time": feet_air_time * self.cfg.feet_air_time_reward_scale * self.step_dt * (1.0 - back_failed_flag) * gating_factor,
+            "feet_air_time": feet_air_time * self.cfg.feet_air_time_reward_scale * self.step_dt * (1.0 - back_failed_flag),# * gating_factor,
             
-            "feet_height_clearance": feet_height_clearance * self.cfg.feet_height_clearance_reward_scale * self.step_dt * gating_factor,
+            "feet_height_clearance": feet_height_clearance * self.cfg.feet_height_clearance_reward_scale * self.step_dt,# * gating_factor,
             "feet_height_clearance_periodic": feet_height_clearance_periodic * self.cfg.feet_height_clearance_periodic_reward_scale * self.step_dt,
             "feet_height_clearance_mujoco": feet_height_clearance_mujoco * self.cfg.feet_height_clearance_mujoco_reward_scale * self.step_dt,
             "feet_height_clearance_mujoco_periodic": feet_height_clearance_mujoco_periodic * self.cfg.feet_height_clearance_mujoco_periodic_reward_scale * self.step_dt,
@@ -1165,6 +1185,35 @@ class LocomotionEnv(DirectRLEnv):
             dim=1,
         )
         died = died_check_front_hips
+        """
+        time_out = self.episode_length_buf >= self.max_episode_length - 1
+        net_contact_forces = self._contact_sensor.data.net_forces_w_history
+
+        # Check contacts for front hips only (used when failure_type == 29)
+        front_hip_ids = self._hip_ids[:2]
+        died_check_front_hips = torch.any(
+            torch.max(torch.norm(net_contact_forces[:, :, front_hip_ids], dim=-1), dim=1)[0] > 1.0,
+            dim=1,
+        )
+
+        # Check contacts for base and all hips (used when failure_type != 29)
+        died_check_base = torch.any(
+            torch.max(torch.norm(net_contact_forces[:, :, self._base_id], dim=-1), dim=1)[0] > 1.0,
+            dim=1,
+        )
+        died_check_hips = torch.any(
+            torch.max(torch.norm(net_contact_forces[:, :, self._hip_ids], dim=-1), dim=1)[0] > 1.0,
+            dim=1,
+        )
+        died_non29 = torch.logical_or(died_check_base, died_check_hips)
+
+        # Per-environment selection: if an env's failure_type == 29, use front-hip check,
+        # otherwise use base OR hips check.
+        # Per-env flag: True where failure_type == 29 (both rear legs disabled)
+        is_rear_both = self._failure_type == 29
+
+        # Ensure boolean tensors are same device/dtype and select per-env
+        died = torch.where(is_rear_both, died_check_front_hips, died_non29)"""
         # Check if the robot is out of bounds of the terrain
         """if(self._terrain.cfg.terrain_generator is not None):
             # obtain the size of the sub-terrains
@@ -1313,12 +1362,12 @@ class LocomotionEnv(DirectRLEnv):
         # before running production training.
         forced = torch.full((len(env_ids),), 6, dtype=torch.long, device=self.device)"""
 
-        """# Per-env random choice between 0 and 3. Multiply a {0,1} randint by 3
+        # Per-env random choice between 0 and 3. Multiply a {0,1} randint by 3
         # to produce values in {0,3} with equal probability.
 
         forced = (torch.randint(0, 2, (len(env_ids),), device=self.device) * 29).to(torch.long)
         fail_type = forced
-        self._failure_type[env_ids] = fail_type"""
+        self._failure_type[env_ids] = fail_type
 
 
         """# Debug override: force all reset envs to a single failure code.
@@ -1329,15 +1378,15 @@ class LocomotionEnv(DirectRLEnv):
         self._failure_type[env_ids] = fail_type"""
 
         
-        # Enforce per-leg, per-joint masks according to the chosen code.
-        # Joint indices: 0=hip, 1=thigh, 2=calf
-        if not hasattr(self, "_torque_scaled_mask_per_leg_joint"):
-            self._torque_scaled_mask_per_leg_joint = torch.zeros(
-                (self.num_envs, 4, 3), dtype=torch.float, device=self.device
-            )
+        """# # Enforce per-leg, per-joint masks according to the chosen code.
+        # # Joint indices: 0=hip, 1=thigh, 2=calf
+        # if not hasattr(self, "_torque_scaled_mask_per_leg_joint"):
+        #     self._torque_scaled_mask_per_leg_joint = torch.zeros(
+        #         (self.num_envs, 4, 3), dtype=torch.float, device=self.device
+        #     )
 
-        # Clear any prior mask for the envs being reset
-        self._torque_scaled_mask_per_leg_joint[env_ids, :, :] = 0.0
+        # # Clear any prior mask for the envs being reset
+        # self._torque_scaled_mask_per_leg_joint[env_ids, :, :] = 0.0
 
         # Helper to set joints for a given leg index and env subset
         def _set(env_mask, leg_idx, joint_idxs):
@@ -1348,51 +1397,35 @@ class LocomotionEnv(DirectRLEnv):
             # per-leg per-joint failure for these envs. This keeps rewards and
             # observation logic consistent even if the actuator helper fails
             # to apply scaling at the simulator level.
-            try:
-                if not hasattr(self, "_torque_scaled_mask_per_leg_joint"):
-                    self._torque_scaled_mask_per_leg_joint = torch.zeros(
-                        (self.num_envs, 4, 3), dtype=torch.float, device=self.device
-                    )
-                for jj in joint_idxs:
-                    # jj is 0/1/2 for hip/thigh/calf
-                    try:
-                        self._torque_scaled_mask_per_leg_joint[envs_sel, leg_idx, jj] = 1.0
-                    except Exception:
-                        # be conservative: non-fatal if indexing fails for any reason
-                        pass
-            except Exception:
-                # Non-fatal: continue to attempt actuator-side scaling below
-                pass
+            if not hasattr(self, "_torque_scaled_mask_per_leg_joint"):
+                self._torque_scaled_mask_per_leg_joint = torch.zeros(
+                    (self.num_envs, 4, 3), dtype=torch.float, device=self.device
+                )
+            for jj in joint_idxs:
+                # jj is 0/1/2 for hip/thigh/calf
+                self._torque_scaled_mask_per_leg_joint[envs_sel, leg_idx, jj] = 1.0
             # Map leg_idx and joint_idxs to joint names (e.g. "RL_hip_joint")
             leg_prefixes = ["FL", "FR", "RL", "RR"]
             joint_name_map = {0: "hip", 1: "thigh", 2: "calf"}
             joint_names = [f"{leg_prefixes[leg_idx]}_{joint_name_map[j]}_joint" for j in joint_idxs]
 
-            # Prefer the shared helper which patches actuators and updates the mask
-            try:
-                from ..custom_events import scale_joint_torque
-            except Exception:
-                from basic_locomotion_dls_isaaclab.tasks.custom_events import scale_joint_torque
+            # Use the module-level imported helper `scale_joint_torque` (imported at top)
 
             # First ensure actuator scaling is reset to 1.0 for these envs (explicitly for all leg joints)
             # Make joint selection explicit: pass joint_ids=slice(None) to indicate all joints
-            try:
-                all_leg_names = [
-                    "FL_hip_joint", "FL_thigh_joint", "FL_calf_joint",
-                    "FR_hip_joint", "FR_thigh_joint", "FR_calf_joint",
-                    "RL_hip_joint", "RL_thigh_joint", "RL_calf_joint",
-                    "RR_hip_joint", "RR_thigh_joint", "RR_calf_joint",
-                ]
-                scale_joint_torque(
-                    env=self,
-                    env_ids=envs_sel,
-                    asset_cfg=SceneEntityCfg(name="robot", joint_ids=slice(None), joint_names=all_leg_names),
-                    scale=1.0,
-                )
-            except Exception:
-                # non-fatal; continue to attempt to set the specific joints
-                print("Warning: could not reset all leg joint torque scaling to 1.0")
-                pass
+            all_leg_names = [
+                "FL_hip_joint", "FL_thigh_joint", "FL_calf_joint",
+                "FR_hip_joint", "FR_thigh_joint", "FR_calf_joint",
+                "RL_hip_joint", "RL_thigh_joint", "RL_calf_joint",
+                "RR_hip_joint", "RR_thigh_joint", "RR_calf_joint",
+            ]
+            scale_joint_torque(
+                env=self,
+                env_ids=envs_sel,
+                asset_cfg=SceneEntityCfg(name="robot", joint_ids=slice(None), joint_names=all_leg_names),
+                scale=1.0,
+            )
+
 
             # Now apply zero-scaling to the requested joint names for the selected envs.
             # IMPORTANT: resolve exact joint ids for each joint name so we don't accidentally
@@ -1413,10 +1446,7 @@ class LocomotionEnv(DirectRLEnv):
                 elif isinstance(ids, (list, tuple)):
                     joint_ids_list.extend([int(x) for x in ids])
                 else:
-                    try:
-                        joint_ids_list.append(int(ids))
-                    except Exception:
-                        pass
+                    joint_ids_list.append(int(ids))
 
             # Deduplicate while preserving order
             seen = set()
@@ -1491,11 +1521,7 @@ class LocomotionEnv(DirectRLEnv):
             envs_none = env_ids[fail_type == 0]
             # Clear mask entries for these envs
             self._torque_scaled_mask_per_leg_joint[envs_none, :, :] = 0.0
-            # Try to restore actuator-side scaling to 1.0 for all leg joints
-            try:
-                from ..custom_events import scale_joint_torque
-            except Exception:
-                from basic_locomotion_dls_isaaclab.tasks.custom_events import scale_joint_torque
+            # Use the module-level imported helper `scale_joint_torque` (imported at top)
 
             all_leg_names = [
                 "FL_hip_joint", "FL_thigh_joint", "FL_calf_joint",
@@ -1508,7 +1534,7 @@ class LocomotionEnv(DirectRLEnv):
                 env_ids=envs_none,
                 asset_cfg=SceneEntityCfg(name="robot", joint_names=all_leg_names),
                 scale=1.0,
-                )
+                )"""
         # Always assign NO failure (code 0) for every env in env_ids
         #fail_type = torch.zeros(len(env_ids), device=self.device, dtype=torch.long)
         #self._failure_type[env_ids] = fail_type
@@ -1708,9 +1734,8 @@ class LocomotionEnv(DirectRLEnv):
         rear_joint_indices = self._rear_joint_indices
         # Use the failure assignment sampled for THIS reset batch only
         # (don't touch envs outside env_ids; restore defaults only where current fail_type==0)
-        failure_type_subset = fail_type  # shape: [len(env_ids)]
         # Rear-both failure now uses code 29 (both RL & RR disabled)
-        rear_failed_mask = failure_type_subset == 29
+        rear_failed_mask = fail_type == 29
         # Zero gains for rear-failed envs
         if torch.any(rear_failed_mask):
             rear_failed_envs = env_ids[rear_failed_mask]
@@ -1726,14 +1751,7 @@ class LocomotionEnv(DirectRLEnv):
             self._torque_scaled_mask_per_leg_joint[rear_failed_envs, 2, :] = 1.0
             self._torque_scaled_mask_per_leg_joint[rear_failed_envs, 3, :] = 1.0
             
-            # Also attempt to apply actuator-side torque scaling (set efforts -> 0.0) for rear joints
-            # Use the shared helper in tasks.custom_events.scale_joint_torque when available so
-            # actuator.compute is patched in a consistent way across the codebase.
-            # Import helper (prefer relative import within package; fallback to absolute)
-            try:
-                from ..custom_events import scale_joint_torque
-            except Exception:
-                from basic_locomotion_dls_isaaclab.tasks.custom_events import scale_joint_torque
+            # Use the module-level imported helper `scale_joint_torque` (imported at top)
 
             # RL joints: indices at positions 0,2,4 in rear_joint_indices
             rl_joint_ids = [rear_joint_indices[0], rear_joint_indices[2], rear_joint_indices[4]]
@@ -1757,54 +1775,36 @@ class LocomotionEnv(DirectRLEnv):
             )
 
             
-        # Restore defaults for envs that are NOT using the rear-both-failure code (29).
-        # NOTE: do not deactivate RL/RR torque-scaled masks for envs that have
-        # other failure codes (e.g., RL codes 15..21). Only clear RL/RR masks for
-        # envs sampled with NO failure (code 0).
-        if torch.any(~rear_failed_mask):
-            normal_envs = env_ids[~rear_failed_mask]
-            default_stiffness_restore = self._robot.data.default_joint_stiffness[normal_envs][:, rear_joint_indices]
-            default_damping_restore = self._robot.data.default_joint_damping[normal_envs][:, rear_joint_indices]
-            self._robot.write_joint_stiffness_to_sim(default_stiffness_restore, joint_ids=rear_joint_indices, env_ids=normal_envs)
-            self._robot.write_joint_damping_to_sim(default_damping_restore, joint_ids=rear_joint_indices, env_ids=normal_envs)
-            # Deactivate the mask for RL/RR only for envs assigned NO failure (code 0)
-            if hasattr(self, "_torque_scaled_mask_per_leg_joint"):
-                non_failed_mask = failure_type_subset == 0
-                if torch.any(non_failed_mask):
-                    envs_non_failed = env_ids[non_failed_mask]
-                    self._torque_scaled_mask_per_leg_joint[envs_non_failed, 2, :] = 0.0
-                    self._torque_scaled_mask_per_leg_joint[envs_non_failed, 3, :] = 0.0
+        # Restore defaults ONLY for envs with NO failure (code 0).
+        # We avoid touching other failure codes to not overwrite their torque-scaling configs.
+        non_failed_mask = fail_type == 0
+        if torch.any(non_failed_mask):
+            envs_non_failed = env_ids[non_failed_mask]
+            # Restore stiffness/damping for ALL joints (not just rear)
+            default_stiffness_restore = self._robot.data.default_joint_stiffness[envs_non_failed]
+            default_damping_restore = self._robot.data.default_joint_damping[envs_non_failed]
+            self._robot.write_joint_stiffness_to_sim(default_stiffness_restore, joint_ids=slice(None), env_ids=envs_non_failed)
+            self._robot.write_joint_damping_to_sim(default_damping_restore, joint_ids=slice(None), env_ids=envs_non_failed)
+            # Clear all per-leg per-joint mask entries for envs assigned NO failure (code 0)
+            self._torque_scaled_mask_per_leg_joint[envs_non_failed, :, :] = 0.0
             
-            # Also attempt to restore actuator-side torque scaling (set efforts -> 1.0) for rear joints
-            try:
-                from ..custom_events import scale_joint_torque
-            except Exception:
-                from basic_locomotion_dls_isaaclab.tasks.custom_events import scale_joint_torque
+            # Restore actuator-side scaling for ALL joints to 1.0 for envs with NO failure.
+            all_leg_names = [
+                "FL_hip_joint", "FL_thigh_joint", "FL_calf_joint",
+                "FR_hip_joint", "FR_thigh_joint", "FR_calf_joint",
+                "RL_hip_joint", "RL_thigh_joint", "RL_calf_joint",
+                "RR_hip_joint", "RR_thigh_joint", "RR_calf_joint",
+            ]
+            # Use canonical 12-DOF ordering: hips[0:4], thighs[4:8], calves[8:12]
+            # Hardcode explicit joint indices for all leg joints
+            all_joint_ids_unique = [0, 1, 2, 3,  4, 5, 6, 7,  8, 9, 10, 11]
 
-            rl_joint_ids = [rear_joint_indices[0], rear_joint_indices[2], rear_joint_indices[4]]
-            rl_names = ["RL_hip_joint", "RL_thigh_joint", "RL_calf_joint"]
-            rr_joint_ids = [rear_joint_indices[1], rear_joint_indices[3], rear_joint_indices[5]]
-            rr_names = ["RR_hip_joint", "RR_thigh_joint", "RR_calf_joint"]
-
-            # Only restore actuator-side scaling for envs with NO failure (fail_type == 0).
-            # Restoring for `normal_envs` (all envs not using code 29) would incorrectly
-            # overwrite per-env scaling for RL/RR codes (15..28). Use the same
-            # non-failed env subset we used above when clearing Python-side masks.
-            non_failed_mask = failure_type_subset == 0
-            if torch.any(non_failed_mask):
-                envs_non_failed = env_ids[non_failed_mask]
-                scale_joint_torque(
-                    env=self,
-                    env_ids=envs_non_failed,
-                    asset_cfg=SceneEntityCfg(name="robot", joint_ids=rl_joint_ids, joint_names=rl_names),
-                    scale=1.0,
-                )
-                scale_joint_torque(
-                    env=self,
-                    env_ids=envs_non_failed,
-                    asset_cfg=SceneEntityCfg(name="robot", joint_ids=rr_joint_ids, joint_names=rr_names),
-                    scale=1.0,
-                )
+            scale_joint_torque(
+                env=self,
+                env_ids=envs_non_failed,
+                asset_cfg=SceneEntityCfg(name="robot", joint_ids=all_joint_ids_unique, joint_names=all_leg_names),
+                scale=1.0,
+            )
 
             
         # ------------------------------------------------------------------
