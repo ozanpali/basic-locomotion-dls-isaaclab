@@ -383,7 +383,7 @@ class LocomotionEnv(DirectRLEnv):
         # One-hot shape: [num_envs, 2] -> [no_back_fail, back_fail]
         leg_any_scaled_bool = (self._torque_scaled_mask_per_leg_joint.max(dim=2).values > 0.0)
         back_failed_flag_obs = (leg_any_scaled_bool[:, 2] & leg_any_scaled_bool[:, 3]).to(torch.long)
-        back_failed_onehot = torch.nn.functional.one_hot(back_failed_flag_obs, num_classes=2).to(dtype=obs.dtype, device=obs.device)
+        back_failed_onehot = torch.nn.functional.one_hot(back_failed_flag_obs, num_classes=3).to(dtype=obs.dtype, device=obs.device)
         obs = torch.cat((obs, back_failed_onehot), dim=-1)
         #print("Back-failed onehot added to obs:", back_failed_onehot[0].cpu().numpy())  #Back-failed onehot added to obs: [0. 1.]
 
