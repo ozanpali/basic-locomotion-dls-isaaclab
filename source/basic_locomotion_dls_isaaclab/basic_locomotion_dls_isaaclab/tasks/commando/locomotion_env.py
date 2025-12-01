@@ -1530,7 +1530,7 @@ class LocomotionEnv(DirectRLEnv):
                 scale=0.0,
             )
             
-        fl_hip_failed_mask = failure_type_subset == 2
+        fl_hip_failed_mask = failure_type_subset == 3
         if torch.any(fl_hip_failed_mask):
             fl_hip_failed_envs = env_ids[fl_hip_failed_mask]
 
@@ -1561,7 +1561,7 @@ class LocomotionEnv(DirectRLEnv):
             )
 
         # FL thigh and calf failure
-        fl_thigh_calf_failed_mask = failure_type_subset == 3
+        fl_thigh_calf_failed_mask = failure_type_subset == 2
         if torch.any(fl_thigh_calf_failed_mask):
             fl_thigh_calf_failed_envs = env_ids[fl_thigh_calf_failed_mask]
 
