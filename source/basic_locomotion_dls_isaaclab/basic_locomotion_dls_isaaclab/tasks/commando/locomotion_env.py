@@ -213,6 +213,11 @@ class LocomotionEnv(DirectRLEnv):
             "RL": ["RL_hip_joint", "RL_thigh_joint", "RL_calf_joint"],
             "RR": ["RR_hip_joint", "RR_thigh_joint", "RR_calf_joint"],
         }
+        # Precomputed subsets for reuse
+        self._fl_thigh_calf_ids = [self._leg_triplet_joint_ids["FL"][1], self._leg_triplet_joint_ids["FL"][2]]
+        self._fl_thigh_calf_names = [self._leg_triplet_joint_names["FL"][1], self._leg_triplet_joint_names["FL"][2]]
+        self._fl_hip_ids = [self._leg_triplet_joint_ids["FL"][0]]
+        self._fl_hip_names = [self._leg_triplet_joint_names["FL"][0]]
         # Front and rear groupings (ordered as [hips FL,FR,RL,RR], [thighs ...], [calves ...])
         self._rear_joint_indices = [2, 3, 6, 7, 10, 11]
         self._front_joint_indices = [0, 1, 4, 5, 8, 9]
@@ -1197,9 +1202,9 @@ class LocomotionEnv(DirectRLEnv):
         )
         died_non29 = torch.logical_or(died_check_base, died_check_hips)
 
-        # Per-environment selection: if an env's failure_type == 29, use front-hip check,
+        # Per-environment selection: if an env's failure_type == 1, use front-hip check,
         # otherwise use base OR hips check.
-        # Per-env flag: True where failure_type == 29 (both rear legs disabled)
+        # Per-env flag: True where failure_type == 1 (both rear legs disabled)
         is_rear_both = self._failure_type == 1
 
         # Ensure boolean tensors are same device/dtype and select per-env
@@ -1318,14 +1323,14 @@ class LocomotionEnv(DirectRLEnv):
         # Three-way failure sampling:
         # 0: no failure
         # 1: rear failure (disable RL & RR)
-        # 2: front-left failure (disable FL thigh & calf)
+        # 2: front-left failure (disable FL hip)
         # Configure categorical probabilities via cfg.failure_type_probs = [p0, p1, p2]
-        probs_cfg = getattr(self.cfg, "failure_type_probs", [0.0, 0.5, 0.5])
-        probs = torch.tensor(probs_cfg, dtype=torch.float, device=self.device)
+        probs_cfg = getattr(self.cfg, "failure_type_probs", [1.0/3.0, 1.0/3.0, 1.0/3.0])
+        probs = torch.tensor(probs_cfg, dtype=torch.float, device=self.device)  
         probs = torch.clip(probs, min=0.0)
         total = probs.sum()
         if total <= 0:
-            probs = torch.tensor([0.0, 0.5, 0.5], dtype=torch.float, device=self.device)
+            probs = torch.tensor([1.0/3.0, 1.0/3.0, 1.0/3.0], dtype=torch.float, device=self.device)
             total = probs.sum()
         probs = probs / total
         # Sample fail_type per env from categorical distribution
@@ -1466,17 +1471,30 @@ class LocomotionEnv(DirectRLEnv):
             )
         """
 
-        # Use the failure assignment sampled for THIS reset batch only
-        # (don't touch envs outside env_ids; restore defaults only where current fail_type==0)
         failure_type_subset = fail_type  # shape: [len(env_ids)]
+
+        fine_mask = failure_type_subset == 0
+        if torch.any(fine_mask):
+            normal_envs = env_ids[fine_mask]
+            default_stiffness_restore = self._robot.data.default_joint_stiffness[normal_envs]
+            default_damping_restore = self._robot.data.default_joint_damping[normal_envs]
+            self._robot.write_joint_stiffness_to_sim(default_stiffness_restore[:, self._whole_joint_ids], joint_ids=self._whole_joint_ids, env_ids=normal_envs)
+            self._robot.write_joint_damping_to_sim(default_damping_restore[:, self._whole_joint_ids], joint_ids=self._whole_joint_ids, env_ids=normal_envs)
+
+            scale_joint_torque(
+                env=self,
+                env_ids=normal_envs,
+                asset_cfg=SceneEntityCfg(name="robot", joint_ids=self._whole_joint_ids, joint_names=self._whole_joint_names),
+                scale=1.0,
+            )
+
         rear_failed_mask = failure_type_subset == 1
-        # Zero gains for rear-failed envs
         if torch.any(rear_failed_mask):
             rear_failed_envs = env_ids[rear_failed_mask]
             default_stiffness_restore = self._robot.data.default_joint_stiffness[rear_failed_envs]
             default_damping_restore = self._robot.data.default_joint_damping[rear_failed_envs]
-            self._robot.write_joint_stiffness_to_sim(default_stiffness_restore[:, self._front_joint_indices], joint_ids=self._front_joint_indices, env_ids=rear_failed_envs)
-            self._robot.write_joint_damping_to_sim(default_damping_restore[:, self._front_joint_indices], joint_ids=self._front_joint_indices, env_ids=rear_failed_envs)
+            self._robot.write_joint_stiffness_to_sim(default_stiffness_restore[:, self._whole_joint_ids], joint_ids=self._whole_joint_ids, env_ids=rear_failed_envs)
+            self._robot.write_joint_damping_to_sim(default_damping_restore[:, self._whole_joint_ids], joint_ids=self._whole_joint_ids, env_ids=rear_failed_envs)
             self._robot.write_joint_stiffness_to_sim(0.0, joint_ids=self._rear_joint_indices, env_ids=rear_failed_envs)
             self._robot.write_joint_damping_to_sim(0.0, joint_ids=self._rear_joint_indices, env_ids=rear_failed_envs)
             # Also activate the per-leg, per-joint torque-scaled mask for RL/RR as in custom_events.scale_joint_torque
@@ -1512,35 +1530,46 @@ class LocomotionEnv(DirectRLEnv):
                 scale=0.0,
             )
             
-        fine_mask = failure_type_subset == 0
-        if torch.any(fine_mask):
-            normal_envs = env_ids[fine_mask]
-            default_stiffness_restore = self._robot.data.default_joint_stiffness[normal_envs]
-            default_damping_restore = self._robot.data.default_joint_damping[normal_envs]
-            self._robot.write_joint_stiffness_to_sim(default_stiffness_restore[:, self._rear_joint_indices], joint_ids=self._rear_joint_indices, env_ids=normal_envs)
-            self._robot.write_joint_stiffness_to_sim(default_stiffness_restore[:, self._front_joint_indices], joint_ids=self._front_joint_indices, env_ids=normal_envs)
-            self._robot.write_joint_damping_to_sim(default_damping_restore[:, self._rear_joint_indices], joint_ids=self._rear_joint_indices, env_ids=normal_envs)
-            self._robot.write_joint_damping_to_sim(default_damping_restore[:, self._front_joint_indices], joint_ids=self._front_joint_indices, env_ids=normal_envs)
+        fl_hip_failed_mask = failure_type_subset == 2
+        if torch.any(fl_hip_failed_mask):
+            fl_hip_failed_envs = env_ids[fl_hip_failed_mask]
 
+            # reset
+            default_stiffness_restore = self._robot.data.default_joint_stiffness[fl_hip_failed_envs]
+            default_damping_restore = self._robot.data.default_joint_damping[fl_hip_failed_envs]
+            self._robot.write_joint_stiffness_to_sim(default_stiffness_restore[:, self._whole_joint_ids], joint_ids=self._whole_joint_ids, env_ids=fl_hip_failed_envs)
+            self._robot.write_joint_damping_to_sim(default_damping_restore[:, self._whole_joint_ids], joint_ids=self._whole_joint_ids, env_ids=fl_hip_failed_envs)
             scale_joint_torque(
                 env=self,
-                env_ids=normal_envs,
+                env_ids=fl_hip_failed_envs,
                 asset_cfg=SceneEntityCfg(name="robot", joint_ids=self._whole_joint_ids, joint_names=self._whole_joint_names),
                 scale=1.0,
             )
 
+            # set
+            self._robot.write_joint_stiffness_to_sim(0.0, joint_ids=self._fl_hip_ids, env_ids=fl_hip_failed_envs)
+            self._robot.write_joint_damping_to_sim(0.0, joint_ids=self._fl_hip_ids, env_ids=fl_hip_failed_envs)
+            scale_joint_torque(
+                env=self,
+                env_ids=fl_hip_failed_envs,
+                asset_cfg=SceneEntityCfg(
+                    name="robot",
+                    joint_ids=self._fl_hip_ids,
+                    joint_names=self._fl_hip_names,
+                ),
+                scale=0.0,
+            )
+
         # FL thigh and calf failure
-        fl_thigh_calf_failed_mask = failure_type_subset == 2
+        fl_thigh_calf_failed_mask = failure_type_subset == 3
         if torch.any(fl_thigh_calf_failed_mask):
             fl_thigh_calf_failed_envs = env_ids[fl_thigh_calf_failed_mask]
 
             #reset
             default_stiffness_restore = self._robot.data.default_joint_stiffness[fl_thigh_calf_failed_envs]
             default_damping_restore = self._robot.data.default_joint_damping[fl_thigh_calf_failed_envs]
-            self._robot.write_joint_stiffness_to_sim(default_stiffness_restore[:, self._rear_joint_indices], joint_ids=self._rear_joint_indices, env_ids=fl_thigh_calf_failed_envs)
-            self._robot.write_joint_damping_to_sim(default_damping_restore[:, self._rear_joint_indices], joint_ids=self._rear_joint_indices, env_ids=fl_thigh_calf_failed_envs)
-            self._robot.write_joint_stiffness_to_sim(default_stiffness_restore[:, self._front_joint_indices], joint_ids=self._front_joint_indices, env_ids=fl_thigh_calf_failed_envs)
-            self._robot.write_joint_damping_to_sim(default_damping_restore[:, self._front_joint_indices], joint_ids=self._front_joint_indices, env_ids=fl_thigh_calf_failed_envs)
+            self._robot.write_joint_stiffness_to_sim(default_stiffness_restore[:, self._whole_joint_ids], joint_ids=self._whole_joint_ids, env_ids=fl_thigh_calf_failed_envs)
+            self._robot.write_joint_damping_to_sim(default_damping_restore[:, self._whole_joint_ids], joint_ids=self._whole_joint_ids, env_ids=fl_thigh_calf_failed_envs)
 
             scale_joint_torque(
                 env=self,
@@ -1550,60 +1579,22 @@ class LocomotionEnv(DirectRLEnv):
             )
 
             # set
-            fl_joint_ids = [self._leg_triplet_joint_ids["FL"][1], self._leg_triplet_joint_ids["FL"][2]] # thigh and calf
-            fl_joint_names = [self._leg_triplet_joint_names["FL"][1], self._leg_triplet_joint_names["FL"][2]]
-            self._robot.write_joint_stiffness_to_sim(0.0, joint_ids=fl_joint_ids, env_ids=fl_thigh_calf_failed_envs)
-            self._robot.write_joint_damping_to_sim(0.0, joint_ids=fl_joint_ids, env_ids=fl_thigh_calf_failed_envs)
+            self._robot.write_joint_stiffness_to_sim(0.0, joint_ids=self._fl_thigh_calf_ids, env_ids=fl_thigh_calf_failed_envs)
+            self._robot.write_joint_damping_to_sim(0.0, joint_ids=self._fl_thigh_calf_ids, env_ids=fl_thigh_calf_failed_envs)
             scale_joint_torque(
                 env=self,
                 env_ids=fl_thigh_calf_failed_envs,
                 asset_cfg=SceneEntityCfg(
                     name="robot",
-                    joint_ids=fl_joint_ids,
-                    joint_names=fl_joint_names,
+                    joint_ids=self._fl_thigh_calf_ids,
+                    joint_names=self._fl_thigh_calf_names,
                 ),
                 scale=0.0,
             )
+
         
-        # if torch.any(~rear_failed_mask):
-        #     normal_envs = env_ids[~rear_failed_mask]
-
-        #     default_stiffness_restore = self._robot.data.default_joint_stiffness[normal_envs][:, rear_joint_indices]
-        #     default_damping_restore = self._robot.data.default_joint_damping[normal_envs][:, rear_joint_indices]
-        #     self._robot.write_joint_stiffness_to_sim(default_stiffness_restore, joint_ids=rear_joint_indices, env_ids=normal_envs)
-        #     self._robot.write_joint_damping_to_sim(default_damping_restore, joint_ids=rear_joint_indices, env_ids=normal_envs)
-        #     # Deactivate the mask for RL/RR on envs assigned no-failure this reset
-        #     if hasattr(self, "_torque_scaled_mask_per_leg_joint"):
-        #         self._torque_scaled_mask_per_leg_joint[normal_envs, 2, :] = 0.0
-        #         self._torque_scaled_mask_per_leg_joint[normal_envs, 3, :] = 0.0
-            
-        #     # Also attempt to restore actuator-side torque scaling (set efforts -> 1.0) for rear joints
-        #     try:
-        #         try:
-        #             from ..custom_events import scale_joint_torque
-        #         except Exception:
-        #             from basic_locomotion_dls_isaaclab.tasks.custom_events import scale_joint_torque
-
-        #         rl_joint_ids = [rear_joint_indices[0], rear_joint_indices[2], rear_joint_indices[4]]
-        #         rl_names = ["RL_hip_joint", "RL_thigh_joint", "RL_calf_joint"]
-        #         rr_joint_ids = [rear_joint_indices[1], rear_joint_indices[3], rear_joint_indices[5]]
-        #         rr_names = ["RR_hip_joint", "RR_thigh_joint", "RR_calf_joint"]
-
-        #         scale_joint_torque(
-        #             env=self,
-        #             env_ids=normal_envs,
-        #             asset_cfg=SceneEntityCfg(name="robot", joint_ids=rl_joint_ids, joint_names=rl_names),
-        #             scale=1.0,
-        #         )
-        #         scale_joint_torque(
-        #             env=self,
-        #             env_ids=normal_envs,
-        #             asset_cfg=SceneEntityCfg(name="robot", joint_ids=rr_joint_ids, joint_names=rr_names),
-        #             scale=1.0,
-        #         )
-        #     except Exception:
-        #         # Non-fatal: don't interrupt reset if scaling helper is unavailable or errors occur
-        #         pass
+        
+    
             
         # ------------------------------------------------------------------
 
