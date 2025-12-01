@@ -1291,12 +1291,12 @@ class LocomotionEnv(DirectRLEnv):
         # 1: rear failure (disable RL & RR)
         # 2: front-left failure (disable FL thigh & calf)
         # Configure categorical probabilities via cfg.failure_type_probs = [p0, p1, p2]
-        probs_cfg = getattr(self.cfg, "failure_type_probs", [0.5, 0.5, 0.0])
+        probs_cfg = getattr(self.cfg, "failure_type_probs", [0.0, 1.0, 0.0])
         probs = torch.tensor(probs_cfg, dtype=torch.float, device=self.device)
         probs = torch.clip(probs, min=0.0)
         total = probs.sum()
         if total <= 0:
-            probs = torch.tensor([0.5, 0.5, 0.0], dtype=torch.float, device=self.device)
+            probs = torch.tensor([0.0, 1.0, 0.0], dtype=torch.float, device=self.device)
             total = probs.sum()
         probs = probs / total
         # Sample fail_type per env from categorical distribution
