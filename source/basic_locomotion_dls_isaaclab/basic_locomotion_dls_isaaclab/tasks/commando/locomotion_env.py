@@ -381,10 +381,13 @@ class LocomotionEnv(DirectRLEnv):
         # Append back-failed flag as one-hot to the observation instead of per-leg flags
         # back_failed_flag: 1 if any of RL/RR legs are torque-scaled, else 0
         # One-hot shape: [num_envs, 2] -> [no_back_fail, back_fail]
-        leg_any_scaled_bool = (self._torque_scaled_mask_per_leg_joint.max(dim=2).values > 0.0)
-        back_failed_flag_obs = (leg_any_scaled_bool[:, 2] & leg_any_scaled_bool[:, 3]).to(torch.long)
-        back_failed_onehot = torch.nn.functional.one_hot(back_failed_flag_obs, num_classes=3).to(dtype=obs.dtype, device=obs.device)
-        obs = torch.cat((obs, back_failed_onehot), dim=-1)
+        # Directly append failure type one-hot (size 3): 0 = none, 1 = rear failure (RL & RR), 2 = front-left failure.
+        # _failure_type is guaranteed by __init__ / _reset_idx; assert for clarity.
+        assert hasattr(self, "_failure_type"), "_failure_type must be initialized in __init__ before observations are gathered."
+        failure_type_clamped = torch.clamp(self._failure_type, 0, 2)
+        failure_type_onehot = torch.nn.functional.one_hot(failure_type_clamped, num_classes=3).to(dtype=obs.dtype, device=obs.device)
+        obs = torch.cat((obs, failure_type_onehot), dim=-1)
+        print("Failure type onehot added to obs:", failure_type_onehot.cpu().numpy())  #Failure type onehot added to obs: [0. 0. 1.] for front-left failure
         #print("Back-failed onehot added to obs:", back_failed_onehot[0].cpu().numpy())  #Back-failed onehot added to obs: [0. 1.]
 
 
