@@ -1478,8 +1478,10 @@ class LocomotionEnv(DirectRLEnv):
             normal_envs = env_ids[fine_mask]
             default_stiffness_restore = self._robot.data.default_joint_stiffness[normal_envs]
             default_damping_restore = self._robot.data.default_joint_damping[normal_envs]
-            self._robot.write_joint_stiffness_to_sim(default_stiffness_restore[:, self._whole_joint_ids], joint_ids=self._whole_joint_ids, env_ids=normal_envs)
-            self._robot.write_joint_damping_to_sim(default_damping_restore[:, self._whole_joint_ids], joint_ids=self._whole_joint_ids, env_ids=normal_envs)
+            self._robot.write_joint_stiffness_to_sim(default_stiffness_restore[:, self._rear_joint_indices], joint_ids=self._rear_joint_indices, env_ids=normal_envs)
+            self._robot.write_joint_stiffness_to_sim(default_stiffness_restore[:, self._front_joint_indices], joint_ids=self._front_joint_indices, env_ids=normal_envs)
+            self._robot.write_joint_damping_to_sim(default_damping_restore[:, self._rear_joint_indices], joint_ids=self._rear_joint_indices, env_ids=normal_envs)
+            self._robot.write_joint_damping_to_sim(default_damping_restore[:, self._front_joint_indices], joint_ids=self._front_joint_indices, env_ids=normal_envs)
 
             scale_joint_torque(
                 env=self,
@@ -1493,8 +1495,8 @@ class LocomotionEnv(DirectRLEnv):
             rear_failed_envs = env_ids[rear_failed_mask]
             default_stiffness_restore = self._robot.data.default_joint_stiffness[rear_failed_envs]
             default_damping_restore = self._robot.data.default_joint_damping[rear_failed_envs]
-            self._robot.write_joint_stiffness_to_sim(default_stiffness_restore[:, self._whole_joint_ids], joint_ids=self._whole_joint_ids, env_ids=rear_failed_envs)
-            self._robot.write_joint_damping_to_sim(default_damping_restore[:, self._whole_joint_ids], joint_ids=self._whole_joint_ids, env_ids=rear_failed_envs)
+            self._robot.write_joint_stiffness_to_sim(default_stiffness_restore[:, self._front_joint_indices], joint_ids=self._front_joint_indices, env_ids=rear_failed_envs)
+            self._robot.write_joint_damping_to_sim(default_damping_restore[:, self._front_joint_indices], joint_ids=self._front_joint_indices, env_ids=rear_failed_envs)
             self._robot.write_joint_stiffness_to_sim(0.0, joint_ids=self._rear_joint_indices, env_ids=rear_failed_envs)
             self._robot.write_joint_damping_to_sim(0.0, joint_ids=self._rear_joint_indices, env_ids=rear_failed_envs)
             # Also activate the per-leg, per-joint torque-scaled mask for RL/RR as in custom_events.scale_joint_torque
@@ -1568,9 +1570,10 @@ class LocomotionEnv(DirectRLEnv):
             #reset
             default_stiffness_restore = self._robot.data.default_joint_stiffness[fl_thigh_calf_failed_envs]
             default_damping_restore = self._robot.data.default_joint_damping[fl_thigh_calf_failed_envs]
-            self._robot.write_joint_stiffness_to_sim(default_stiffness_restore[:, self._whole_joint_ids], joint_ids=self._whole_joint_ids, env_ids=fl_thigh_calf_failed_envs)
-            self._robot.write_joint_damping_to_sim(default_damping_restore[:, self._whole_joint_ids], joint_ids=self._whole_joint_ids, env_ids=fl_thigh_calf_failed_envs)
-
+            self._robot.write_joint_stiffness_to_sim(default_stiffness_restore[:, self._rear_joint_indices], joint_ids=self._rear_joint_indices, env_ids=fl_thigh_calf_failed_envs)
+            self._robot.write_joint_damping_to_sim(default_damping_restore[:, self._rear_joint_indices], joint_ids=self._rear_joint_indices, env_ids=fl_thigh_calf_failed_envs)
+            self._robot.write_joint_stiffness_to_sim(default_stiffness_restore[:, self._front_joint_indices], joint_ids=self._front_joint_indices, env_ids=fl_thigh_calf_failed_envs)
+            self._robot.write_joint_damping_to_sim(default_damping_restore[:, self._front_joint_indices], joint_ids=self._front_joint_indices, env_ids=fl_thigh_calf_failed_envs)
             scale_joint_torque(
                 env=self,
                 env_ids=fl_thigh_calf_failed_envs,
