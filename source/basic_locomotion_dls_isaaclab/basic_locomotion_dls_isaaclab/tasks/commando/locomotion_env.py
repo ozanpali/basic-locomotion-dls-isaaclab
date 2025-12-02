@@ -1582,8 +1582,8 @@ class LocomotionEnv(DirectRLEnv):
             # Also activate the per-leg,
             fl_joint_ids = [4, 8] # thigh and calf
             fl_joint_names = ["FL_thigh_joint", "FL_calf_joint"]
-            self._robot.write_joint_stiffness_to_sim(0.0, joint_ids=fl_joint_ids, env_ids=fl_failed_envs)
-            self._robot.write_joint_damping_to_sim(0.0, joint_ids=fl_joint_ids, env_ids=fl_failed_envs)
+            #self._robot.write_joint_stiffness_to_sim(0.0, joint_ids=fl_joint_ids, env_ids=fl_failed_envs)
+            #self._robot.write_joint_damping_to_sim(0.0, joint_ids=fl_joint_ids, env_ids=fl_failed_envs)
             scale_joint_torque(
                 env=self,
                 env_ids=fl_failed_envs,
