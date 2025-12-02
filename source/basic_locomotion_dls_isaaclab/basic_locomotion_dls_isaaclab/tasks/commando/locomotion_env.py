@@ -1638,7 +1638,7 @@ class LocomotionEnv(DirectRLEnv):
                     joint_ids=fl_hip_joint_id,
                     joint_names=fl_hip_joint_name,
                 ),
-                scale=0.0,
+                scale=0.3,
             )
 
         # FL thigh failure (only thigh joint)
@@ -1673,7 +1673,7 @@ class LocomotionEnv(DirectRLEnv):
                     joint_ids=fl_thigh_joint_id,
                     joint_names=fl_thigh_joint_name,
                 ),
-                scale=0.0,
+                scale=0.3,
             )
 
         # FL calf failure (only calf joint)
@@ -1708,7 +1708,7 @@ class LocomotionEnv(DirectRLEnv):
                     joint_ids=fl_calf_joint_id,
                     joint_names=fl_calf_joint_name,
                 ),
-                scale=0.0,
+                scale=0.3,
             )
 
         # FL hip & thigh failure
@@ -1743,7 +1743,7 @@ class LocomotionEnv(DirectRLEnv):
                     joint_ids=fl_hip_thigh_joint_ids,
                     joint_names=fl_hip_thigh_joint_names,
                 ),
-                scale=0.0,
+                scale=0.3,
             )
 
         # FL hip & calf failure
@@ -1778,7 +1778,7 @@ class LocomotionEnv(DirectRLEnv):
                     joint_ids=fl_hip_calf_joint_ids,
                     joint_names=fl_hip_calf_joint_names,
                 ),
-                scale=0.0,
+                scale=0.3,
             )
 
         # FL thigh & calf failure
@@ -1813,7 +1813,7 @@ class LocomotionEnv(DirectRLEnv):
                     joint_ids=fl_thigh_calf_joint_ids,
                     joint_names=fl_thigh_calf_joint_names,
                 ),
-                scale=0.0,
+                scale=0.3,
             )
 
         # FL hip, thigh & calf failure (all three joints)
@@ -1848,7 +1848,7 @@ class LocomotionEnv(DirectRLEnv):
                     joint_ids=fl_hip_thigh_calf_joint_ids,
                     joint_names=fl_hip_thigh_calf_joint_names,
                 ),
-                scale=0.0,
+                scale=0.3,
             )
             
         # FR hip failure (only hip joint)
@@ -1883,7 +1883,7 @@ class LocomotionEnv(DirectRLEnv):
                     joint_ids=fr_hip_joint_id,
                     joint_names=fr_hip_joint_name,
                 ),
-                scale=0.0,
+                scale=0.3,
             )
 
         # FR thigh failure (only thigh joint)
@@ -1918,7 +1918,7 @@ class LocomotionEnv(DirectRLEnv):
                     joint_ids=fr_thigh_joint_id,
                     joint_names=fr_thigh_joint_name,
                 ),
-                scale=0.0,
+                scale=0.3,
             )
 
         # FR calf failure (only calf joint)
@@ -1953,7 +1953,7 @@ class LocomotionEnv(DirectRLEnv):
                     joint_ids=fr_calf_joint_id,
                     joint_names=fr_calf_joint_name,
                 ),
-                scale=0.0,
+                scale=0.3,
             )
 
         # FR hip & thigh failure
@@ -1988,7 +1988,7 @@ class LocomotionEnv(DirectRLEnv):
                     joint_ids=fr_hip_thigh_joint_ids,
                     joint_names=fr_hip_thigh_joint_names,
                 ),
-                scale=0.0,
+                scale=0.3,
             )
 
         # FR hip & calf failure
@@ -2023,7 +2023,7 @@ class LocomotionEnv(DirectRLEnv):
                     joint_ids=fr_hip_calf_joint_ids,
                     joint_names=fr_hip_calf_joint_names,
                 ),
-                scale=0.0,
+                scale=0.3,
             )
 
         # FR thigh & calf failure
@@ -2058,7 +2058,7 @@ class LocomotionEnv(DirectRLEnv):
                     joint_ids=fr_thigh_calf_joint_ids,
                     joint_names=fr_thigh_calf_joint_names,
                 ),
-                scale=0.0,
+                scale=0.3,
             )
 
         # FR hip, thigh & calf failure (all three joints)
@@ -2093,7 +2093,7 @@ class LocomotionEnv(DirectRLEnv):
                     joint_ids=fr_hip_thigh_calf_joint_ids,
                     joint_names=fr_hip_thigh_calf_joint_names,
                 ),
-                scale=0.0,
+                scale=0.3,
             )
         
         # RL hip failure (only hip joint)
@@ -2124,7 +2124,7 @@ class LocomotionEnv(DirectRLEnv):
                     joint_ids=rl_hip_joint_id,
                     joint_names=rl_hip_joint_name,
                 ),
-                scale=0.0,
+                scale=0.3,
             )
 
         # RL thigh failure (only thigh joint)
@@ -2155,7 +2155,7 @@ class LocomotionEnv(DirectRLEnv):
                     joint_ids=rl_thigh_joint_id,
                     joint_names=rl_thigh_joint_name,
                 ),
-                scale=0.0,
+                scale=0.3,
             )
 
         # RL calf failure (only calf joint)
@@ -2186,7 +2186,7 @@ class LocomotionEnv(DirectRLEnv):
                     joint_ids=rl_calf_joint_id,
                     joint_names=rl_calf_joint_name,
                 ),
-                scale=0.0,
+                scale=0.3,
             )
 
         # RL hip & thigh failure
@@ -2217,7 +2217,7 @@ class LocomotionEnv(DirectRLEnv):
                     joint_ids=rl_hip_thigh_joint_ids,
                     joint_names=rl_hip_thigh_joint_names,
                 ),
-                scale=0.0,
+                scale=0.3,
             )
 
         # RL hip & calf failure
@@ -2248,7 +2248,7 @@ class LocomotionEnv(DirectRLEnv):
                     joint_ids=rl_hip_calf_joint_ids,
                     joint_names=rl_hip_calf_joint_names,
                 ),
-                scale=0.0,
+                scale=0.3,
             )
 
         # RL thigh & calf failure
@@ -2279,7 +2279,7 @@ class LocomotionEnv(DirectRLEnv):
                     joint_ids=rl_thigh_calf_joint_ids,
                     joint_names=rl_thigh_calf_joint_names,
                 ),
-                scale=0.0,
+                scale=0.3,
             )
 
         # RL hip, thigh & calf failure (all three joints)
@@ -2310,7 +2310,7 @@ class LocomotionEnv(DirectRLEnv):
                     joint_ids=rl_hip_thigh_calf_joint_ids,
                     joint_names=rl_hip_thigh_calf_joint_names,
                 ),
-                scale=0.0,
+                scale=0.3,
             )
 
         # RR hip failure (only hip joint)
@@ -2341,7 +2341,7 @@ class LocomotionEnv(DirectRLEnv):
                     joint_ids=rr_hip_joint_id,
                     joint_names=rr_hip_joint_name,
                 ),
-                scale=0.0,
+                scale=0.3,
             )
 
         # RR thigh failure (only thigh joint)
@@ -2372,7 +2372,7 @@ class LocomotionEnv(DirectRLEnv):
                     joint_ids=rr_thigh_joint_id,
                     joint_names=rr_thigh_joint_name,
                 ),
-                scale=0.0,
+                scale=0.3,
             )
 
         # RR calf failure (only calf joint)
@@ -2403,7 +2403,7 @@ class LocomotionEnv(DirectRLEnv):
                     joint_ids=rr_calf_joint_id,
                     joint_names=rr_calf_joint_name,
                 ),
-                scale=0.0,
+                scale=0.3,
             )
 
         # RR hip & thigh failure
@@ -2434,7 +2434,7 @@ class LocomotionEnv(DirectRLEnv):
                     joint_ids=rr_hip_thigh_joint_ids,
                     joint_names=rr_hip_thigh_joint_names,
                 ),
-                scale=0.0,
+                scale=0.3,
             )
 
         # RR hip & calf failure
@@ -2465,7 +2465,7 @@ class LocomotionEnv(DirectRLEnv):
                     joint_ids=rr_hip_calf_joint_ids,
                     joint_names=rr_hip_calf_joint_names,
                 ),
-                scale=0.0,
+                scale=0.3,
             )
 
         # RR thigh & calf failure
@@ -2496,7 +2496,7 @@ class LocomotionEnv(DirectRLEnv):
                     joint_ids=rr_thigh_calf_joint_ids,
                     joint_names=rr_thigh_calf_joint_names,
                 ),
-                scale=0.0,
+                scale=0.3,
             )
 
         # RR hip, thigh & calf failure (all three joints)
@@ -2527,7 +2527,7 @@ class LocomotionEnv(DirectRLEnv):
                     joint_ids=rr_hip_thigh_calf_joint_ids,
                     joint_names=rr_hip_thigh_calf_joint_names,
                 ),
-                scale=0.0,
+                scale=0.3,
             )
         
         
