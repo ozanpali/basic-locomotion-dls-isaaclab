@@ -388,8 +388,8 @@ class LocomotionEnv(DirectRLEnv):
         # Directly append failure type one-hot (size 30): 0 = none, 1 = rear failure (RL & RR), ..., up to 29
         # _failure_type is guaranteed by __init__ / _reset_idx; assert for clarity.
         assert hasattr(self, "_failure_type"), "_failure_type must be initialized in __init__ before observations are gathered."
-        failure_type_clamped = torch.clamp(self._failure_type, 0, 3)
-        failure_type_onehot = torch.nn.functional.one_hot(failure_type_clamped, num_classes=4).to(dtype=obs.dtype, device=obs.device)
+        failure_type_clamped = torch.clamp(self._failure_type, 0, 4)
+        failure_type_onehot = torch.nn.functional.one_hot(failure_type_clamped, num_classes=5).to(dtype=obs.dtype, device=obs.device)
         obs = torch.cat((obs, failure_type_onehot), dim=-1)
         #print("Failure type onehot added to obs:", failure_type_onehot.cpu().numpy())  #Failure type onehot added to obs: [0. 0. 1.] for front-left failure
         #print("Back-failed onehot added to obs:", back_failed_onehot[0].cpu().numpy())  #Back-failed onehot added to obs: [0. 1.]
@@ -1255,12 +1255,12 @@ class LocomotionEnv(DirectRLEnv):
         # 1: rear failure (disable RL & RR)
         # 2: front-left failure (disable FL thigh & calf)
         # Configure categorical probabilities via cfg.failure_type_probs = [p0, p1, p2]
-        probs_cfg = getattr(self.cfg, "failure_type_probs", [1.0/4.0]*4)
+        probs_cfg = getattr(self.cfg, "failure_type_probs", [1.0/5.0]*5)
         probs = torch.tensor(probs_cfg, dtype=torch.float, device=self.device)
         probs = torch.clip(probs, min=0.0)
         total = probs.sum()
         if total <= 0:
-            probs = torch.tensor([1.0/4.0]*4, dtype=torch.float, device=self.device)
+            probs = torch.tensor([1.0/5.0]*5, dtype=torch.float, device=self.device)
             total = probs.sum()
         probs = probs / total
         # Sample fail_type per env from categorical distribution
