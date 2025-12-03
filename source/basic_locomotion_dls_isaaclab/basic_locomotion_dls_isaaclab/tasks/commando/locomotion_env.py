@@ -1400,55 +1400,7 @@ class LocomotionEnv(DirectRLEnv):
                 scale=0.0,
             )
         """
-        # ------------------------------------------------------------------
-        # Episode-long rear leg disable via drive gains (stiffness/damping)
-        # Place AFTER torque scaling to ensure gains reflect final failure config.
-        # We zero stiffness & damping for RL/RR joints in environments whose
-        # sampled failure type == 1. For non-failed envs we restore defaults.
-        # Joint ordering (12 DOF quadruped): hips[0:4], thighs[4:8], calves[8:12]
-        # Rear leg joint indices resolved dynamically by joint names; cached for reuse.
-        # Falls back to canonical 12-DOF ordering if lookup is unavailable.
-        # Target names (per leg): hip, thigh, calf
-        """if (
-            not hasattr(self, "_rear_joint_indices")
-            or self._rear_joint_indices is None
-            or len(self._rear_joint_indices) != 6
-        ):
-            joint_names = [
-                "RL_hip_joint", "RR_hip_joint",
-                "RL_thigh_joint", "RR_thigh_joint",
-                "RL_calf_joint", "RR_calf_joint",
-            ]
-            resolved: list[int] = []
-            for name in joint_names:
-                try:
-                    ids, _ = self._robot.find_joints(fr"^{name}$")
-                except Exception:
-                    ids = None
-                idx = None
-                if ids is not None:
-                    if isinstance(ids, torch.Tensor):
-                        if ids.numel() >= 1:
-                            idx = int(ids.view(-1)[0].item())
-                    elif isinstance(ids, (list, tuple)):
-                        if len(ids) >= 1:
-                            idx = int(ids[0])
-                    else:
-                        try:
-                            idx = int(ids)
-                        except Exception:
-                            idx = None
-                if idx is not None:
-                    resolved.append(idx)
-
-            if len(resolved) == 6:
-                self._rear_joint_indices = resolved
-            else:
-                """
-                # Canonical indices used by 12-DOF quadrupeds:
-                # hips[0:4] -> [FL, FR, RL, RR] => RL=2, RR=3
-                # thighs[4:8] -> RL=6, RR=7
-                # calves[8:12] -> RL=10, RR=11
+        
         self._rear_joint_indices = [2, 3, 6, 7, 10, 11]
         self._front_joint_indices = [0, 1, 4, 5, 8, 9]  # for possible future use
 
