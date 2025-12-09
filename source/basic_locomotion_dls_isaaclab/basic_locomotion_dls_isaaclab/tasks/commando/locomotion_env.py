@@ -849,7 +849,7 @@ class LocomotionEnv(DirectRLEnv):
         feet_to_hip_distance_y = torch.square(feet_to_base_h[:, 1] + desired_hip_offset.unsqueeze(0) - hip_to_base_h[:, 1])
         feet_to_hip_distance = -torch.mean(torch.sqrt(feet_to_hip_distance_x + feet_to_hip_distance_y), dim=1)
 
-
+        """
         # up is original feet to hip distance reward, gpt(but modified to exclude failed legs from the average)
         # # Compute per-leg distances in hip frame, then masked average across legs
         delta_x = feet_to_base_h[:, 0] - hip_to_base_h[:, 0]
@@ -868,7 +868,7 @@ class LocomotionEnv(DirectRLEnv):
 
         include_mask_f = include_mask.float()
         #print(include_mask_f)
-        feet_to_hip_distance = -((per_leg_dist * include_mask_f).sum(dim=1) / include_mask_f.sum(dim=1).clamp(min=1.0))
+        feet_to_hip_distance = -((per_leg_dist * include_mask_f).sum(dim=1) / include_mask_f.sum(dim=1).clamp(min=1.0))"""
 
         back_offset = torch.tensor([-0.01, -0.01, 0.0, 0.0], device=self.device)
         commando_desired_hip_offset = desired_hip_offset + back_offset
