@@ -1259,8 +1259,6 @@ class LocomotionEnv(DirectRLEnv):
             # Also activate the per-leg,
             fl_joint_ids = [4, 8] # thigh and calf
             fl_joint_names = ["FL_thigh_joint", "FL_calf_joint"]
-            self._robot.write_joint_stiffness_to_sim(0.0, joint_ids=fl_joint_ids, env_ids=fl_failed_envs)
-            self._robot.write_joint_damping_to_sim(0.0, joint_ids=fl_joint_ids, env_ids=fl_failed_envs)
             scale_joint_torque(
                 env=self,
                 env_ids=fl_failed_envs,
@@ -1304,8 +1302,6 @@ class LocomotionEnv(DirectRLEnv):
             # Deactivate FR thigh & calf
             fr_joint_ids = [5, 9]  # FR thigh and calf
             fr_joint_names = ["FR_thigh_joint", "FR_calf_joint"]
-            self._robot.write_joint_stiffness_to_sim(0.0, joint_ids=fr_joint_ids, env_ids=fr_failed_envs)
-            self._robot.write_joint_damping_to_sim(0.0, joint_ids=fr_joint_ids, env_ids=fr_failed_envs)
             scale_joint_torque(
                 env=self,
                 env_ids=fr_failed_envs,
@@ -1349,8 +1345,6 @@ class LocomotionEnv(DirectRLEnv):
             # Deactivate RL thigh & calf
             rl_joint_ids = [6, 10]
             rl_joint_names = ["RL_thigh_joint", "RL_calf_joint"]
-            self._robot.write_joint_stiffness_to_sim(0.0, joint_ids=rl_joint_ids, env_ids=rl_failed_envs)
-            self._robot.write_joint_damping_to_sim(0.0, joint_ids=rl_joint_ids, env_ids=rl_failed_envs)
             scale_joint_torque(
                 env=self,
                 env_ids=rl_failed_envs,
@@ -1394,8 +1388,6 @@ class LocomotionEnv(DirectRLEnv):
             # Deactivate RR thigh & calf
             rr_joint_ids = [7, 11]
             rr_joint_names = ["RR_thigh_joint", "RR_calf_joint"]
-            self._robot.write_joint_stiffness_to_sim(0.0, joint_ids=rr_joint_ids, env_ids=rr_failed_envs)
-            self._robot.write_joint_damping_to_sim(0.0, joint_ids=rr_joint_ids, env_ids=rr_failed_envs)
             scale_joint_torque(
                 env=self,
                 env_ids=rr_failed_envs,
