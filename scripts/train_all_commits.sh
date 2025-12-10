@@ -65,8 +65,32 @@ done
 
 # Ordered list from first to last commit (as you provided)
 COMMITS=(
-  efacd99fdb55e48c9c48dca6fbdf00a38a5d93e2
+  7dc08f284420776595a2ba6dfed1f7a1ced39cd3
+  169761ffc8c7579f4769b0c9d4206b51413ca1f6
+  f0a37ce48a03f3a2bf5fad6e62cf6e4d3aee8755
+  4705c65007f11d0b952cefa891b93cbba4148286
+  8a46910adb2b3a34878ba6e4524e78f811b10ad6
+  d04575f6ad4985cea65e09c1b37a08266d44de0f
+  24a430a303d492be1382be9de6fbc4ff818bdabc
+  6c0fb2d2a2498b5a6f424e6b2b67b258a821d269
+  08c3b0746b426775aafb9bde65896231dfa82f57
 )
+
+# Optional per-commit iteration overrides.
+# Set entries like: COMMIT_MAX_ITER[<commit_hash>]=<iterations>
+# If not set for a commit, the global MAX_ITER is used.
+declare -A COMMIT_MAX_ITER
+# Example overrides (uncomment and edit as needed):
+COMMIT_MAX_ITER[7dc08f284420776595a2ba6dfed1f7a1ced39cd3]=1000
+COMMIT_MAX_ITER[169761ffc8c7579f4769b0c9d4206b51413ca1f6]=1000
+COMMIT_MAX_ITER[f0a37ce48a03f3a2bf5fad6e62cf6e4d3aee8755]=1000
+COMMIT_MAX_ITER[4705c65007f11d0b952cefa891b93cbba4148286]=1000
+COMMIT_MAX_ITER[8a46910adb2b3a34878ba6e4524e78f811b10ad6]=1000
+COMMIT_MAX_ITER[d04575f6ad4985cea65e09c1b37a08266d44de0f]=3000
+COMMIT_MAX_ITER[24a430a303d492be1382be9de6fbc4ff818bdabc]=4000
+COMMIT_MAX_ITER[6c0fb2d2a2498b5a6f424e6b2b67b258a821d269]=5000
+COMMIT_MAX_ITER[08c3b0746b426775aafb9bde65896231dfa82f57]=6000
+
 
 # --- Helpers ---
 err() { echo "[ERROR] $*" >&2; }
@@ -143,8 +167,14 @@ for COMMIT in "${COMMITS[@]}"; do
   SHORT_COMMIT=$(git rev-parse --short=8 "${COMMIT}" 2>/dev/null || echo "${COMMIT:0:8}")
   # Fix typo: use SUBJECT when building the suffix
   RUN_SUFFIX=$(subject_to_camelcase "${SUBJECT}")
+  # Resolve per-commit max iterations if provided, else use global default
+  PER_COMMIT_MAX_ITER="${COMMIT_MAX_ITER[${COMMIT}]:-}" || true
+  if [[ -z "${PER_COMMIT_MAX_ITER}" ]]; then
+    PER_COMMIT_MAX_ITER="${MAX_ITER}"
+  fi
+
   # Build run name: include iterations, envs, short commit id and sanitized commit subject
-  RUN_NAME="RPC_${MAX_ITER}Iter_${NUM_ENVS}Env_${SHORT_COMMIT}_${RUN_SUFFIX}"
+  RUN_NAME="RPC_${PER_COMMIT_MAX_ITER}Iter_${NUM_ENVS}Env_${SHORT_COMMIT}_${RUN_SUFFIX}"
 
   info "Commit subject: ${SUBJECT}"
   info "Run name     : ${RUN_NAME}"
@@ -156,7 +186,7 @@ for COMMIT in "${COMMITS[@]}"; do
     ${HEADLESS_FLAG} \
     --log_project_name="${LOG_PROJECT_NAME}" \
     --run_name="${RUN_NAME}" \
-    --max_iterations="${MAX_ITER}"
+    --max_iterations="${PER_COMMIT_MAX_ITER}"
 
   STATUS=$?
   if [[ ${STATUS} -ne 0 ]]; then
