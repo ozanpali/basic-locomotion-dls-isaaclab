@@ -74,6 +74,8 @@ COMMITS=(
   3bc145d8c2f1e8723ed68bd829c038d062f9dacc
   c4d171fe063e086970d5c1e1ba04bd9424a89e94
   df049fcc3f3a105bf912273e8fad492b083b5a10
+  f9bfcd8e54713c50ec0ea8902cc6749c32d9a4c1
+  b20203390e0676e9977ffa8848cde6223785999d
 )
 
 # Optional per-commit iteration overrides.
