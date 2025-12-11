@@ -1121,13 +1121,16 @@ class LocomotionEnv(DirectRLEnv):
         # 3: front-right failure (disable FR thigh & calf)
         # 4: rear-left failure (disable RL thigh & calf)
         # 5: rear-right failure (disable RR thigh & calf)
-        # Configure categorical probabilities via cfg.failure_type_probs = [p0, p1, p2, p3, p4, p5]
-        probs_cfg = getattr(self.cfg, "failure_type_probs",[1.0/6.0, 2.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0]) # [1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0])
+        # Configure categorical probabilities via cfg.failure_type_probs.
+        # Now we support 18 cases (0–17). Default to uniform distribution across all 18.
+        default_probs_18 = [1.0/18.0] * 18
+        probs_cfg = getattr(self.cfg, "failure_type_probs", default_probs_18)
         probs = torch.tensor(probs_cfg, dtype=torch.float, device=self.device)
         probs = torch.clip(probs, min=0.0)
         total = probs.sum()
-        if total <= 0:
-            probs = torch.tensor([1.0/6.0, 2.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0] , dtype=torch.float, device=self.device)
+        # If user provided an invalid list or all zeros, fall back to uniform-18.
+        if (total <= 0) or (probs.numel() != 18):
+            probs = torch.tensor(default_probs_18, dtype=torch.float, device=self.device)
             total = probs.sum()
         probs = probs / total
         print("Failure type sampling probabilities:", probs.tolist())
@@ -1447,6 +1450,72 @@ class LocomotionEnv(DirectRLEnv):
         
             
         # ------------------------------------------------------------------
+        # Additional per-joint failure types:
+        # 6-9: hip failures (FL=6, FR=7, RL=8, RR=9)
+        # 10-13: thigh failures (FL=10, FR=11, RL=12, RR=13)
+        # 14-17: calf failures (FL=14, FR=15, RL=16, RR=17)
+
+        def _apply_joint_failure(failed_mask: torch.Tensor, leg_prefix: str, joint_name: str):
+            if torch.any(failed_mask):
+                failed_envs = env_ids[failed_mask]
+                # Restore actuator scaling to 1.0 for all joints first for these envs
+                whole_joint_ids = [0,1,2,3,4,5,6,7,8,9,10,11]
+                whole_names = [
+                    "FL_hip_joint", "FR_hip_joint",
+                    "RL_hip_joint", "RR_hip_joint",
+                    "FL_thigh_joint", "FR_thigh_joint",
+                    "RL_thigh_joint", "RR_thigh_joint",
+                    "FL_calf_joint", "FR_calf_joint",
+                    "RL_calf_joint", "RR_calf_joint",
+                ]
+                scale_joint_torque(
+                    env=self,
+                    env_ids=failed_envs,
+                    asset_cfg=SceneEntityCfg(name="robot", joint_ids=whole_joint_ids, joint_names=whole_names),
+                    scale=1.0,
+                )
+                # Now disable only the requested joint for the given leg
+                target_name = f"{leg_prefix}_{joint_name}_joint"
+                target_ids, _ = self._robot.find_joints(target_name)
+                if isinstance(target_ids, torch.Tensor):
+                    target_ids_list = target_ids.detach().cpu().tolist()
+                else:
+                    target_ids_list = list(target_ids) if target_ids is not None else []
+                if len(target_ids_list) > 0:
+                    scale_joint_torque(
+                        env=self,
+                        env_ids=failed_envs,
+                        asset_cfg=SceneEntityCfg(
+                            name="robot",
+                            joint_ids=target_ids_list,
+                            joint_names=[target_name],
+                        ),
+                        scale=0.0,
+                    )
+                # Update per-leg/joint torque-scaled mask accordingly
+                leg_index_map = {"FL": 0, "FR": 1, "RL": 2, "RR": 3}
+                joint_index_map = {"hip": 0, "thigh": 1, "calf": 2}
+                li = leg_index_map[leg_prefix]
+                ji = joint_index_map[joint_name]
+                self._torque_scaled_mask_per_leg_joint[failed_envs, li, ji] = 1.0
+
+        # Hip failures
+        _apply_joint_failure(failure_type_subset == 6, "FL", "hip")
+        _apply_joint_failure(failure_type_subset == 7, "FR", "hip")
+        _apply_joint_failure(failure_type_subset == 8, "RL", "hip")
+        _apply_joint_failure(failure_type_subset == 9, "RR", "hip")
+
+        # Thigh failures
+        _apply_joint_failure(failure_type_subset == 10, "FL", "thigh")
+        _apply_joint_failure(failure_type_subset == 11, "FR", "thigh")
+        _apply_joint_failure(failure_type_subset == 12, "RL", "thigh")
+        _apply_joint_failure(failure_type_subset == 13, "RR", "thigh")
+
+        # Calf failures
+        _apply_joint_failure(failure_type_subset == 14, "FL", "calf")
+        _apply_joint_failure(failure_type_subset == 15, "FR", "calf")
+        _apply_joint_failure(failure_type_subset == 16, "RL", "calf")
+        _apply_joint_failure(failure_type_subset == 17, "RR", "calf")
 
 
 
