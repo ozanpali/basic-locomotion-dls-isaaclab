@@ -1197,10 +1197,13 @@ class LocomotionEnv(DirectRLEnv):
         fine_mask = failure_type_subset == 0
         if torch.any(fine_mask):
             normal_envs = env_ids[fine_mask]
-            default_stiffness_restore = self._robot.data.default_joint_stiffness[normal_envs][:, rear_joint_indices]
-            default_damping_restore = self._robot.data.default_joint_damping[normal_envs][:, rear_joint_indices]
-            self._robot.write_joint_stiffness_to_sim(default_stiffness_restore, joint_ids=rear_joint_indices, env_ids=normal_envs)
-            self._robot.write_joint_damping_to_sim(default_damping_restore, joint_ids=rear_joint_indices, env_ids=normal_envs)
+            default_stiffness_restore = self._robot.data.default_joint_stiffness[normal_envs]
+            default_damping_restore = self._robot.data.default_joint_damping[normal_envs]
+            self._robot.write_joint_stiffness_to_sim(default_stiffness_restore[:, self._rear_joint_indices], joint_ids=self._rear_joint_indices, env_ids=normal_envs)
+            self._robot.write_joint_stiffness_to_sim(default_stiffness_restore[:, self._front_joint_indices], joint_ids=self._front_joint_indices, env_ids=normal_envs)
+            self._robot.write_joint_damping_to_sim(default_damping_restore[:, self._rear_joint_indices], joint_ids=self._rear_joint_indices, env_ids=normal_envs)
+            self._robot.write_joint_damping_to_sim(default_damping_restore[:, self._front_joint_indices], joint_ids=self._front_joint_indices, env_ids=normal_envs)
+
             # # Reset mask for non-failed envs
             # self._torque_scaled_mask_per_leg_joint[normal_envs, :, :] = 0.0
             # # Also attempt to restore actuator-side torque scaling (set efforts -> 1.0) for all joints
