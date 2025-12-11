@@ -1122,14 +1122,15 @@ class LocomotionEnv(DirectRLEnv):
         # 4: rear-left failure (disable RL thigh & calf)
         # 5: rear-right failure (disable RR thigh & calf)
         # Configure categorical probabilities via cfg.failure_type_probs = [p0, p1, p2, p3, p4, p5]
-        probs_cfg = getattr(self.cfg, "failure_type_probs",[1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0]) # [1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0])
+        probs_cfg = getattr(self.cfg, "failure_type_probs",[1.0/6.0, 2.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0]) # [1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0])
         probs = torch.tensor(probs_cfg, dtype=torch.float, device=self.device)
         probs = torch.clip(probs, min=0.0)
         total = probs.sum()
         if total <= 0:
-            probs = torch.tensor([1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0] , dtype=torch.float, device=self.device)
+            probs = torch.tensor([1.0/6.0, 2.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0] , dtype=torch.float, device=self.device)
             total = probs.sum()
         probs = probs / total
+        print("Failure type sampling probabilities:", probs.tolist())
         # Sample fail_type per env from categorical distribution
         # torch.multinomial expects probs on CPU for older versions; guard as needed
         indices = torch.multinomial(probs, num_samples=len(env_ids), replacement=True)
