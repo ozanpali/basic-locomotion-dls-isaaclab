@@ -60,6 +60,10 @@ if __name__ == '__main__':
     # --------------------------------------------------------------
     RENDER_FREQ = 30  # Hz
     last_render_time = time.time()
+    # 4-phase schedule: 5 seconds each, looping
+    PHASE_SECONDS = 5.0
+    PHASE_STEPS = int(PHASE_SECONDS / simulation_dt)
+
 
     while True:
         step_start = time.time()
@@ -99,6 +103,17 @@ if __name__ == '__main__':
         if(locomotion_policy.use_vision):
             heightmap.update_height_map(env.mjData.qpos[0:3], yaw=env.base_ori_euler_xyz[2])
     
+        # Determine current failure/indicator phase (0,1,2,3) cycling every 5s ------
+        # 0: normal, 1: RL+RR off, 2: normal, 3: FL thigh+calf off
+        phase = (env.step_num // PHASE_STEPS) % 4
+
+        # Update leg indicator for the observation input to the policy
+        if phase == 0 or phase == 2:
+            locomotion_policy.leg_any_scaled = np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float32)
+        elif phase == 1:
+            locomotion_policy.leg_any_scaled = np.array([0.0, 0.0, 1.0, 1.0], dtype=np.float32)
+        else:  # phase == 3
+            locomotion_policy.leg_any_scaled = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)
         # RL controller --------------------------------------------------------------
         if env.step_num % round(1 / (locomotion_policy.RL_FREQ * simulation_dt)) == 0:            
             
@@ -139,24 +154,18 @@ if __name__ == '__main__':
         tau.RR = Kp * (error_joints_pos.RR) - Kd * joints_vel.RR
 
 
-        # Simulate leg failure by scaling down torques ----------------------------------------------
-        tau.FL[0] *= 1 # scale FL hip torque by 0.3 during failure
-        tau.FL[1] *= 1 # scale FL thigh torque by 0.3 during failure
-        tau.FL[2] *= 1 # scale FL calf torque by 0.3 during failure
-
-        #tau.RL[0] *= 1 # scale RL hip torque by 0.3 during failure
-        #tau.RL[1] *= 1 # scale RL thigh torque by 0.3 during failure
-        #tau.RL[2] *= 1 # scale RL calf torque by 0.3 during failure
-
-        tau.FR[0] *= 1 # scale FR hip torque by 0.3 during failure
-        tau.FR[1] *= 1 # scale FR thigh torque by 0.3 during failure
-        tau.FR[2] *= 1 # scale FR calf torque by 0.3 during failure
-
-        #tau.RL *= 0
-        #tau.RR *= 0
-        #tau.RR[0] *= 1 # scale RR hip torque by 0.3 during failure
-        #tau.RR[1] *= 1 # scale RR thigh torque by 0.3 during failure
-        #tau.RR[2] *= 1 # scale RR calf torque by 0.3 during failure
+        ## Simulate leg failure by scaling down torques (phase-dependent) --------------
+        if phase == 0 or phase == 2:
+            # Normal: no additional scaling
+            pass
+        elif phase == 1:
+            # RL and RR off
+            tau.RL *= 0
+            tau.RR *= 0
+        else:  # phase == 3
+            # FL thigh and calf off
+            tau.FL[1] *= 0
+            tau.FL[2] *= 0
 
         # Set control and mujoco step ----------------------------------------------------------------------
         action = np.zeros(env.mjModel.nu)

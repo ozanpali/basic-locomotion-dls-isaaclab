@@ -388,10 +388,18 @@ policy_folder_path = "logs/rsl_rl/flat_direct/2025-11-19_20-55-22_RPC_2000Iter_8
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-11-19_22-22-53_RPC_2000Iter_8192Env_48c2ff0d_2case_test2_both_no_failure_and_back_legs_failure_scenes"
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-11-19_23-50-02_RPC_2000Iter_8192Env_d38faaf0_2case_test1_just_back_legs_failure_scene"
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-11-20_01-16-17_RPC_2000Iter_8192Env_14938ca9_2case_test2_both_no_failure_and_back_legs_failure_scenes"
+
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-10_18-08-04_RPC_1000Iter_8192Env_7dc08f28_only_rear_legs_are_failed_with_4_obs_size"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-10_18-53-31_RPC_1000Iter_8192Env_169761ff_all_legs_are_fine"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-10_19-35-40_RPC_1000Iter_8192Env_f0a37ce4_only_fr_failed_4_obs_size"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-10_20-18-19_RPC_1000Iter_8192Env_4705c650_only_rl_failed_4_obs_size"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-10_20-59-50_RPC_1000Iter_8192Env_8a46910a_only_rr_failed_4_obs_size"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-10_21-40-40_RPC_3000Iter_8192Env_d04575f6_0_1_2"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-10_23-50-32_RPC_4000Iter_8192Env_24a430a3_0_1_2_3"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-11_02-48-21_RPC_5000Iter_8192Env_6c0fb2d2_0_1_2_3_4"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-11_06-35-50_RPC_6000Iter_8192Env_08c3b074_0_1_2_3_4_5"
 """
 """
-
-
 
 
 #basic-locomotion-dls-isaaclab/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset.py

@@ -77,6 +77,9 @@ class LocomotionPolicyWrapper:
         self._observation_history = np.zeros((self.history_length, single_observation_space), dtype=np.float32)
 
         self.use_vision = config.use_vision
+        # Phase/leg indicator appended to observation
+        # Order: [normal, RL+RR failure, FL thigh+calf failure]
+        self.leg_any_scaled = np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float32)
 
         # RMA
         if(config.training_env["use_rma"] == True):
@@ -203,10 +206,14 @@ class LocomotionPolicyWrapper:
             height_data = height_data.clip(-1.0, 1.0)
             obs = np.concatenate((obs, height_data), axis=0)
         
-        # Append per-leg flags to match training input shape; in deployment (MuJoCo) we default to zeros.
-        # Order: [FL, FR, RL, RR]; dtype float32 0/1.
-        leg_any_scaled = np.array([1.0, 0.0], dtype=np.float32)
-        obs = np.concatenate((obs, leg_any_scaled), axis=0)
+        # # Append per-leg flags to match training input shape; in deployment (MuJoCo) we default to zeros.
+        # # Order: [FL, FR, RL, RR]; dtype float32 0/1.
+        # leg_any_scaled = np.array([0.0, 0.0, 1.0, 1.0], dtype=np.float32)
+        # obs = np.concatenate((obs, leg_any_scaled), axis=0)
+
+        # Append phase flags (one-hot of three conditions) to match training input shape
+        # Order: [normal, RL+RR-off, FL-thigh+calf-off]
+        obs = np.concatenate((obs, self.leg_any_scaled), axis=0)
             
         
         # RL Prediction
