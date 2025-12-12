@@ -1123,17 +1123,15 @@ class LocomotionEnv(DirectRLEnv):
         # 5: rear-right failure (disable RR thigh & calf)
         # Configure categorical probabilities via cfg.failure_type_probs.
         # Now we support 30 cases (0–29). Default to uniform distribution across all 30.
-        default_probs_30 = [1.0/30.0] * 30
-        probs_cfg = getattr(self.cfg, "failure_type_probs", default_probs_30)
+        probs_cfg = getattr(self.cfg, "failure_type_probs",[0.0, 1.0, 0.0, 0.0, 0.0, 0.0]) # [1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0])
         probs = torch.tensor(probs_cfg, dtype=torch.float, device=self.device)
         probs = torch.clip(probs, min=0.0)
         total = probs.sum()
-        # If user provided an invalid list or all zeros, fall back to uniform-30.
-        if (total <= 0) or (probs.numel() != 30):
-            probs = torch.tensor(default_probs_30, dtype=torch.float, device=self.device)
+        if total <= 0:
+            probs = torch.tensor([0.0, 1.0, 0.0, 0.0, 0.0, 0.0] , dtype=torch.float, device=self.device)
             total = probs.sum()
         probs = probs / total
-        print("Failure type sampling probabilities:", probs.tolist())
+        #print("Failure type sampling probabilities:", probs.tolist())
         # Sample fail_type per env from categorical distribution
         # torch.multinomial expects probs on CPU for older versions; guard as needed
         indices = torch.multinomial(probs, num_samples=len(env_ids), replacement=True)
