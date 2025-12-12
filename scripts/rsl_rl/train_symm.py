@@ -87,8 +87,9 @@ from isaaclab_rl.rsl_rl import (
     RslRlOnPolicyRunnerCfg,
     RslRlVecEnvWrapper,
     export_policy_as_jit,
-    export_policy_as_onnx,
+    #export_policy_as_onnx,
 )
+from amp_rsl_rl.utils import export_policy_as_onnx
 from isaaclab_tasks.utils import get_checkpoint_path
 from isaaclab_tasks.utils.hydra import hydra_task_config
 
