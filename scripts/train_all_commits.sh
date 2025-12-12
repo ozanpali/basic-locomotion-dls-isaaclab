@@ -14,7 +14,7 @@ HEADLESS_FLAG="--headless"
 LOG_PROJECT_NAME="Commando-Aliengo-Flat"
 # default max iterations (can be overridden by --max-iterations)
 MAX_ITER="1000"
-TRAIN_SCRIPT="scripts/rsl_rl/train.py"
+TRAIN_SCRIPT="scripts/rsl_rl/train_symm.py"
 DRY_RUN=false
 
 # Simple CLI parsing to override defaults
