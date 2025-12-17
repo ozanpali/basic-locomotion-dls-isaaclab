@@ -65,6 +65,7 @@ simulation_app = app_launcher.app
 """Rest everything follows."""
 
 import os  # noqa: I001
+import copy
 from datetime import datetime
 
 import isaaclab_tasks  # noqa: F401
@@ -87,15 +88,57 @@ from isaaclab_rl.rsl_rl import (
     RslRlOnPolicyRunnerCfg,
     RslRlVecEnvWrapper,
     export_policy_as_jit,
-    #export_policy_as_onnx,
+    export_policy_as_onnx,
 )
-from amp_rsl_rl.utils import export_policy_as_onnx
 from isaaclab_tasks.utils import get_checkpoint_path
 from isaaclab_tasks.utils.hydra import hydra_task_config
 
 # from rsl_rl.runners import OnPolicyRunner
 from morphosymm_rl.symm_on_policy_runner import SymmOnPolicyRunner
 import escnn.nn
+
+
+def export_policy_as_onnx_compat(policy: torch.nn.Module, normalizer: object | None, path: str, filename: str):
+    """Export ONNX for non-recurrent policies.
+
+    IsaacLab's ONNX exporter infers input dim via `policy.actor[0].in_features`, which breaks
+    for actor modules like ActorMoE that aren't subscriptable. Here we infer the input dim via
+    `actor.obs_dim` when available.
+    """
+
+    class _OnnxWrapper(torch.nn.Module):
+        def __init__(self, actor_critic: torch.nn.Module, normalizer_module: object | None):
+            super().__init__()
+            self.actor = copy.deepcopy(actor_critic.actor)
+            self.normalizer = copy.deepcopy(normalizer_module) if normalizer_module else torch.nn.Identity()
+
+        def forward(self, x: torch.Tensor):
+            return self.actor(self.normalizer(x))
+
+    os.makedirs(path, exist_ok=True)
+    wrapper = _OnnxWrapper(policy, normalizer).to("cpu")
+
+    actor = wrapper.actor
+    if hasattr(actor, "obs_dim"):
+        obs = torch.zeros(1, int(getattr(actor, "obs_dim")), dtype=torch.float32)
+    elif hasattr(actor, "__getitem__") and hasattr(actor[0], "in_features"):
+        obs = torch.zeros(1, int(actor[0].in_features), dtype=torch.float32)
+    else:
+        raise TypeError(
+            "Cannot infer ONNX input dimension for actor type "
+            f"{type(actor).__name__}; expected `.obs_dim` or an indexable module with `[0].in_features`."
+        )
+
+    torch.onnx.export(
+        wrapper,
+        obs,
+        os.path.join(path, filename),
+        export_params=True,
+        opset_version=11,
+        input_names=["obs"],
+        output_names=["actions"],
+        dynamic_axes={},
+    )
 
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
@@ -189,7 +232,14 @@ def main(
     # Convert Equivariant modules into standard torch modules.
     policy = runner.alg.policy.export() if hasattr(runner.alg.policy, "export") else runner.alg.policy
     export_policy_as_jit(policy, runner.obs_normalizer, path=ckpt_path, filename="policy.pt")
-    export_policy_as_onnx(policy, normalizer=runner.obs_normalizer, path=ckpt_path, filename="policy.onnx")
+    try:
+        export_policy_as_onnx_compat(policy, normalizer=runner.obs_normalizer, path=ckpt_path, filename="policy.onnx")
+    except Exception as e:
+        # Fall back to IsaacLab exporter when compatible.
+        try:
+            export_policy_as_onnx(policy, normalizer=runner.obs_normalizer, path=ckpt_path, filename="policy.onnx")
+        except Exception:
+            print(f"[WARN] Skipping ONNX export: {type(e).__name__}: {e}")
 
     # close the simulator
     env.close()
