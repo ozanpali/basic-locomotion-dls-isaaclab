@@ -389,7 +389,6 @@ policy_folder_path = "logs/rsl_rl/flat_direct/2025-11-19_22-22-53_RPC_2000Iter_8
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-11-19_23-50-02_RPC_2000Iter_8192Env_d38faaf0_2case_test1_just_back_legs_failure_scene"
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-11-20_01-16-17_RPC_2000Iter_8192Env_14938ca9_2case_test2_both_no_failure_and_back_legs_failure_scenes"
 
-policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-10_18-08-04_RPC_1000Iter_8192Env_7dc08f28_only_rear_legs_are_failed_with_4_obs_size"
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-10_18-53-31_RPC_1000Iter_8192Env_169761ff_all_legs_are_fine"
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-10_19-35-40_RPC_1000Iter_8192Env_f0a37ce4_only_fr_failed_4_obs_size"
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-10_20-18-19_RPC_1000Iter_8192Env_4705c650_only_rl_failed_4_obs_size"
@@ -398,8 +397,65 @@ policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-10_21-40-40_RPC_3000Iter_8
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-10_23-50-32_RPC_4000Iter_8192Env_24a430a3_0_1_2_3"
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-11_02-48-21_RPC_5000Iter_8192Env_6c0fb2d2_0_1_2_3_4"
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-11_06-35-50_RPC_6000Iter_8192Env_08c3b074_0_1_2_3_4_5"
+
+
+
+
+
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-12_02-32-08_RPC_2000Iter_8192Env_3bc145d8_test4_0_1_2_3_4"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-12_04-00-59_RPC_2000Iter_8192Env_c4d171fe_test5_0_1_2_3_4_5"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-12_05-30-11_RPC_2000Iter_8192Env_df049fcc_test6_0_12xmorethanothers_2_3_4_5"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-12_07-04-45_RPC_2000Iter_8192Env_f9bfcd8e_18_cases"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-12_08-43-04_RPC_2000Iter_8192Env_b2020339_30_cases"
+
+
+
+
+
+
+
+
+
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-12_18-07-00_RPC_3000Iter_8192Env_fe03f131_moe_test0_1"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-10_18-08-04_RPC_1000Iter_8192Env_7dc08f28_only_rear_legs_are_failed_with_4_obs_size"
+
+
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-11_22-10-39_RPC_2000Iter_8192Env_ea8abffc_test1_0_1"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-12_20-32-13_RPC_3000Iter_8192Env_131ce770_moe_test1_0_1"
 """
+
+
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-12_23-03-30_RPC_3000Iter_8192Env_723cd6ab_moe_test2_0_1_2"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-11_23-37-55_RPC_2000Iter_8192Env_9d428e05_test2_0_1_2"
+
+
+    
+
+
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-13_01-28-50_RPC_3000Iter_8192Env_842bbb50_moe_test3_0_1_2_3"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-12_01-02-13_RPC_2000Iter_8192Env_42263ffd_test3_0_1_2_3"
+
+
+
+
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-13_03-56-12_RPC_3000Iter_8192Env_543a9320_moe_test4_0_1_2_3_4"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-13_06-25-15_RPC_3000Iter_8192Env_d0a1e4ad_moe_test5_0_1_2_3_4_5"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-13_08-56-26_RPC_3000Iter_8192Env_837e7ee3_moe_test6_0_12xmorethanothers_2_3_4_5"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-13_11-29-07_RPC_3000Iter_8192Env_73cd50a9_moe_18_cases"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-13_14-04-05_RPC_3000Iter_8192Env_9d60a852_moe_30_cases"
 """
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 #basic-locomotion-dls-isaaclab/source/basic_locomotion_dls_isaaclab/basic_locomotion_dls_isaaclab/assets/aliengo_asset.py
