@@ -78,11 +78,9 @@ class LocomotionEnv(DirectRLEnv):
         # Note: _setup_scene may have already created and populated this via custom_events.
         self._torque_scaled_mask_per_leg_joint = torch.zeros(self.num_envs, 4, 3, dtype=torch.float, device=self.device)
         """# Informative init print: per-leg (FL, FR, RL, RR) x per-joint (hip, thigh, calf) torque scaling mask
-        try:
-            #shape = tuple(self._torque_scaled_mask_per_leg_joint.shape)
-            #print(f"[init] _torque_scaled_mask_per_leg_joint allocated with shape={shape} (num_envs={self.num_envs}, legs=4, joints=3), device={self.device}")
-        except Exception:
-            pass"""
+        #shape = tuple(self._torque_scaled_mask_per_leg_joint.shape)
+        #print(f"[init] _torque_scaled_mask_per_leg_joint allocated with shape={shape} (num_envs={self.num_envs}, legs=4, joints=3), device={self.device}")
+        """
 
         ############################## LOOK HERE ##############################
         # Per-env failure type persisted across the episode (0: none, 1: FL, 2: FR, 3: RL, 4: RR)
@@ -306,20 +304,6 @@ class LocomotionEnv(DirectRLEnv):
         leg_any_scaled = (self._torque_scaled_mask_per_leg_joint.max(dim=2).values > 0.0).float()
         #print("Leg any scaled fed to observations:", leg_any_scaled.tolist())
         obs = torch.cat((obs, leg_any_scaled), dim=-1)
-
-        
-        # Append back-failed flag as one-hot to the observation instead of per-leg flags
-        # back_failed_flag: 1 if any of RL/RR legs are torque-scaled, else 0
-        # One-hot shape: [num_envs, 2] -> [no_back_fail, back_fail]
-        # Directly append failure type one-hot (size 3): 0 = none, 1 = rear failure (RL & RR), 2 = front-left failure.
-        # _failure_type is guaranteed by __init__ / _reset_idx; assert for clarity.
-        """assert hasattr(self, "_failure_type"), "_failure_type must be initialized in __init__ before observations are gathered."
-        #failure_type_clamped = torch.clamp(self._failure_type, 0, 2)
-        failure_type_onehot = torch.nn.functional.one_hot(self._failure_type, num_classes=6).to(dtype=obs.dtype, device=obs.device)
-        obs = torch.cat((obs, failure_type_onehot), dim=-1)"""
-        #print("Failure type onehot added to obs:", failure_type_onehot.cpu().numpy())  #Failure type onehot added to obs: [0. 0. 1.] for front-left failure
-        #print("Back-failed onehot added to obs:", back_failed_onehot[0].cpu().numpy())  #Back-failed onehot added to obs: [0. 1.]
-
 
         # Final observations dictionary
         observations = {"policy": obs}    
@@ -1118,15 +1102,13 @@ class LocomotionEnv(DirectRLEnv):
 
         # Clear any prior per-joint torque scaling state for THIS reset batch.
         # Without this, actuator-side scaling and the observation mask can leak across episodes.
-        if not hasattr(self, "_torque_scaled_mask_per_leg_joint"):
-            self._torque_scaled_mask_per_leg_joint = torch.zeros(
-                (self.num_envs, 4, 3), dtype=torch.float, device=self.device
-            )
         self._torque_scaled_mask_per_leg_joint[env_ids, :, :] = 0.0
 
         # Restore default joint gains for this reset batch before applying any failure.
         default_stiffness_restore = self._robot.data.default_joint_stiffness[env_ids]
+        #print("default_stiffness_restore:", default_stiffness_restore)
         default_damping_restore = self._robot.data.default_joint_damping[env_ids]
+        #print("default_damping_restore:", default_damping_restore)
         self._robot.write_joint_stiffness_to_sim(
             default_stiffness_restore[:, self._rear_joint_indices],
             joint_ids=self._rear_joint_indices,
