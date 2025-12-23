@@ -1108,36 +1108,9 @@ class LocomotionEnv(DirectRLEnv):
             extras["Episode_Curriculum/terrain_levels"] = torch.mean(self._terrain.terrain_levels.float())
         
         self.extras["log"].update(extras)
-
-        # --- Apply per-episode randomized leg failure mask (torque scaling) ---
-        # Six-way failure sampling:
-        # 0: no failure
-        # 1: rear failure (disable RL & RR)
-        # 2: front-left failure (disable FL thigh & calf)
-        # 3: front-right failure (disable FR thigh & calf)
-        # 4: rear-left failure (disable RL thigh & calf)
-        # 5: rear-right failure (disable RR thigh & calf)
-        # Configure categorical probabilities via cfg.failure_type_probs.
-        # Now we support 30 cases (0–29). Default to uniform distribution across all 30.
-        probs_cfg = getattr(self.cfg, "failure_type_probs",[1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0]) # [1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0])
-        probs = torch.tensor(probs_cfg, dtype=torch.float, device=self.device)
-        probs = torch.clip(probs, min=0.0)
-        total = probs.sum()
-        if total <= 0:
-            probs = torch.tensor([1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0] , dtype=torch.float, device=self.device)
-            total = probs.sum()
-        probs = probs / total
-        #print("Failure type sampling probabilities:", probs.tolist())
-        # Sample fail_type per env from categorical distribution
-        # torch.multinomial expects probs on CPU for older versions; guard as needed
-        indices = torch.multinomial(probs, num_samples=len(env_ids), replacement=True)
-        fail_type = indices.to(torch.long)
-        # Persist failure type for these envs until next reset
-        self._failure_type[env_ids] = fail_type
-
-        # Always assign NO failure (code 0) for every env in env_ids
-        #fail_type = torch.zeros(len(env_ids), device=self.device, dtype=torch.long)
-        #self._failure_type[env_ids] = fail_type
+        probs = torch.tensor([0.0, 0.0, 1.0, 0.0, 0.0, 0.0], dtype=torch.float, device=self.device)
+        failure_type_subset = torch.multinomial(probs, num_samples=len(env_ids), replacement=True).to(torch.long)
+        self._failure_type[env_ids] = failure_type_subset
 
         self._rear_joint_indices = [2, 3, 6, 7, 10, 11]
         self._front_joint_indices = [0, 1, 4, 5, 8, 9]  # for possible future use
