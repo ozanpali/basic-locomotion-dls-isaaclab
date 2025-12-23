@@ -1123,15 +1123,12 @@ class LocomotionEnv(DirectRLEnv):
         # 5: rear-right failure (disable RR thigh & calf)
         # Configure categorical probabilities via cfg.failure_type_probs.
         # Now we support 30 cases (0–29). Default to uniform distribution across all 30.
-        # Now we support 30 cases (0–29). Default to uniform distribution across all 30.
-        default_probs_30 = [1.0/30.0] * 30
-        probs_cfg = getattr(self.cfg, "failure_type_probs", default_probs_30)
+        probs_cfg = getattr(self.cfg, "failure_type_probs",[1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0]) # [1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0])
         probs = torch.tensor(probs_cfg, dtype=torch.float, device=self.device)
         probs = torch.clip(probs, min=0.0)
         total = probs.sum()
-        # If user provided an invalid list or all zeros, fall back to uniform-30.
-        if (total <= 0) or (probs.numel() != 30):
-            probs = torch.tensor(default_probs_30, dtype=torch.float, device=self.device)
+        if total <= 0:
+            probs = torch.tensor([1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0] , dtype=torch.float, device=self.device)
             total = probs.sum()
         probs = probs / total
         #print("Failure type sampling probabilities:", probs.tolist())
@@ -1240,6 +1237,10 @@ class LocomotionEnv(DirectRLEnv):
             rear_failed_envs = env_ids[rear_failed_mask]
             self._robot.write_joint_stiffness_to_sim(0.0, joint_ids=rear_joint_indices, env_ids=rear_failed_envs)
             self._robot.write_joint_damping_to_sim(0.0, joint_ids=rear_joint_indices, env_ids=rear_failed_envs)
+            # Also activate the per-leg, per-joint torque-scaled mask for RL/RR as in custom_events.scale_joint_torque
+            # Legs: RL=2, RR=3; Joints: hip=0, thigh=1, calf=2
+            self._torque_scaled_mask_per_leg_joint[rear_failed_envs, 2, :] = 1.0
+            self._torque_scaled_mask_per_leg_joint[rear_failed_envs, 3, :] = 1.0
             
             # Also attempt to apply actuator-side torque scaling (set efforts -> 0.0) for rear joints
             # Use the shared helper in tasks.custom_events.scale_joint_torque when available so
@@ -1268,17 +1269,12 @@ class LocomotionEnv(DirectRLEnv):
                 scale=0.0,
             )
 
-            #print("self._torque_scaled_mask_per_leg_joint before rear failure set:", self._torque_scaled_mask_per_leg_joint[rear_failed_envs])
-
-            # Also activate the per-leg, per-joint torque-scaled mask for RL/RR as in custom_events.scale_joint_torque
-            # Legs: RL=2, RR=3; Joints: hip=0, thigh=1, calf=2
-            self._torque_scaled_mask_per_leg_joint[rear_failed_envs, 2, :] = 1.0
-            self._torque_scaled_mask_per_leg_joint[rear_failed_envs, 3, :] = 1.0
-            #print("self._torque_scaled_mask_per_leg_joint after rear failure set:", self._torque_scaled_mask_per_leg_joint[rear_failed_envs])
-
         # FL failure (disable FL thigh & calf)
         fl_thigh_calf_failed_mask = failure_type_subset == 2
         if torch.any(fl_thigh_calf_failed_mask):
+
+            self._torque_scaled_mask_per_leg_joint[env_ids[fl_thigh_calf_failed_mask], 0, :] = 1.0
+            """
             fl_thigh_calf_failed_envs = env_ids[fl_thigh_calf_failed_mask]
             all_leg_names = [
                 "FL_hip_joint", "FR_hip_joint",
@@ -1310,11 +1306,13 @@ class LocomotionEnv(DirectRLEnv):
                         joint_names=joint_names,
                     ),
                     scale=0.0,
-                )
+                )"""
 
         # FR failure (disable FR thigh & calf)
         fr_thigh_calf_failed_mask = failure_type_subset == 3
         if torch.any(fr_thigh_calf_failed_mask):
+            self._torque_scaled_mask_per_leg_joint[env_ids[fr_thigh_calf_failed_mask], 1, :] = 1.0
+            """ 
             fr_thigh_calf_failed_envs = env_ids[fr_thigh_calf_failed_mask]
             all_leg_names = [
                 "FL_hip_joint", "FR_hip_joint",
@@ -1346,11 +1344,13 @@ class LocomotionEnv(DirectRLEnv):
                         joint_names=joint_names,
                     ),
                     scale=0.0,
-                )
+                )"""
 
         # RL failure (disable RL thigh & calf)
         rl_thigh_calf_failed_mask = failure_type_subset == 4
         if torch.any(rl_thigh_calf_failed_mask):
+            self._torque_scaled_mask_per_leg_joint[env_ids[rl_thigh_calf_failed_mask], 2, :] = 1.0
+            """
             rl_thigh_calf_failed_envs = env_ids[rl_thigh_calf_failed_mask]
             all_leg_names = [
                 "FL_hip_joint", "FR_hip_joint",
@@ -1382,11 +1382,13 @@ class LocomotionEnv(DirectRLEnv):
                         joint_names=joint_names,
                     ),
                     scale=0.0,
-                )
+                )"""
 
         # RR failure (disable RR thigh & calf)
         rr_thigh_calf_failed_mask = failure_type_subset == 5
         if torch.any(rr_thigh_calf_failed_mask):
+            self._torque_scaled_mask_per_leg_joint[env_ids[rr_thigh_calf_failed_mask], 3, :] = 1.0
+            """
             rr_thigh_calf_failed_envs = env_ids[rr_thigh_calf_failed_mask]
             all_leg_names = [
                 "FL_hip_joint", "FR_hip_joint",
@@ -1418,8 +1420,10 @@ class LocomotionEnv(DirectRLEnv):
                         joint_names=joint_names,
                     ),
                     scale=0.0,
-                )
-
+                )"""
+        
+        
+        """
         # FL hip failure (disable FL hip only)
         fl_hip_failed_mask = failure_type_subset == 6
         if torch.any(fl_hip_failed_mask):
@@ -2299,10 +2303,8 @@ class LocomotionEnv(DirectRLEnv):
                     ),
                     scale=0.0,
                 )
-
+"""
         
-
-
 
     def _get_new_random_commands(self):
         
