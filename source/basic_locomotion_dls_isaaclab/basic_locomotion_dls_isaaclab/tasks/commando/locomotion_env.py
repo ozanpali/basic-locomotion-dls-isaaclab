@@ -1203,10 +1203,7 @@ class LocomotionEnv(DirectRLEnv):
             self._robot.write_joint_damping_to_sim(default_damping_restore[:, self._front_joint_indices], joint_ids=self._front_joint_indices, env_ids=normal_envs)
 
             # # Reset mask for non-failed envs
-            # self._torque_scaled_mask_per_leg_joint[normal_envs, :, :] = 0.0
-            # # Also attempt to restore actuator-side torque scaling (set efforts -> 1.0) for all joints
-
-            whole_joint_ids = [0,1,2,3,4,5,6,7,8,9,10,11]
+            self._torque_scaled_mask_per_leg_joint[normal_envs, :, :] = 0.0
             whole_names = [
                 "FL_hip_joint", "FR_hip_joint",
                 "RL_hip_joint", "RR_hip_joint",
@@ -1219,7 +1216,7 @@ class LocomotionEnv(DirectRLEnv):
             scale_joint_torque(
                 env=self,
                 env_ids=normal_envs,
-                asset_cfg=SceneEntityCfg(name="robot", joint_ids=whole_joint_ids, joint_names=whole_names),
+                asset_cfg=SceneEntityCfg(name="robot", joint_ids=slice(None), joint_names=whole_names),
                 scale=1.0,
             )
 
