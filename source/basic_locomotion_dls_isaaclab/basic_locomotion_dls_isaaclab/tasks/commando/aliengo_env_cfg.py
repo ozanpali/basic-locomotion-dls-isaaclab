@@ -389,7 +389,7 @@ class AliengoFlatEnvCfg(DirectRLEnvCfg):
     joints_energy_reward_scale = -1e-4 * (1-use_amp)
     joints_hip_position_reward_scale = -0.1 * (1-use_amp)
     joints_thigh_position_reward_scale = -0.1 * (1-use_amp)
-    joints_calf_position_reward_scale = -0.001 * (1-use_amp)
+    joints_calf_position_reward_scale = -0.1 * (1-use_amp)
 
 
     # Undesired contacts reward scale
