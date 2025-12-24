@@ -1092,7 +1092,7 @@ class LocomotionEnv(DirectRLEnv):
             extras["Episode_Curriculum/terrain_levels"] = torch.mean(self._terrain.terrain_levels.float())
         
         self.extras["log"].update(extras)
-        probs = torch.tensor([0.0, 0.0, 0.25, 0.25, 0.25, 0.25], dtype=torch.float, device=self.device)
+        probs = torch.tensor([0.0, 1.0, 0.0, 0.0, 0.0, 0.0], dtype=torch.float, device=self.device)
         failure_type_subset = torch.multinomial(probs, num_samples=len(env_ids), replacement=True).to(torch.long)
         self._failure_type[env_ids] = failure_type_subset
 
