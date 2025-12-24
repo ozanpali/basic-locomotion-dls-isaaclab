@@ -853,7 +853,7 @@ class LocomotionEnv(DirectRLEnv):
         #print(include_mask_f)
         feet_to_hip_distance_3leg = -((per_leg_dist * include_mask_f).sum(dim=1) / include_mask_f.sum(dim=1).clamp(min=1.0))
 
-        back_offset = torch.tensor([-0.01, -0.01, 0.0, 0.0], device=self.device)
+        back_offset = torch.tensor([0.0, 0.0, 0.0, 0.0], device=self.device)
         commando_desired_hip_offset = desired_hip_offset + back_offset
         # compute per-leg distances using the commando desired hip offset for the y component
         commando_delta_x = feet_to_base_h[:, 0] - hip_to_base_h[:, 0]
