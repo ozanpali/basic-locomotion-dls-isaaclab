@@ -65,12 +65,8 @@ done
 
 # Ordered list from first to last commit (as you provided)
 COMMITS=(
-  62639cdefe0177ec52617a2461c6991e6f8cc53c
-  f239b4d6eb0aa622b0975e7d9e68a9037558376a
-  ae49d8c0c235ba83b76ae2a41e42964b99aa07ce
-  e8e16df9f75720ff81a3204d2e9bab9ea9394cc8
-  b9bd0c9e32c88de60d7fd699f438ffef71948683
-  771c9da3e84a0fc3ca5958a639e941e171765d38
+  86effc5a31a975f0bb9bbe39a01f2e328815ec2e
+  10d4c47cf67cbd79e24d070d983e3aec497dac78
 )
 
 # Optional per-commit iteration overrides.
@@ -78,6 +74,8 @@ COMMITS=(
 # If not set for a commit, the global MAX_ITER is used.
 declare -A COMMIT_MAX_ITER
 # Example overrides (uncomment and edit as needed):
+COMMIT_MAX_ITER[86effc5a31a975f0bb9bbe39a01f2e328815ec2e]=2500
+COMMIT_MAX_ITER[10d4c47cf67cbd79e24d070d983e3aec497dac78]=6000
 # COMMIT_MAX_ITER[7dc08f284420776595a2ba6dfed1f7a1ced39cd3]=1000
 # COMMIT_MAX_ITER[169761ffc8c7579f4769b0c9d4206b51413ca1f6]=1000
 # COMMIT_MAX_ITER[f0a37ce48a03f3a2bf5fad6e62cf6e4d3aee8755]=1000
