@@ -60,7 +60,7 @@ if __name__ == '__main__':
     # --------------------------------------------------------------
     RENDER_FREQ = 30  # Hz
     last_render_time = time.time()
-    # 4-phase schedule: 5 seconds each, looping
+    # 10-phase schedule: 5 seconds each, looping
     PHASE_SECONDS = 5.0
     PHASE_STEPS = int(PHASE_SECONDS / simulation_dt)
 
@@ -103,17 +103,33 @@ if __name__ == '__main__':
         if(locomotion_policy.use_vision):
             heightmap.update_height_map(env.mjData.qpos[0:3], yaw=env.base_ori_euler_xyz[2])
     
-        # Determine current failure/indicator phase (0,1,2,3) cycling every 5s ------
-        # 0: normal, 1: RL+RR off, 2: normal, 3: FL thigh+calf off
-        phase = (env.step_num // PHASE_STEPS) % 4
+        # Determine current failure/indicator phase (0..9) cycling every 5s ------
+        # Mapping you requested:
+        #   0,2,4,6,8: normal (no failed legs)
+        #   1: rear failed (RL + RR)
+        #   2: FL failed
+        #   3: FR failed
+        #   4: RL failed
+        #   5: RR failed
+        phase = (env.step_num // PHASE_STEPS) % 6
 
         # Update leg indicator for the observation input to the policy
-        if phase == 0 or phase == 2:
+        if phase == 0:
             locomotion_policy.leg_any_scaled = np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float32)
         elif phase == 1:
             locomotion_policy.leg_any_scaled = np.array([0.0, 0.0, 1.0, 1.0], dtype=np.float32)
-        else:  # phase == 3
+        elif phase == 2:
             locomotion_policy.leg_any_scaled = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)
+        elif phase == 3:
+            locomotion_policy.leg_any_scaled = np.array([0.0, 1.0, 0.0, 0.0], dtype=np.float32)
+        elif phase == 4:
+            locomotion_policy.leg_any_scaled = np.array([0.0, 0.0, 1.0, 0.0], dtype=np.float32)
+        elif phase == 5:
+            locomotion_policy.leg_any_scaled = np.array([0.0, 0.0, 0.0, 1.0], dtype=np.float32)
+        else:
+            pass
+        #     # Phases 6,7,8,9 default to "normal" indicator
+        #     locomotion_policy.leg_any_scaled = np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float32)
         # RL controller --------------------------------------------------------------
         if env.step_num % round(1 / (locomotion_policy.RL_FREQ * simulation_dt)) == 0:            
             
@@ -153,20 +169,37 @@ if __name__ == '__main__':
         tau.RL = Kp * (error_joints_pos.RL) - Kd * joints_vel.RL
         tau.RR = Kp * (error_joints_pos.RR) - Kd * joints_vel.RR
 
-
         ## Simulate leg failure by scaling down torques (phase-dependent) --------------
-        if phase == 0 or phase == 2:
+        if phase in (0, 2, 4, 6, 8):
             # Normal: no additional scaling
             pass
         elif phase == 1:
-            # RL and RR off
+            # Rear failed: RL and RR off
             tau.RL *= 0
             tau.RR *= 0
-        else:  # phase == 3
-            # FL thigh and calf off
-            tau.FL[1] *= 0
-            tau.FL[2] *= 0
-
+        elif phase == 2:
+            # FL failed: thigh and calf off
+            # tau.FL[1] *= 0
+            # tau.FL[2] *= 0
+            pass
+        elif phase == 3:
+            # FR failed: thigh and calf off
+            # tau.FR[1] *= 0
+            # tau.FR[2] *= 0
+            pass
+        elif phase == 4:
+            # RL failed: thigh and calf off
+            # tau.RL[1] *= 0
+            # tau.RL[2] *= 0
+            pass
+        elif phase == 5:
+            # RR failed: thigh and calf off
+            # tau.RR[1] *= 0
+            # tau.RR[2] *= 0
+            pass
+        else:
+            # Any other phases behave as normal
+            pass
         # Set control and mujoco step ----------------------------------------------------------------------
         action = np.zeros(env.mjModel.nu)
         action[env.legs_tau_idx.FL] = tau.FL.reshape((3,))

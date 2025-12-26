@@ -422,7 +422,6 @@ policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-10_18-08-04_RPC_1000Iter_8
 
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-11_22-10-39_RPC_2000Iter_8192Env_ea8abffc_test1_0_1"
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-12_20-32-13_RPC_3000Iter_8192Env_131ce770_moe_test1_0_1"
-"""
 
 
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-12_23-03-30_RPC_3000Iter_8192Env_723cd6ab_moe_test2_0_1_2"
@@ -443,7 +442,28 @@ policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-13_06-25-15_RPC_3000Iter_8
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-13_08-56-26_RPC_3000Iter_8192Env_837e7ee3_moe_test6_0_12xmorethanothers_2_3_4_5"
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-13_11-29-07_RPC_3000Iter_8192Env_73cd50a9_moe_18_cases"
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-13_14-04-05_RPC_3000Iter_8192Env_9d60a852_moe_30_cases"
+
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-24_03-13-09_RPC_2500Iter_8192Env_86effc5a_fl_or_rr_up_rescaled_calf_pos"
+
+
+#all 4 cases working fine!! but just not lifting too much!
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-24_04-53-20_RPC_6000Iter_8192Env_10d4c47c_fl_fr_rl_rr_up_rescaled_calf_pos"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-24_15-39-35_1000Iter_8192Env_4e8f395460f5e92e5f6c3a4508b86e4b699b4cd0_solorearlegsfailed"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-24_18-19-42_1000Iter_8192Env_e12fc871feaa9dba1b03a505837f4c754aab3cac_commandothighposrescaledto0.001"
+
+
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-24_19-10-10_RPC_1000Iter_8192Env_afc7f319_no_1cm_back_desired_feet_to_hip"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-24_19-53-05_RPC_6000Iter_8192Env_5a25b840_4_legs_fl_fr_rl_rr_lift"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-25_00-00-49_RPC_6000Iter_8192Env_3225740e_4_legs_2_legs_fl_fr_rl_rr_lift_undo_rescale_commando_thigh_pos"
+# all working well!!!!
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-25_04-16-20_RPC_6000Iter_8192Env_3eb51f5f_4_legs_2_legs_fl_fr_rl_rr_lift_rescaled_commando_thigh_pos_to_0.001"
+
+
+
+
 """
+"""
+
 
 
 
