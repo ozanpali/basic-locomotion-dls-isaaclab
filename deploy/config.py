@@ -459,14 +459,26 @@ policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-25_00-00-49_RPC_6000Iter_8
 policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-25_04-16-20_RPC_6000Iter_8192Env_3eb51f5f_4_legs_2_legs_fl_fr_rl_rr_lift_rescaled_commando_thigh_pos_to_0.001"
 
 
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-26_03-34-44_RPC_6000Iter_8192Env_c030a76c_no_front_legs_offset"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-26_07-50-03_RPC_6000Iter_8192Env_ae1e52e2_1_cm_front_for_front_legs"
+
 
 
 """
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-26_12-05-29_RPC_6000Iter_8192Env_a479c93e_2_cm_front_for_front_legs"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-26_16-22-27_RPC_6000Iter_8192Env_db751ca3_default_front_legs_and_downscale_feet_to_hip_so_it_can_move_freely."
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-26_20-37-12_RPC_6000Iter_8192Env_343e7a2f_introduced_slide_increased_commando_airtime_scale"
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-27_00-52-01_RPC_6000Iter_8192Env_392f9bae_introduced_motor_failures"
+
 """
 
-
-
-
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-27_17-53-04_RPC_6000Iter_8192Env_a9a8378d_default_feet_to_hip_airtime_no_slide_reward_1_cm_forwardfor_front_legs"
+#4 networks
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-29_02-29-49_RPC_6000Iter_8192Env_9b7a60be_switched_to_moe_for_comparison"
+#6 networks
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-30_01-41-25_RPC_6000Iter_8192Env_9b7a60be_switched_to_moe_for_comparison"
+#2 networks
+policy_folder_path = "logs/rsl_rl/flat_direct/2025-12-30_16-47-19_RPC_6000Iter_8192Env_9b7a60be_switched_to_moe_for_comparison"
 
 
 

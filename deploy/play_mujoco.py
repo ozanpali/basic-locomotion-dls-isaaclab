@@ -111,20 +111,20 @@ if __name__ == '__main__':
         #   3: FR failed
         #   4: RL failed
         #   5: RR failed
-        phase = (env.step_num // PHASE_STEPS) % 6
-
+        phase = (env.step_num // PHASE_STEPS) % 10
+        # phase  = 3
         # Update leg indicator for the observation input to the policy
-        if phase == 0:
+        if phase in (0, 2, 4, 6, 8):
             locomotion_policy.leg_any_scaled = np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float32)
         elif phase == 1:
             locomotion_policy.leg_any_scaled = np.array([0.0, 0.0, 1.0, 1.0], dtype=np.float32)
-        elif phase == 2:
-            locomotion_policy.leg_any_scaled = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)
         elif phase == 3:
-            locomotion_policy.leg_any_scaled = np.array([0.0, 1.0, 0.0, 0.0], dtype=np.float32)
-        elif phase == 4:
-            locomotion_policy.leg_any_scaled = np.array([0.0, 0.0, 1.0, 0.0], dtype=np.float32)
+            locomotion_policy.leg_any_scaled = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)
         elif phase == 5:
+            locomotion_policy.leg_any_scaled = np.array([0.0, 1.0, 0.0, 0.0], dtype=np.float32)
+        elif phase == 7:
+            locomotion_policy.leg_any_scaled = np.array([0.0, 0.0, 1.0, 0.0], dtype=np.float32)
+        elif phase == 9:
             locomotion_policy.leg_any_scaled = np.array([0.0, 0.0, 0.0, 1.0], dtype=np.float32)
         else:
             pass
@@ -170,35 +170,38 @@ if __name__ == '__main__':
         tau.RR = Kp * (error_joints_pos.RR) - Kd * joints_vel.RR
 
         ## Simulate leg failure by scaling down torques (phase-dependent) --------------
-        if phase in (0, 2, 4, 6, 8):
-            # Normal: no additional scaling
+        if phase in (0, 2, 4, 6, 8):            # Normal: no additional scaling
             pass
         elif phase == 1:
             # Rear failed: RL and RR off
             tau.RL *= 0
             tau.RR *= 0
-        elif phase == 2:
-            # FL failed: thigh and calf off
-            # tau.FL[1] *= 0
-            # tau.FL[2] *= 0
-            pass
         elif phase == 3:
-            # FR failed: thigh and calf off
-            # tau.FR[1] *= 0
-            # tau.FR[2] *= 0
-            pass
-        elif phase == 4:
-            # RL failed: thigh and calf off
-            # tau.RL[1] *= 0
-            # tau.RL[2] *= 0
-            pass
+            # FL failed: thigh and calf off
+            # tau.FL *= 0
+            tau.FL[1] *= 0
+            tau.FL[2] *= 0
+            # pass
         elif phase == 5:
+            # FR failed: thigh and calf off
+            #tau.FR *= 0
+            tau.FR[1] *= 0
+            tau.FR[2] *= 0
+            # pass
+        elif phase == 7:
+            # RL failed: thigh and calf off
+            #tau.RL *= 0
+            tau.RL[1] *= 0
+            tau.RL[2] *= 0
+            # pass
+        elif phase == 9:
             # RR failed: thigh and calf off
-            # tau.RR[1] *= 0
-            # tau.RR[2] *= 0
-            pass
-        else:
+            #tau.RR *= 0
+            tau.RR[1] *= 0
+            tau.RR[2] *= 0
+            # pass
             # Any other phases behave as normal
+        else:
             pass
         # Set control and mujoco step ----------------------------------------------------------------------
         action = np.zeros(env.mjModel.nu)
