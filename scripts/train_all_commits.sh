@@ -8,12 +8,12 @@
 set -u
 
 # --- Config you asked for (defaults, can be overridden via CLI) ---
-TASK="Commando-Aliengo-Flat"
+TASK="Commando-Aliengo-Rough-Blind"
 NUM_ENVS="8192"
 HEADLESS_FLAG="--headless"
-LOG_PROJECT_NAME="Commando-Aliengo-Flat"
+LOG_PROJECT_NAME="Commando-Aliengo-Rough-Blind"
 # default max iterations (can be overridden by --max-iterations)
-MAX_ITER="1000"
+MAX_ITER="20000"
 TRAIN_SCRIPT="scripts/rsl_rl/train_symm.py"
 DRY_RUN=false
 
@@ -65,7 +65,7 @@ done
 
 # Ordered list from first to last commit (as you provided)
 COMMITS=(
-  9b7a60beedcc194932f7b53f6c998f3b352ba304
+  b7a06af92f3284283e8f359e0c942db43da731ce
 )
 
 # Optional per-commit iteration overrides.
