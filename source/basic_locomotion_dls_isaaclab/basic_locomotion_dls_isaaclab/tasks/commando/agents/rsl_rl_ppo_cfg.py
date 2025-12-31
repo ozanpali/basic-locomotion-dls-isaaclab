@@ -57,8 +57,8 @@ class FlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     policy = RslRlPpoActorCriticCfg(
         class_name="ActorCritic", #ActorCritic, ActorCriticRecurrent, ActorCriticSymm, ActorCriticMoE
         init_noise_std=1.0,
-        actor_hidden_dims=[128, 128, 128],
-        critic_hidden_dims=[128, 128, 128],
+        actor_hidden_dims=[256, 256, 256],
+        critic_hidden_dims=[256, 256, 256],
         activation="elu",
     )
     algorithm = RslRlPpoAlgorithmCfg(
@@ -125,7 +125,7 @@ class FlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
 @configclass
 class RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
-    max_iterations = 8000
+    max_iterations = 20000
     save_interval = 50
     experiment_name = "rough_direct"
     empirical_normalization = False
@@ -134,8 +134,8 @@ class RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         init_noise_std=1.0,
         #actor_hidden_dims=[512, 256, 128],
         #critic_hidden_dims=[512, 256, 128],
-        actor_hidden_dims=[128, 128, 128],
-        critic_hidden_dims=[128, 128, 128],
+        actor_hidden_dims=[256, 256, 256],
+        critic_hidden_dims=[256, 256, 256],
         activation="elu",
     )
     algorithm = RslRlPpoAlgorithmCfg(
