@@ -143,7 +143,31 @@ class Console():
                     temp = input("Enter Kp: ")
                     if(temp != ""):
                         self.controller_node.locomotion_policy.Kp_walking = float(temp)
-                
+
+                elif(input_string == "setFailureMode"):
+                    print("Set: \n" \
+                    "1. none\n" \
+                    "2. RL-RR failure\n" \
+                    "3. FL failure (thigh-calf)\n" \
+                    "4. FR failure (hip)\n" \
+                    "5. RL failure (hip)\n" \
+                    "6. RR failure (thigh-calf)\n"
+                    )
+                    temp = input("Enter failure mode: ")
+                    if(temp != ""):
+                        if(temp == "1"):
+                            self.controller_node.locomotion_policy.leg_any_scaled = np.array([0.0, 0.0, 0.0, 0.0])
+                        elif(temp == "2"):
+                            self.controller_node.locomotion_policy.leg_any_scaled = np.array([0.0, 0.0, 1.0, 1.0])
+                        elif(temp == "3"):
+                            self.controller_node.locomotion_policy.leg_any_scaled = np.array([1.0, 0.0, 0.0, 0.0])
+                        elif(temp == "4"):
+                            self.controller_node.locomotion_policy.leg_any_scaled = np.array([0.0, 1.0, 0.0, 0.0])
+                        elif(temp == "5"):
+                            self.controller_node.locomotion_policy.leg_any_scaled = np.array([0.0, 0.0, 1.0, 0.0])
+                        elif(temp == "6"):
+                            self.controller_node.locomotion_policy.leg_any_scaled = np.array([0.0, 0.0, 0.0, 1.0])
+
 
                 elif(input_string == "setKd"):
                     print("Kd stand_up_and_down: ", self.controller_node.locomotion_policy.Kd_stand_up_and_down)
@@ -219,4 +243,9 @@ class Console():
     def print_all_commands(self):
         print("\nAvailable Commands")
         print("help: Display all available messages")
-        print("ictp: Interactive Keyboard Control\n")
+        print("ictp: Interactive Keyboard Control")
+        print("goUp: Make the robot stand up")
+        print("goDown: Make the robot lie down")
+        print("activate: Activate/Deactivate the RL policy during walking")
+        print("setKp: Set the Kp gains for the PD controller")
+        print("setKd: Set the Kd gains for the PD controller\n")

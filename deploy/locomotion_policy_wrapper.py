@@ -77,6 +77,9 @@ class LocomotionPolicyWrapper:
         self._observation_history = np.zeros((self.history_length, single_observation_space), dtype=np.float32)
 
         self.use_vision = config.use_vision
+        # Phase/leg indicator appended to observation
+        # Order: [normal, RL+RR failure, FL thigh+calf failure]
+        self.leg_any_scaled = np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float32)
 
         # RMA
         if(config.training_env["use_rma"] == True):
@@ -131,11 +134,11 @@ class LocomotionPolicyWrapper:
         # Update Observation ----------------------        
         if(config.training_env["use_imu"] or config.training_env["use_cuncurrent_state_est"]):
             base_projected_gravity = self._get_projected_gravity(imu_orientation)
-            base_vel = imu_linear_acceleration
+            base_linear = imu_linear_acceleration
             base_ang_vel = imu_angular_velocity
         else:
             base_projected_gravity = self._get_projected_gravity(base_quat_wxyz)
-            base_vel = base_lin_vel
+            base_linear = base_lin_vel
             base_ang_vel = base_ang_vel
 
 
@@ -146,7 +149,7 @@ class LocomotionPolicyWrapper:
         # Fill the observation vector
         joints_pos_delta = joints_pos - self.default_joint_pos
         obs = np.concatenate([
-            base_vel, # this could be imu linear acc if use_imu or linear vel from state est
+            base_linear, # this could be imu linear acc if use_imu or linear vel from state est
             base_ang_vel,
             base_projected_gravity,
             ref_base_lin_vel_h[0:2],
@@ -202,6 +205,15 @@ class LocomotionPolicyWrapper:
             height_data = (base_pos[2] - heightmap_data_isaac_convention - 0.5)
             height_data = height_data.clip(-1.0, 1.0)
             obs = np.concatenate((obs, height_data), axis=0)
+        
+        # # Append per-leg flags to match training input shape; in deployment (MuJoCo) we default to zeros.
+        # # Order: [FL, FR, RL, RR]; dtype float32 0/1.
+        # leg_any_scaled = np.array([0.0, 0.0, 1.0, 1.0], dtype=np.float32)
+        # obs = np.concatenate((obs, leg_any_scaled), axis=0)
+
+        # Append phase flags (one-hot of three conditions) to match training input shape
+        # Order: [normal, RL+RR-off, FL-thigh+calf-off]
+        obs = np.concatenate((obs, self.leg_any_scaled), axis=0)
             
         
         # RL Prediction
