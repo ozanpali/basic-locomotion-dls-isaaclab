@@ -463,7 +463,7 @@ class AliengoRoughBlindEnvCfg(AliengoFlatEnvCfg):
                 proportion=0.2
             ),
             "boxes": terrain_gen.MeshRandomGridTerrainCfg(
-                proportion=0.1, grid_width=0.45, grid_height_range=(0.05, 0.10), platform_width=2.0,
+                proportion=0.1, grid_width=0.45, grid_height_range=(0.02, 0.10), platform_width=2.0,
             ),
             "star": terrain_gen.MeshStarTerrainCfg(
                 proportion=0.1, num_bars=10, bar_width_range=(0.15, 0.20), bar_height_range=(0.05, 0.15), platform_width=2.0,
@@ -478,11 +478,11 @@ class AliengoRoughBlindEnvCfg(AliengoFlatEnvCfg):
                 proportion=0.1, slope_range=(0.2, 0.4), platform_width=2.0, border_width=0.25
             ),
             "pyramid_stairs": terrain_gen.MeshPyramidStairsTerrainCfg(
-                proportion=0.15, step_height_range=(0.05, 0.18), step_width=0.3,
+                proportion=0.15, step_height_range=(0.02, 0.10), step_width=0.3,
                 platform_width=3.0, border_width=1.0, holes=False,
             ),
             "pyramid_stairs_inv": terrain_gen.MeshInvertedPyramidStairsTerrainCfg(
-                proportion=0.15, step_height_range=(0.05, 0.18), step_width=0.3,
+                proportion=0.15, step_height_range=(0.02, 0.10), step_width=0.3,
                 platform_width=3.0, border_width=1.0, holes=False,
             ),
         },
