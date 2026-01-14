@@ -65,9 +65,8 @@ done
 
 # Ordered list from first to last commit (as you provided)
 COMMITS=(
-  6f1e13661447636af862ef36e4c22d68a408a241
-  20d889db78183008e9611d7ce040fc4a6a67f17f
-  6a4e32574dce3c5ec9f6e32cb7c36feca941bf9e
+  767339f6780f125b268fb274666bcef0a01b5368
+  10a3cb7893042e8a6605910926b619f4451ffa25
 )
 
 # Optional per-commit iteration overrides.
