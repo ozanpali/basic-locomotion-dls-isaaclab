@@ -1022,6 +1022,8 @@ class LocomotionEnv(DirectRLEnv):
     def _reset_idx(self, env_ids: torch.Tensor | None):
         if env_ids is None or len(env_ids) == self.num_envs:
             env_ids = self._robot._ALL_INDICES
+        
+        assert env_ids is not None, "env_ids should not be None after initial guard"
 
         if(self._terrain.cfg.terrain_generator is not None and self._terrain.cfg.terrain_generator.curriculum == True):
             # Curriculum based on the distance the robot walked
@@ -1210,7 +1212,7 @@ class LocomotionEnv(DirectRLEnv):
         fl_thigh_calf_failed_mask = failure_type_subset == 2
         if torch.any(fl_thigh_calf_failed_mask):
             self._torque_scaled_mask_per_leg_joint[env_ids[fl_thigh_calf_failed_mask], 0, :] = 1.0
-            
+            """
             fl_thigh_calf_failed_envs = env_ids[fl_thigh_calf_failed_mask]
             all_leg_names = [
                 "FL_hip_joint", "FR_hip_joint",
@@ -1242,13 +1244,13 @@ class LocomotionEnv(DirectRLEnv):
                         joint_names=joint_names,
                     ),
                     scale=0.0,
-                )
+                )"""
 
         # FR failure (disable FR thigh & calf)
         fr_thigh_calf_failed_mask = failure_type_subset == 3
         if torch.any(fr_thigh_calf_failed_mask):
             self._torque_scaled_mask_per_leg_joint[env_ids[fr_thigh_calf_failed_mask], 1, :] = 1.0
-            
+            """
             fr_thigh_calf_failed_envs = env_ids[fr_thigh_calf_failed_mask]
             all_leg_names = [
                 "FL_hip_joint", "FR_hip_joint",
@@ -1280,13 +1282,13 @@ class LocomotionEnv(DirectRLEnv):
                         joint_names=joint_names,
                     ),
                     scale=0.0,
-                )
+                )"""
 
         # RL failure (disable RL thigh & calf)
         rl_thigh_calf_failed_mask = failure_type_subset == 4
         if torch.any(rl_thigh_calf_failed_mask):
             self._torque_scaled_mask_per_leg_joint[env_ids[rl_thigh_calf_failed_mask], 2, :] = 1.0
-            
+            """
             rl_thigh_calf_failed_envs = env_ids[rl_thigh_calf_failed_mask]
             all_leg_names = [
                 "FL_hip_joint", "FR_hip_joint",
@@ -1318,13 +1320,13 @@ class LocomotionEnv(DirectRLEnv):
                         joint_names=joint_names,
                     ),
                     scale=0.0,
-                )
+                )"""
 
         # RR failure (disable RR thigh & calf)
         rr_thigh_calf_failed_mask = failure_type_subset == 5
         if torch.any(rr_thigh_calf_failed_mask):
             self._torque_scaled_mask_per_leg_joint[env_ids[rr_thigh_calf_failed_mask], 3, :] = 1.0
-            
+            """
             rr_thigh_calf_failed_envs = env_ids[rr_thigh_calf_failed_mask]
             all_leg_names = [
                 "FL_hip_joint", "FR_hip_joint",
@@ -1356,7 +1358,7 @@ class LocomotionEnv(DirectRLEnv):
                         joint_names=joint_names,
                     ),
                     scale=0.0,
-                )
+                )"""
         
         
         """
