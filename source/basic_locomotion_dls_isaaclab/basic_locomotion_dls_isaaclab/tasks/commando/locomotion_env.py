@@ -900,6 +900,7 @@ class LocomotionEnv(DirectRLEnv):
         # front_fail_mask = ((leg_any_scaled_int[:, 0] + leg_any_scaled_int[:, 1]) == 1) & (leg_any_scaled_int[:, 2] == 0) & (leg_any_scaled_int[:, 3] == 0)
         # three_legs_mode_mask = (single_fail_mask & front_fail_mask).float()
 
+
         rewards = {
             "track_height_exp": height_error_mapped * self.cfg.height_reward_scale * self.step_dt * (1.0 - back_failed_flag),
             "track_lin_vel_xy_exp": lin_vel_error_mapped * self.cfg.lin_vel_reward_scale * self.step_dt,
