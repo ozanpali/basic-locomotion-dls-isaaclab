@@ -562,7 +562,10 @@ class LocomotionEnv(DirectRLEnv):
         # hip position
         hip_joints_position = self._robot.data.joint_pos[:,0:4]
         hip_joints_position_error = torch.square(hip_joints_position - self._robot.data.default_joint_pos[:,0:4])
-        hip_joints_position_reward = torch.sum(hip_joints_position_error,dim=1)
+        # Exclude hip joints that are in failure (per-leg, per-joint mask: [env, leg, joint(hip=0)])
+        hip_failure_mask = self._torque_scaled_mask_per_leg_joint[:, :, 0]  # 1.0 where hip torque is scaled (failed)
+        hip_include_mask = (hip_failure_mask == 0.0).float()
+        hip_joints_position_reward = torch.sum(hip_joints_position_error * hip_include_mask, dim=1)
 
 
         # commando hip position (exclude back hips RL and RR; use only front hips FL and FR -> indices 0 and 1)
@@ -576,7 +579,10 @@ class LocomotionEnv(DirectRLEnv):
         # thigh position
         thigh_joints_position = self._robot.data.joint_pos[:,4:8]
         thigh_joints_position_error = torch.square(thigh_joints_position - self._robot.data.default_joint_pos[:,4:8])
-        thigh_joints_position_reward = torch.sum(thigh_joints_position_error,dim=1)
+        # Exclude thigh joints that are in failure (per-leg, per-joint mask: [env, leg, joint(thigh=1)])
+        thigh_failure_mask = self._torque_scaled_mask_per_leg_joint[:, :, 1]  # 1.0 where thigh torque is scaled (failed)
+        thigh_include_mask = (thigh_failure_mask == 0.0).float()
+        thigh_joints_position_reward = torch.sum(thigh_joints_position_error * thigh_include_mask, dim=1)
 
 
         # commando thigh position (front-only: indices 4 and 5)
@@ -589,9 +595,12 @@ class LocomotionEnv(DirectRLEnv):
 
 
         # calf position
-        calf_joints_position = self._robot.data.joint_pos[:,8:12]
+        calf_joints_position = self._robot.data.joint_pos[:8:12]
         calf_joints_position_error = torch.square(calf_joints_position - self._robot.data.default_joint_pos[:,8:12])
-        calf_joints_position_reward = torch.sum(calf_joints_position_error,dim=1)
+        # Exclude calf joints that are in failure (per-leg, per-joint mask: [env, leg, joint(calf=2)])
+        calf_failure_mask = self._torque_scaled_mask_per_leg_joint[:, :, 2]  # 1.0 where calf torque is scaled (failed)
+        calf_include_mask = (calf_failure_mask == 0.0).float()
+        calf_joints_position_reward = torch.sum(calf_joints_position_error * calf_include_mask, dim=1)
 
 
         # commando calf position (front-only: indices 8 and 9)
