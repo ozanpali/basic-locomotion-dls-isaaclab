@@ -381,10 +381,11 @@ class LocomotionEnv(DirectRLEnv):
 
             hip_z_world = self._robot.data.body_pos_w[:, self._hip_ids_robot[:2], 2]  # [N, 2]
             front_hip_height_above_ground = hip_z_world - ground_z
-            # Clean potential numerical issues
+            # Clean potential numerical issues (NaNs / infs) and clip to a safe range
             front_hip_height_above_ground = torch.nan_to_num(
                 front_hip_height_above_ground, nan=0.0, posinf=5.0, neginf=-5.0
             )
+            front_hip_height_above_ground = torch.clip(front_hip_height_above_ground, min=-5.0, max=5.0)
             front_hip_height_above_ground_mean = torch.mean(front_hip_height_above_ground, dim=1)
         else:
             # Fallback: if scanner data not available or malformed, fall back to world z of hips minus mean ray
@@ -393,6 +394,7 @@ class LocomotionEnv(DirectRLEnv):
             front_hip_height_above_ground = torch.nan_to_num(
                 front_hip_height_above_ground, nan=0.0, posinf=5.0, neginf=-5.0
             )
+            front_hip_height_above_ground = torch.clip(front_hip_height_above_ground, min=-5.0, max=5.0)
             front_hip_height_above_ground_mean = torch.mean(front_hip_height_above_ground, dim=1)
 
         # Compute front-hip height error (desired - actual above-ground) and map it like base height
