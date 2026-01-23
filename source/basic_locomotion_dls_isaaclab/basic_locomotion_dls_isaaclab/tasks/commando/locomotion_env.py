@@ -595,8 +595,8 @@ class LocomotionEnv(DirectRLEnv):
 
 
         # calf position
-        calf_joints_position = self._robot.data.joint_pos[:8:12]
-        calf_joints_position_error = torch.square(calf_joints_position - self._robot.data.default_joint_pos[:,8:12])
+        calf_joints_position = self._robot.data.joint_pos[:, 8:12]
+        calf_joints_position_error = torch.square(calf_joints_position - self._robot.data.default_joint_pos[:, 8:12])
         # Exclude calf joints that are in failure (per-leg, per-joint mask: [env, leg, joint(calf=2)])
         calf_failure_mask = self._torque_scaled_mask_per_leg_joint[:, :, 2]  # 1.0 where calf torque is scaled (failed)
         calf_include_mask = (calf_failure_mask == 0.0).float()
@@ -914,19 +914,19 @@ class LocomotionEnv(DirectRLEnv):
         self._previous_previous_actions[env_ids] = 0.0
         
 
-        # Detect if there is any failure on any leg (any joint scaled)
+        # Sample new commands
+        self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-1.0, 1.0)
+        # Detect if there is any failure on any leg (any joint scaled), then scale commands more
         leg_any_scaled_int = (
             self._torque_scaled_mask_per_leg_joint.max(dim=2).values > 0.0
         )  # [num_envs, 4]
         any_failure = leg_any_scaled_int.any(dim=1).float()  # [num_envs]
+        any_failure_subset = any_failure[env_ids]            # [len(env_ids)]
 
-
-        # Sample new commands
-        self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-1.0, 1.0)
-        # Per-command base scaling
-        self._commands[env_ids, 0] *= 0.5 - 0.25 * any_failure   # 0.5 -> 0.25 when failed
-        self._commands[env_ids, 1] *= 0.25 - 0.125 * any_failure  # 0.25 -> 0.125 when failed
-        self._commands[env_ids, 2] *= 0.3 - 0.15 * any_failure   # 0.3 -> 0.15 when failed
+        # Per-command base scaling (0.5/0.25/0.3, or halved when any failure)
+        self._commands[env_ids, 0] *= 0.5 - 0.25 * any_failure_subset
+        self._commands[env_ids, 1] *= 0.25 - 0.125 * any_failure_subset
+        self._commands[env_ids, 2] *= 0.3 - 0.15 * any_failure_subset
 
         # Reset swing peak
         self._swing_peak[env_ids] = torch.tensor([0.0, 0.0, 0.0, 0.0], device=self.device)
