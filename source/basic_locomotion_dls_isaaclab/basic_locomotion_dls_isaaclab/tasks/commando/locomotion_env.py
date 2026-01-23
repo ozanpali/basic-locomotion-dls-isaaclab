@@ -300,9 +300,7 @@ class LocomotionEnv(DirectRLEnv):
 
 
         # Append only the per-leg torque scaling flags (0/1) to the policy observation
-        # Shape: [num_envs, 4]; order: [FL, FR, RL, RR]
-        leg_any_scaled = (self._torque_scaled_mask_per_leg_joint.max(dim=2).values > 0.0).float()
-        #print("Leg any scaled fed to observations:", leg_any_scaled.tolist())
+        leg_any_scaled = (self._torque_scaled_mask_per_leg_joint.max(dim=2).values > 0.0).float() # Shape: [num_envs, 4]; order: [FL, FR, RL, RR]
         obs = torch.cat((obs, leg_any_scaled), dim=-1)
 
         # Final observations dictionary
@@ -339,85 +337,11 @@ class LocomotionEnv(DirectRLEnv):
 
 
     def _get_rewards(self) -> torch.Tensor:
-
-        # Create a binary per-leg mask (0/1) indicating whether ANY joint on the leg has torque scaling active
-        # Shape: [num_envs, 4]; dtype: int (for clear logical use); cast to float when multiplying with rewards
-        leg_any_scaled_int = (self._torque_scaled_mask_per_leg_joint.max(dim=2).values > 0.0).int()
+        leg_any_scaled_int = (self._torque_scaled_mask_per_leg_joint.max(dim=2).values > 0.0).int()  # Shape: [num_envs, 4]  per-leg mask (0/1) whether ANY joint on the leg has torque scaling active
         # Compute a per-env gating factor that is 1.0 only when no leg is failed (no scaling active), else 0.0
-        # Vectorized for GPU: product over legs of (1 - flag)
-        gating_factor = (1.0 - leg_any_scaled_int.float()).prod(dim=1)  # torch.float, shape [num_envs]
-        # Explicit variable for "4-leg" mode: True when there is NO leg failure (all four legs active)
-        four_leg_active_bool = (leg_any_scaled_int.sum(dim=1) == 0)  # torch.bool tensor shape [num_envs]
-        four_leg_active = four_leg_active_bool.float()  # float version for reward scaling if needed
-        # NOTE: gating_factor == four_leg_active; kept both for clarity until refactor
-        # Front-left (FL) leg failure active (first index is 1)
-        fl_failed_bool = (leg_any_scaled_int[:, 0] > 0)  # torch.bool tensor shape [num_envs]
-        fl_failed = fl_failed_bool.float()  # float representation if needed for reward scaling
-        # Front-right (FR) leg failure active (second index)
-        fr_failed_bool = (leg_any_scaled_int[:, 1] > 0)  # torch.bool, shape [num_envs]
-        fr_failed = fr_failed_bool.float()  # torch.float, shape [num_envs]
-        # Rear-left (RL) leg failure active (third index)
-        rl_failed_bool = (leg_any_scaled_int[:, 2] > 0)  # torch.bool, shape [num_envs]
-        rl_failed = rl_failed_bool.float()  # torch.float, shape [num_envs]
-        # Rear-right (RR) leg failure active (fourth index)
-        rr_failed_bool = (leg_any_scaled_int[:, 3] > 0)  # torch.bool, shape [num_envs]
-        rr_failed = rr_failed_bool.float()  # torch.float, shape [num_envs]
-
-        # "Only" flags: true when this leg is failed AND all other legs are NOT failed
-        # These are useful to detect mutually-exclusive single-leg failure cases.
-        # Each *_only_failed_bool is a torch.bool tensor with shape [num_envs].
-        try:
-            fl_only_failed_bool = fl_failed_bool & ~(fr_failed_bool | rl_failed_bool | rr_failed_bool)  # torch.bool, shape [num_envs]
-            fr_only_failed_bool = fr_failed_bool & ~(fl_failed_bool | rl_failed_bool | rr_failed_bool)  # torch.bool, shape [num_envs]
-            rl_only_failed_bool = rl_failed_bool & ~(fl_failed_bool | fr_failed_bool | rr_failed_bool)  # torch.bool, shape [num_envs]
-            rr_only_failed_bool = rr_failed_bool & ~(fl_failed_bool | fr_failed_bool | rl_failed_bool)  # torch.bool, shape [num_envs]
-        except Exception:
-            # Fallback in case tensors are not boolean or shapes mismatch; coerce and compute safely
-            fl_only_failed_bool = (leg_any_scaled_int[:, 0] > 0) & (
-                (leg_any_scaled_int[:, 1] == 0) & (leg_any_scaled_int[:, 2] == 0) & (leg_any_scaled_int[:, 3] == 0)
-            )  # torch.bool, shape [num_envs]
-            fr_only_failed_bool = (leg_any_scaled_int[:, 1] > 0) & (
-                (leg_any_scaled_int[:, 0] == 0) & (leg_any_scaled_int[:, 2] == 0) & (leg_any_scaled_int[:, 3] == 0)
-            )  # torch.bool, shape [num_envs]
-            rl_only_failed_bool = (leg_any_scaled_int[:, 2] > 0) & (
-                (leg_any_scaled_int[:, 0] == 0) & (leg_any_scaled_int[:, 1] == 0) & (leg_any_scaled_int[:, 3] == 0)
-            )  # torch.bool, shape [num_envs]
-            rr_only_failed_bool = (leg_any_scaled_int[:, 3] > 0) & (
-                (leg_any_scaled_int[:, 0] == 0) & (leg_any_scaled_int[:, 1] == 0) & (leg_any_scaled_int[:, 2] == 0)
-            )  # torch.bool, shape [num_envs]
-
-        # Float versions for reward scaling/aggregation
-        # Each *_only_failed is a torch.float tensor with shape [num_envs].
-        fl_only_failed = fl_only_failed_bool.float()  # torch.float, shape [num_envs]
-        fr_only_failed = fr_only_failed_bool.float()  # torch.float, shape [num_envs]
-        rl_only_failed = rl_only_failed_bool.float()  # torch.float, shape [num_envs]
-        rr_only_failed = rr_only_failed_bool.float()  # torch.float, shape [num_envs]
-
-        # --- Per-environment reward case id (6 cases) ---
-        # Cases (int):
-        # 0 = all four legs active (no scaling)
-        # 1 = FL-only failed
-        # 2 = FR-only failed
-        # 3 = RL-only failed
-        # 4 = RR-only failed
-        # 5 = both rear legs failed (commando)
-        case_id = torch.full((self.num_envs,), 0, dtype=torch.long, device=self.device)
-        case_id[four_leg_active_bool] = 0
-        case_id[fl_only_failed_bool] = 1
-        case_id[fr_only_failed_bool] = 2
-        case_id[rl_only_failed_bool] = 3
-        case_id[rr_only_failed_bool] = 4
-        # rear-both (commando) takes precedence over single-leg flags where both rear legs are scaled
-        rear_both_mask = (leg_any_scaled_int[:, 2] > 0) & (leg_any_scaled_int[:, 3] > 0)
-        case_id[rear_both_mask] = 5
-        # store for debugging/inspection
-        self._reward_case = case_id
-        # Flag that is 1.0 only if BOTH rear legs (RL and RR) are failed (torque-scaled), else 0.0
-        # Rear leg indices are 2 (RL) and 3 (RR) in leg_any_scaled_int columns [FL, FR, RL, RR]
+        gating_factor = (1.0 - leg_any_scaled_int.float()).prod(dim=1)  # torch.float, shape [num_envs]  note: gating_factor == four_leg_active; 
         back_failed_flag = ((leg_any_scaled_int[:, 2] > 0) & (leg_any_scaled_int[:, 3] > 0)).float()  # torch.float, shape [num_envs]
-        #print("Back-failed flag:", back_failed_flag.tolist())  # Back-failed flag: [0. 1.]
-        #print("RL leg scaled:", leg_any_scaled_int[:, 2].tolist())  # RL leg scaled: [0, 1, 0, ...]
-        #print("RR leg scaled:", leg_any_scaled_int[:, 3].tolist())  # RR leg scaled: [0, 1, 0, ...]
+
         # track_height
         height_data_scanner = self._height_scanner.data.ray_hits_w[..., 2]
         height_data_scanner = torch.nan_to_num(height_data_scanner, nan=0.0, posinf=1.0, neginf=-1.0)
@@ -472,11 +396,7 @@ class LocomotionEnv(DirectRLEnv):
             front_hip_height_above_ground_mean = torch.mean(front_hip_height_above_ground, dim=1)
 
         # Compute front-hip height error (desired - actual above-ground) and map it like base height
-        # Compute front-hip height error (desired - actual above-ground) and map it like base height
-        if hasattr(self.cfg, "desired_front_hip_height"):
-            desired_front = self.cfg.desired_front_hip_height
-        else:
-            desired_front = self.cfg.desired_base_height
+        desired_front = self.cfg.desired_front_hip_height
         front_hip_height_error = torch.square(desired_front - front_hip_height_above_ground_mean)
         commando_front_hip_height_error_mapped = torch.exp(-front_hip_height_error / 0.01)
         
@@ -831,29 +751,17 @@ class LocomotionEnv(DirectRLEnv):
         feet_to_hip_distance = -torch.mean(torch.sqrt(feet_to_hip_distance_x + feet_to_hip_distance_y), dim=1)
 
 
-        # up is original feet to hip distance reward, gpt(but modified to exclude failed legs from the average)
-        # # Compute per-leg distances in hip frame, then masked average across legs
+        # 3 legs feet to hip distance (exclude failed leg)
         delta_x = feet_to_base_h[:, 0] - hip_to_base_h[:, 0]
         delta_y = feet_to_base_h[:, 1] + desired_hip_offset.unsqueeze(0) - hip_to_base_h[:, 1]
         per_leg_dist = torch.sqrt(delta_x.pow(2) + delta_y.pow(2))  # [N,4]
         include_mask = (leg_any_scaled_int == 0)  # shape [N,4], bool
-        #print("Include mask for feet to hip distance:", include_mask.int().tolist())
-        # include_mask = torch.ones(self.num_envs, 4, dtype=torch.bool, device=self.device)
-        # ft = self._failure_type.to(device=self.device)
-        # fl_mask = ft == 2 #(ft >= 1) & (ft <= 7)
-        # fr_mask = ft == 3 #(ft >= 8) & (ft <= 14)
-        # rl_mask = ft == 4 #(ft >= 15) & (ft <= 21)
-        # rr_mask = ft == 5 #(ft >= 22) & (ft <= 28)
-        # include_mask[:, 0] &= ~fl_mask
-        # include_mask[:, 1] &= ~fr_mask
-        # include_mask[:, 2] &= ~rl_mask
-        # include_mask[:, 3] &= ~rr_mask
-
         include_mask_f = include_mask.float()
-        #print(include_mask_f)
         feet_to_hip_distance_3leg = -((per_leg_dist * include_mask_f).sum(dim=1) / include_mask_f.sum(dim=1).clamp(min=1.0))
 
-        back_offset = torch.tensor([0.01, 0.01, 0.0, 0.0], device=self.device)
+
+        # Commando (front-only) feet to hip distance
+        back_offset = torch.tensor([0.01, 0.01, 0.0, 0.0], device=self.device)  # CHECK if order is correct
         commando_desired_hip_offset = desired_hip_offset + back_offset
         # compute per-leg distances using the commando desired hip offset for the y component
         commando_delta_x = feet_to_base_h[:, 0] - hip_to_base_h[:, 0]
@@ -868,37 +776,6 @@ class LocomotionEnv(DirectRLEnv):
         forces_xy = torch.linalg.norm(self._contact_sensor.data.net_forces_w[:, self._feet_ids, :2], dim=2)
         feet_vertical_surface_contacts = torch.any(forces_xy > 4 * forces_z, dim=1).float()
         feet_vertical_surface_contacts *= torch.clamp(-self._robot.data.projected_gravity_b[:, 2], 0, 0.7) / 0.7
-
-        #print self._torque_scaled_mask_per_leg_joint.max(dim=2).values[:, 0]
-        #print("Torque scaling mask FL leg joints:", leg_any_scaled_int[:, 0])
-        #print("Torque scaling mask FR leg joints:", leg_any_scaled_int[:, 1])
-        #print("Torque scaling mask RL leg joints:", leg_any_scaled_int[:, 2])
-        #print("Torque scaling mask RR leg joints:", leg_any_scaled_int[:, 3])
-        #print(" \n")
-        
-        
-        #print Feet air time
-        #print("Feet air time:", (feet_air_time * gating_factor * self.cfg.feet_air_time_reward_scale * self.step_dt).tolist())
-        #print Feet air time excl FL
-        #print("Feet air time excl FL:", (feet_air_time_FL_failure * self.cfg.feet_air_time_FL_failure_reward_scale * self.step_dt * (leg_any_scaled_int[:, 0].float())).tolist())
-
-        #print("Torque scaling mask FR leg joints:", self._torque_scaled_mask_per_leg_joint.max(dim=2).values[:, 1])
-        #print("Torque scaling mask RL leg joints:", self._torque_scaled_mask_per_leg_joint.max(dim=2).values[:, 2])
-        #print("Torque scaling mask RR leg joints:", self._torque_scaled_mask_per_leg_joint.max(dim=2).values[:, 3])
-        #print(" \n")
-
-        # Toggle undesired contact rewards based on rear-leg failures:
-        # If BOTH rear legs (RL and RR) are failed (torque-scaled), enable commando variant and disable non-commando.
-        # Otherwise, enable non-commando and disable commando.
-        back_failed_flag = ((leg_any_scaled_int[:, 2] > 0) & (leg_any_scaled_int[:, 3] > 0)).float()
-
-        # # New reward mask: active only when exactly 3 legs are healthy (i.e., exactly one leg failed),
-        # # and that single failed leg is one of the front legs. If both back legs are active (healthy)
-        # # but there is no failure at all, or if the failure is on rear legs, this reward is zero.
-        # any_fail_count = (leg_any_scaled_int[:, 0] + leg_any_scaled_int[:, 1] + leg_any_scaled_int[:, 2] + leg_any_scaled_int[:, 3])
-        # single_fail_mask = (any_fail_count == 1)
-        # front_fail_mask = ((leg_any_scaled_int[:, 0] + leg_any_scaled_int[:, 1]) == 1) & (leg_any_scaled_int[:, 2] == 0) & (leg_any_scaled_int[:, 3] == 0)
-        # three_legs_mode_mask = (single_fail_mask & front_fail_mask).float()
 
 
         rewards = {
@@ -932,13 +809,11 @@ class LocomotionEnv(DirectRLEnv):
             "feet_to_base_distance_l2": feet_to_base_distance * self.cfg.feet_to_base_distance_reward_scale * self.step_dt,
             "feet_to_hip_distance_l2": feet_to_hip_distance * self.cfg.feet_to_hip_distance_reward_scale * self.step_dt * (1.0 - back_failed_flag) * gating_factor,
             "feet_vertical_surface_contacts": feet_vertical_surface_contacts * self.cfg.feet_vertical_surface_contacts_reward_scale * self.step_dt,
-            # (front-hip height error mapped is used above as track_height_exp)
             
             #commando rewards
-            # Gate terms by whether any torque scaling (hip/thigh/calf) is active on the corresponding leg
             "commando_base_orientation": commando_base_orientation * self.cfg.commando_base_orientation_reward_scale * self.step_dt * back_failed_flag,
             "commando_undesired_contacts": commando_contacts * self.cfg.commando_undesired_contact_reward_scale * self.step_dt * back_failed_flag,
-            "commando_feet_air_time": commando_feet_air_time * self.cfg.commando_feet_air_time_reward_scale * self.step_dt * back_failed_flag,# * ( (leg_any_scaled_int[:, 2] + leg_any_scaled_int[:, 3]) > 0 ).float()
+            "commando_feet_air_time": commando_feet_air_time * self.cfg.commando_feet_air_time_reward_scale * self.step_dt * back_failed_flag,
             "commando_feet_slide": commando_feet_slide * self.cfg.commando_feet_slide_reward_scale * self.step_dt * back_failed_flag,
             "commando_feet_to_hip_distance": commando_feet_to_hip_distance * self.cfg.commando_feet_to_hip_distance_reward_scale * self.step_dt * back_failed_flag,
             "commando_joints_torques_l2": commando_joints_torques * self.cfg.commando_joints_torque_reward_scale * self.step_dt * back_failed_flag,
@@ -949,14 +824,10 @@ class LocomotionEnv(DirectRLEnv):
             "commando_joints_calf_pos_l2": commando_calf_joints_position_reward * self.cfg.commando_joints_calf_position_reward_scale * self.step_dt * back_failed_flag,
             "commando_action_rate_l2": commando_action_rate * self.cfg.commando_action_rate_reward_scale * self.step_dt * back_failed_flag,
             "commando_action_smoothness_l2": commando_action_smoothness * self.cfg.commando_action_smoothness_reward_scale * self.step_dt * back_failed_flag,
-            # Use front-hip height error (mapped) as the single height tracking reward
             "commando_track_height_exp": commando_front_hip_height_error_mapped * self.cfg.commando_front_hip_height_reward_scale * self.step_dt * back_failed_flag,
-            # New: reward active only in "three legs" mode (exactly one front leg failed).
-            # Additionally scaled to zero when back legs are failed (1 - back_failed_flag)
-            # and when gating_factor is active (1 - gating_factor) to avoid overlap with normal feet reward.
-            "three_legs_mode_reward": feet_to_hip_distance_3leg* self.cfg.feet_to_hip_distance_reward_scale * self.step_dt * (1.0 - back_failed_flag) * (1.0 - gating_factor),
             
             # 3 leg rewards 
+            "three_legs_mode_reward": feet_to_hip_distance_3leg* self.cfg.feet_to_hip_distance_reward_scale * self.step_dt * (1.0 - back_failed_flag) * (1.0 - gating_factor),
             "feet_air_time_FL_failure": feet_air_time_FL_failure * self.cfg.feet_air_time_FL_failure_reward_scale * self.step_dt * (leg_any_scaled_int[:, 0].float()) * (1.0 - back_failed_flag),
             "feet_air_time_RL_failure": feet_air_time_RL_failure * self.cfg.feet_air_time_RL_failure_reward_scale * self.step_dt * (leg_any_scaled_int[:, 2].float()) * (1.0 - back_failed_flag),
             "feet_air_time_FR_failure": feet_air_time_FR_failure * self.cfg.feet_air_time_FR_failure_reward_scale * self.step_dt * (leg_any_scaled_int[:, 1].float()) * (1.0 - back_failed_flag),
@@ -973,31 +844,17 @@ class LocomotionEnv(DirectRLEnv):
     def _get_dones(self) -> tuple[torch.Tensor, torch.Tensor]:
         time_out = self.episode_length_buf >= self.max_episode_length - 1
         net_contact_forces = self._contact_sensor.data.net_forces_w_history
-        # Only consider front hips for termination; ignore base and rear hips
+        # commando died check (only consider front hips for termination; ignore base and rear hips)  (used when failure_type == 1)
         front_hip_ids = self._hip_ids[:2]
-        died_check_front_hips = torch.any(
-            torch.max(torch.norm(net_contact_forces[:, :, front_hip_ids], dim=-1), dim=1)[0] > 1.0,
-            dim=1,
-        )
+        commando_died_check = torch.any(torch.max(torch.norm(net_contact_forces[:, :, front_hip_ids], dim=-1), dim=1)[0] > 1.0,dim=1,)
 
-        # Check contacts for base and all hips (used when failure_type != 29)
-        died_check_base = torch.any(
-            torch.max(torch.norm(net_contact_forces[:, :, self._base_id], dim=-1), dim=1)[0] > 1.0,
-            dim=1,
-        )
-        died_check_hips = torch.any(
-            torch.max(torch.norm(net_contact_forces[:, :, self._hip_ids], dim=-1), dim=1)[0] > 1.0,
-            dim=1,
-        )
-        died_non29 = torch.logical_or(died_check_base, died_check_hips)
+        # Check contacts for base and all hips (used when failure_type != 1)
+        died_check_base = torch.any(torch.max(torch.norm(net_contact_forces[:, :, self._base_id], dim=-1), dim=1)[0] > 1.0,dim=1,)
+        died_check_hips = torch.any(torch.max(torch.norm(net_contact_forces[:, :, self._hip_ids], dim=-1), dim=1)[0] > 1.0,dim=1,)
+        died_check = torch.logical_or(died_check_base, died_check_hips)
 
-        # Per-environment selection: if an env's failure_type == 29, use front-hip check,
-        # otherwise use base OR hips check.
-        # Per-env flag: True where failure_type == 29 (both rear legs disabled)
         is_rear_both = self._failure_type == 1
-
-        # Ensure boolean tensors are same device/dtype and select per-env
-        died = torch.where(is_rear_both, died_check_front_hips, died_non29)
+        died = torch.where(is_rear_both, commando_died_check, died_check)
        # Check if the robot is out of bounds of the terrain
         """if(self._terrain.cfg.terrain_generator is not None):
             # obtain the size of the sub-terrains
@@ -1051,6 +908,7 @@ class LocomotionEnv(DirectRLEnv):
         self._commands[env_ids, 0] *= 0.5
         self._commands[env_ids, 1] *= 0.25 
         self._commands[env_ids, 2] *= 0.3 
+        # TODO scale in the case of 2 leg case
 
         # Reset swing peak
         self._swing_peak[env_ids] = torch.tensor([0.0, 0.0, 0.0, 0.0], device=self.device)
@@ -1095,23 +953,22 @@ class LocomotionEnv(DirectRLEnv):
             extras["Episode_Curriculum/terrain_levels"] = torch.mean(self._terrain.terrain_levels.float())
         
         self.extras["log"].update(extras)
+
+        # Sample new failure types for the reset environments      0: no failure; 1: rear both legs failure; 2: front left leg failure; 3: front right leg failure; 4: rear left leg failure 5: rear right leg failure
         probs = torch.tensor([1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0, 1.0/6.0], dtype=torch.float, device=self.device)
         failure_type_subset = torch.multinomial(probs, num_samples=len(env_ids), replacement=True).to(torch.long)
         self._failure_type[env_ids] = failure_type_subset
 
-        self._rear_joint_indices = [2, 3, 6, 7, 10, 11]
-        self._front_joint_indices = [0, 1, 4, 5, 8, 9]  # for possible future use
 
 
-        # Clear any prior per-joint torque scaling state for THIS reset batch.
-        # Without this, actuator-side scaling and the observation mask can leak across episodes.
+        # Restore any prior per-joint torque scaling state for THIS reset batch.
         self._torque_scaled_mask_per_leg_joint[env_ids, :, :] = 0.0
 
-        # Restore default joint gains for this reset batch before applying any failure.
+        # Restore default joint gains for THIS reset batch before applying any failure.
         default_stiffness_restore = self._robot.data.default_joint_stiffness[env_ids]
-        #print("default_stiffness_restore:", default_stiffness_restore)
         default_damping_restore = self._robot.data.default_joint_damping[env_ids]
-        #print("default_damping_restore:", default_damping_restore)
+        self._rear_joint_indices = [2, 3, 6, 7, 10, 11]
+        self._front_joint_indices = [0, 1, 4, 5, 8, 9]
         self._robot.write_joint_stiffness_to_sim(
             default_stiffness_restore[:, self._rear_joint_indices],
             joint_ids=self._rear_joint_indices,
@@ -1133,7 +990,7 @@ class LocomotionEnv(DirectRLEnv):
             env_ids=env_ids,
         )
 
-        # Restore actuator-side torque scaling to 1.0 for all joints in this reset batch.
+        # Restore actuator-side torque scaling to 1.0 for all joints in THIS reset batch.
         all_leg_names = [
                 "FL_hip_joint", "FR_hip_joint",
                 "RL_hip_joint", "RR_hip_joint",
@@ -1149,7 +1006,7 @@ class LocomotionEnv(DirectRLEnv):
             scale=1.0,
         )
 
-        # fine  fix all joints for non-failed envs
+        # No failure case (restore default gains)
         fine_mask = failure_type_subset == 0
         if torch.any(fine_mask):
             normal_envs = env_ids[fine_mask]
@@ -1178,6 +1035,7 @@ class LocomotionEnv(DirectRLEnv):
                 scale=1.0,
             )
 
+        # Rear both legs failure (disable all rear joints)
         rear_failed_mask = failure_type_subset == 1
         if torch.any(rear_failed_mask):
             rear_failed_envs = env_ids[rear_failed_mask]
@@ -1212,7 +1070,7 @@ class LocomotionEnv(DirectRLEnv):
         fl_thigh_calf_failed_mask = failure_type_subset == 2
         if torch.any(fl_thigh_calf_failed_mask):
             self._torque_scaled_mask_per_leg_joint[env_ids[fl_thigh_calf_failed_mask], 0, :] = 1.0
-            """
+            
             fl_thigh_calf_failed_envs = env_ids[fl_thigh_calf_failed_mask]
             all_leg_names = [
                 "FL_hip_joint", "FR_hip_joint",
@@ -1244,13 +1102,13 @@ class LocomotionEnv(DirectRLEnv):
                         joint_names=joint_names,
                     ),
                     scale=0.0,
-                )"""
+                )
 
         # FR failure (disable FR thigh & calf)
         fr_thigh_calf_failed_mask = failure_type_subset == 3
         if torch.any(fr_thigh_calf_failed_mask):
             self._torque_scaled_mask_per_leg_joint[env_ids[fr_thigh_calf_failed_mask], 1, :] = 1.0
-            """
+            
             fr_thigh_calf_failed_envs = env_ids[fr_thigh_calf_failed_mask]
             all_leg_names = [
                 "FL_hip_joint", "FR_hip_joint",
@@ -1282,13 +1140,13 @@ class LocomotionEnv(DirectRLEnv):
                         joint_names=joint_names,
                     ),
                     scale=0.0,
-                )"""
+                )
 
         # RL failure (disable RL thigh & calf)
         rl_thigh_calf_failed_mask = failure_type_subset == 4
         if torch.any(rl_thigh_calf_failed_mask):
             self._torque_scaled_mask_per_leg_joint[env_ids[rl_thigh_calf_failed_mask], 2, :] = 1.0
-            """
+            
             rl_thigh_calf_failed_envs = env_ids[rl_thigh_calf_failed_mask]
             all_leg_names = [
                 "FL_hip_joint", "FR_hip_joint",
@@ -1320,13 +1178,13 @@ class LocomotionEnv(DirectRLEnv):
                         joint_names=joint_names,
                     ),
                     scale=0.0,
-                )"""
+                )
 
         # RR failure (disable RR thigh & calf)
         rr_thigh_calf_failed_mask = failure_type_subset == 5
         if torch.any(rr_thigh_calf_failed_mask):
             self._torque_scaled_mask_per_leg_joint[env_ids[rr_thigh_calf_failed_mask], 3, :] = 1.0
-            """
+            
             rr_thigh_calf_failed_envs = env_ids[rr_thigh_calf_failed_mask]
             all_leg_names = [
                 "FL_hip_joint", "FR_hip_joint",
@@ -1358,890 +1216,7 @@ class LocomotionEnv(DirectRLEnv):
                         joint_names=joint_names,
                     ),
                     scale=0.0,
-                )"""
-        
-        
-        """
-        # FL hip failure (disable FL hip only)
-        fl_hip_failed_mask = failure_type_subset == 6
-        if torch.any(fl_hip_failed_mask):
-            fl_hip_failed_envs = env_ids[fl_hip_failed_mask]
-            all_leg_names = [
-                "FL_hip_joint", "FR_hip_joint",
-                "RL_hip_joint", "RR_hip_joint",
-                "FL_thigh_joint", "FR_thigh_joint",
-                "RL_thigh_joint", "RR_thigh_joint",
-                "FL_calf_joint", "FR_calf_joint",
-                "RL_calf_joint", "RR_calf_joint",
-            ]
-            scale_joint_torque(
-                env=self,
-                env_ids=fl_hip_failed_envs,
-                asset_cfg=SceneEntityCfg(name="robot", joint_ids=slice(None), joint_names=all_leg_names),
-                scale=1.0,
-            )
-
-            leg_prefix = "FL"
-            pattern = rf"{leg_prefix}_hip_joint"
-            leg_joint_ids, _ = self._robot.find_joints(pattern)
-            if leg_joint_ids is not None:
-                leg_joint_ids_list = list(leg_joint_ids)
-                joint_names = [f"{leg_prefix}_hip_joint"]
-                scale_joint_torque(
-                    env=self,
-                    env_ids=fl_hip_failed_envs,
-                    asset_cfg=SceneEntityCfg(
-                        name="robot",
-                        joint_ids=leg_joint_ids_list,
-                        joint_names=joint_names,
-                    ),
-                    scale=0.0,
                 )
-
-        # FR hip failure (disable FR hip only)
-        fr_hip_failed_mask = failure_type_subset == 7
-        if torch.any(fr_hip_failed_mask):
-            fr_hip_failed_envs = env_ids[fr_hip_failed_mask]
-            all_leg_names = [
-                "FL_hip_joint", "FR_hip_joint",
-                "RL_hip_joint", "RR_hip_joint",
-                "FL_thigh_joint", "FR_thigh_joint",
-                "RL_thigh_joint", "RR_thigh_joint",
-                "FL_calf_joint", "FR_calf_joint",
-                "RL_calf_joint", "RR_calf_joint",
-            ]
-            scale_joint_torque(
-                env=self,
-                env_ids=fr_hip_failed_envs,
-                asset_cfg=SceneEntityCfg(name="robot", joint_ids=slice(None), joint_names=all_leg_names),
-                scale=1.0,
-            )
-
-            leg_prefix = "FR"
-            pattern = rf"{leg_prefix}_hip_joint"
-            leg_joint_ids, _ = self._robot.find_joints(pattern)
-            if leg_joint_ids is not None:
-                leg_joint_ids_list = list(leg_joint_ids)
-                joint_names = [f"{leg_prefix}_hip_joint"]
-                scale_joint_torque(
-                    env=self,
-                    env_ids=fr_hip_failed_envs,
-                    asset_cfg=SceneEntityCfg(
-                        name="robot",
-                        joint_ids=leg_joint_ids_list,
-                        joint_names=joint_names,
-                    ),
-                    scale=0.0,
-                )
-
-        # RL hip failure (disable RL hip only)
-        rl_hip_failed_mask = failure_type_subset == 8
-        if torch.any(rl_hip_failed_mask):
-            rl_hip_failed_envs = env_ids[rl_hip_failed_mask]
-            all_leg_names = [
-                "FL_hip_joint", "FR_hip_joint",
-                "RL_hip_joint", "RR_hip_joint",
-                "FL_thigh_joint", "FR_thigh_joint",
-                "RL_thigh_joint", "RR_thigh_joint",
-                "FL_calf_joint", "FR_calf_joint",
-                "RL_calf_joint", "RR_calf_joint",
-            ]
-            scale_joint_torque(
-                env=self,
-                env_ids=rl_hip_failed_envs,
-                asset_cfg=SceneEntityCfg(name="robot", joint_ids=slice(None), joint_names=all_leg_names),
-                scale=1.0,
-            )
-
-            leg_prefix = "RL"
-            pattern = rf"{leg_prefix}_hip_joint"
-            leg_joint_ids, _ = self._robot.find_joints(pattern)
-            if leg_joint_ids is not None:
-                leg_joint_ids_list = list(leg_joint_ids)
-                joint_names = [f"{leg_prefix}_hip_joint"]
-                scale_joint_torque(
-                    env=self,
-                    env_ids=rl_hip_failed_envs,
-                    asset_cfg=SceneEntityCfg(
-                        name="robot",
-                        joint_ids=leg_joint_ids_list,
-                        joint_names=joint_names,
-                    ),
-                    scale=0.0,
-                )
-
-        # RR hip failure (disable RR hip only)
-        rr_hip_failed_mask = failure_type_subset == 9
-        if torch.any(rr_hip_failed_mask):
-            rr_hip_failed_envs = env_ids[rr_hip_failed_mask]
-            all_leg_names = [
-                "FL_hip_joint", "FR_hip_joint",
-                "RL_hip_joint", "RR_hip_joint",
-                "FL_thigh_joint", "FR_thigh_joint",
-                "RL_thigh_joint", "RR_thigh_joint",
-                "FL_calf_joint", "FR_calf_joint",
-                "RL_calf_joint", "RR_calf_joint",
-            ]
-            scale_joint_torque(
-                env=self,
-                env_ids=rr_hip_failed_envs,
-                asset_cfg=SceneEntityCfg(name="robot", joint_ids=slice(None), joint_names=all_leg_names),
-                scale=1.0,
-            )
-
-            leg_prefix = "RR"
-            pattern = rf"{leg_prefix}_hip_joint"
-            leg_joint_ids, _ = self._robot.find_joints(pattern)
-            if leg_joint_ids is not None:
-                leg_joint_ids_list = list(leg_joint_ids)
-                joint_names = [f"{leg_prefix}_hip_joint"]
-                scale_joint_torque(
-                    env=self,
-                    env_ids=rr_hip_failed_envs,
-                    asset_cfg=SceneEntityCfg(
-                        name="robot",
-                        joint_ids=leg_joint_ids_list,
-                        joint_names=joint_names,
-                    ),
-                    scale=0.0,
-                )
-
-        # FL thigh failure (disable FL thigh only)
-        fl_thigh_failed_mask = failure_type_subset == 10
-        if torch.any(fl_thigh_failed_mask):
-            fl_thigh_failed_envs = env_ids[fl_thigh_failed_mask]
-            all_leg_names = [
-                "FL_hip_joint", "FR_hip_joint",
-                "RL_hip_joint", "RR_hip_joint",
-                "FL_thigh_joint", "FR_thigh_joint",
-                "RL_thigh_joint", "RR_thigh_joint",
-                "FL_calf_joint", "FR_calf_joint",
-                "RL_calf_joint", "RR_calf_joint",
-            ]
-            scale_joint_torque(
-                env=self,
-                env_ids=fl_thigh_failed_envs,
-                asset_cfg=SceneEntityCfg(name="robot", joint_ids=slice(None), joint_names=all_leg_names),
-                scale=1.0,
-            )
-
-            leg_prefix = "FL"
-            pattern = rf"{leg_prefix}_thigh_joint"
-            leg_joint_ids, _ = self._robot.find_joints(pattern)
-            if leg_joint_ids is not None:
-                leg_joint_ids_list = list(leg_joint_ids)
-                joint_names = [f"{leg_prefix}_thigh_joint"]
-                scale_joint_torque(
-                    env=self,
-                    env_ids=fl_thigh_failed_envs,
-                    asset_cfg=SceneEntityCfg(
-                        name="robot",
-                        joint_ids=leg_joint_ids_list,
-                        joint_names=joint_names,
-                    ),
-                    scale=0.0,
-                )
-
-        # FR thigh failure (disable FR thigh only)
-        fr_thigh_failed_mask = failure_type_subset == 11
-        if torch.any(fr_thigh_failed_mask):
-            fr_thigh_failed_envs = env_ids[fr_thigh_failed_mask]
-            all_leg_names = [
-                "FL_hip_joint", "FR_hip_joint",
-                "RL_hip_joint", "RR_hip_joint",
-                "FL_thigh_joint", "FR_thigh_joint",
-                "RL_thigh_joint", "RR_thigh_joint",
-                "FL_calf_joint", "FR_calf_joint",
-                "RL_calf_joint", "RR_calf_joint",
-            ]
-            scale_joint_torque(
-                env=self,
-                env_ids=fr_thigh_failed_envs,
-                asset_cfg=SceneEntityCfg(name="robot", joint_ids=slice(None), joint_names=all_leg_names),
-                scale=1.0,
-            )
-
-            leg_prefix = "FR"
-            pattern = rf"{leg_prefix}_thigh_joint"
-            leg_joint_ids, _ = self._robot.find_joints(pattern)
-            if leg_joint_ids is not None:
-                leg_joint_ids_list = list(leg_joint_ids)
-                joint_names = [f"{leg_prefix}_thigh_joint"]
-                scale_joint_torque(
-                    env=self,
-                    env_ids=fr_thigh_failed_envs,
-                    asset_cfg=SceneEntityCfg(
-                        name="robot",
-                        joint_ids=leg_joint_ids_list,
-                        joint_names=joint_names,
-                    ),
-                    scale=0.0,
-                )
-
-        # RL thigh failure (disable RL thigh only)
-        rl_thigh_failed_mask = failure_type_subset == 12
-        if torch.any(rl_thigh_failed_mask):
-            rl_thigh_failed_envs = env_ids[rl_thigh_failed_mask]
-            all_leg_names = [
-                "FL_hip_joint", "FR_hip_joint",
-                "RL_hip_joint", "RR_hip_joint",
-                "FL_thigh_joint", "FR_thigh_joint",
-                "RL_thigh_joint", "RR_thigh_joint",
-                "FL_calf_joint", "FR_calf_joint",
-                "RL_calf_joint", "RR_calf_joint",
-            ]
-            scale_joint_torque(
-                env=self,
-                env_ids=rl_thigh_failed_envs,
-                asset_cfg=SceneEntityCfg(name="robot", joint_ids=slice(None), joint_names=all_leg_names),
-                scale=1.0,
-            )
-
-            leg_prefix = "RL"
-            pattern = rf"{leg_prefix}_thigh_joint"
-            leg_joint_ids, _ = self._robot.find_joints(pattern)
-            if leg_joint_ids is not None:
-                leg_joint_ids_list = list(leg_joint_ids)
-                joint_names = [f"{leg_prefix}_thigh_joint"]
-                scale_joint_torque(
-                    env=self,
-                    env_ids=rl_thigh_failed_envs,
-                    asset_cfg=SceneEntityCfg(
-                        name="robot",
-                        joint_ids=leg_joint_ids_list,
-                        joint_names=joint_names,
-                    ),
-                    scale=0.0,
-                )
-
-        # RR thigh failure (disable RR thigh only)
-        rr_thigh_failed_mask = failure_type_subset == 13
-        if torch.any(rr_thigh_failed_mask):
-            rr_thigh_failed_envs = env_ids[rr_thigh_failed_mask]
-            all_leg_names = [
-                "FL_hip_joint", "FR_hip_joint",
-                "RL_hip_joint", "RR_hip_joint",
-                "FL_thigh_joint", "FR_thigh_joint",
-                "RL_thigh_joint", "RR_thigh_joint",
-                "FL_calf_joint", "FR_calf_joint",
-                "RL_calf_joint", "RR_calf_joint",
-            ]
-            scale_joint_torque(
-                env=self,
-                env_ids=rr_thigh_failed_envs,
-                asset_cfg=SceneEntityCfg(name="robot", joint_ids=slice(None), joint_names=all_leg_names),
-                scale=1.0,
-            )
-
-            leg_prefix = "RR"
-            pattern = rf"{leg_prefix}_thigh_joint"
-            leg_joint_ids, _ = self._robot.find_joints(pattern)
-            if leg_joint_ids is not None:
-                leg_joint_ids_list = list(leg_joint_ids)
-                joint_names = [f"{leg_prefix}_thigh_joint"]
-                scale_joint_torque(
-                    env=self,
-                    env_ids=rr_thigh_failed_envs,
-                    asset_cfg=SceneEntityCfg(
-                        name="robot",
-                        joint_ids=leg_joint_ids_list,
-                        joint_names=joint_names,
-                    ),
-                    scale=0.0,
-                )
-
-        # FL calf failure (disable FL calf only)
-        fl_calf_failed_mask = failure_type_subset == 14
-        if torch.any(fl_calf_failed_mask):
-            fl_calf_failed_envs = env_ids[fl_calf_failed_mask]
-            all_leg_names = [
-                "FL_hip_joint", "FR_hip_joint",
-                "RL_hip_joint", "RR_hip_joint",
-                "FL_thigh_joint", "FR_thigh_joint",
-                "RL_thigh_joint", "RR_thigh_joint",
-                "FL_calf_joint", "FR_calf_joint",
-                "RL_calf_joint", "RR_calf_joint",
-            ]
-            scale_joint_torque(
-                env=self,
-                env_ids=fl_calf_failed_envs,
-                asset_cfg=SceneEntityCfg(name="robot", joint_ids=slice(None), joint_names=all_leg_names),
-                scale=1.0,
-            )
-
-            leg_prefix = "FL"
-            pattern = rf"{leg_prefix}_calf_joint"
-            leg_joint_ids, _ = self._robot.find_joints(pattern)
-            if leg_joint_ids is not None:
-                leg_joint_ids_list = list(leg_joint_ids)
-                joint_names = [f"{leg_prefix}_calf_joint"]
-                scale_joint_torque(
-                    env=self,
-                    env_ids=fl_calf_failed_envs,
-                    asset_cfg=SceneEntityCfg(
-                        name="robot",
-                        joint_ids=leg_joint_ids_list,
-                        joint_names=joint_names,
-                    ),
-                    scale=0.0,
-                )
-
-        # FR calf failure (disable FR calf only)
-        fr_calf_failed_mask = failure_type_subset == 15
-        if torch.any(fr_calf_failed_mask):
-            fr_calf_failed_envs = env_ids[fr_calf_failed_mask]
-            all_leg_names = [
-                "FL_hip_joint", "FR_hip_joint",
-                "RL_hip_joint", "RR_hip_joint",
-                "FL_thigh_joint", "FR_thigh_joint",
-                "RL_thigh_joint", "RR_thigh_joint",
-                "FL_calf_joint", "FR_calf_joint",
-                "RL_calf_joint", "RR_calf_joint",
-            ]
-            scale_joint_torque(
-                env=self,
-                env_ids=fr_calf_failed_envs,
-                asset_cfg=SceneEntityCfg(name="robot", joint_ids=slice(None), joint_names=all_leg_names),
-                scale=1.0,
-            )
-
-            leg_prefix = "FR"
-            pattern = rf"{leg_prefix}_calf_joint"
-            leg_joint_ids, _ = self._robot.find_joints(pattern)
-            if leg_joint_ids is not None:
-                leg_joint_ids_list = list(leg_joint_ids)
-                joint_names = [f"{leg_prefix}_calf_joint"]
-                scale_joint_torque(
-                    env=self,
-                    env_ids=fr_calf_failed_envs,
-                    asset_cfg=SceneEntityCfg(
-                        name="robot",
-                        joint_ids=leg_joint_ids_list,
-                        joint_names=joint_names,
-                    ),
-                    scale=0.0,
-                )
-
-        # RL calf failure (disable RL calf only)
-        rl_calf_failed_mask = failure_type_subset == 16
-        if torch.any(rl_calf_failed_mask):
-            rl_calf_failed_envs = env_ids[rl_calf_failed_mask]
-            all_leg_names = [
-                "FL_hip_joint", "FR_hip_joint",
-                "RL_hip_joint", "RR_hip_joint",
-                "FL_thigh_joint", "FR_thigh_joint",
-                "RL_thigh_joint", "RR_thigh_joint",
-                "FL_calf_joint", "FR_calf_joint",
-                "RL_calf_joint", "RR_calf_joint",
-            ]
-            scale_joint_torque(
-                env=self,
-                env_ids=rl_calf_failed_envs,
-                asset_cfg=SceneEntityCfg(name="robot", joint_ids=slice(None), joint_names=all_leg_names),
-                scale=1.0,
-            )
-
-            leg_prefix = "RL"
-            pattern = rf"{leg_prefix}_calf_joint"
-            leg_joint_ids, _ = self._robot.find_joints(pattern)
-            if leg_joint_ids is not None:
-                leg_joint_ids_list = list(leg_joint_ids)
-                joint_names = [f"{leg_prefix}_calf_joint"]
-                scale_joint_torque(
-                    env=self,
-                    env_ids=rl_calf_failed_envs,
-                    asset_cfg=SceneEntityCfg(
-                        name="robot",
-                        joint_ids=leg_joint_ids_list,
-                        joint_names=joint_names,
-                    ),
-                    scale=0.0,
-                )
-
-        # RR calf failure (disable RR calf only)
-        rr_calf_failed_mask = failure_type_subset == 17
-        if torch.any(rr_calf_failed_mask):
-            rr_calf_failed_envs = env_ids[rr_calf_failed_mask]
-            all_leg_names = [
-                "FL_hip_joint", "FR_hip_joint",
-                "RL_hip_joint", "RR_hip_joint",
-                "FL_thigh_joint", "FR_thigh_joint",
-                "RL_thigh_joint", "RR_thigh_joint",
-                "FL_calf_joint", "FR_calf_joint",
-                "RL_calf_joint", "RR_calf_joint",
-            ]
-            scale_joint_torque(
-                env=self,
-                env_ids=rr_calf_failed_envs,
-                asset_cfg=SceneEntityCfg(name="robot", joint_ids=slice(None), joint_names=all_leg_names),
-                scale=1.0,
-            )
-
-            leg_prefix = "RR"
-            pattern = rf"{leg_prefix}_calf_joint"
-            leg_joint_ids, _ = self._robot.find_joints(pattern)
-            if leg_joint_ids is not None:
-                leg_joint_ids_list = list(leg_joint_ids)
-                joint_names = [f"{leg_prefix}_calf_joint"]
-                scale_joint_torque(
-                    env=self,
-                    env_ids=rr_calf_failed_envs,
-                    asset_cfg=SceneEntityCfg(
-                        name="robot",
-                        joint_ids=leg_joint_ids_list,
-                        joint_names=joint_names,
-                    ),
-                    scale=0.0,
-                )
-
-        # FL hip+thigh failure (disable FL hip & thigh)
-        fl_hip_thigh_failed_mask = failure_type_subset == 18
-        if torch.any(fl_hip_thigh_failed_mask):
-            fl_hip_thigh_failed_envs = env_ids[fl_hip_thigh_failed_mask]
-            all_leg_names = [
-                "FL_hip_joint", "FR_hip_joint",
-                "RL_hip_joint", "RR_hip_joint",
-                "FL_thigh_joint", "FR_thigh_joint",
-                "RL_thigh_joint", "RR_thigh_joint",
-                "FL_calf_joint", "FR_calf_joint",
-                "RL_calf_joint", "RR_calf_joint",
-            ]
-            scale_joint_torque(
-                env=self,
-                env_ids=fl_hip_thigh_failed_envs,
-                asset_cfg=SceneEntityCfg(name="robot", joint_ids=slice(None), joint_names=all_leg_names),
-                scale=1.0,
-            )
-
-            leg_prefix = "FL"
-            pattern = rf"{leg_prefix}_(hip|thigh)_joint"
-            leg_joint_ids, _ = self._robot.find_joints(pattern)
-            if leg_joint_ids is not None:
-                leg_joint_ids_list = list(leg_joint_ids)
-                joint_names = [f"{leg_prefix}_hip_joint", f"{leg_prefix}_thigh_joint"]
-                scale_joint_torque(
-                    env=self,
-                    env_ids=fl_hip_thigh_failed_envs,
-                    asset_cfg=SceneEntityCfg(
-                        name="robot",
-                        joint_ids=leg_joint_ids_list,
-                        joint_names=joint_names,
-                    ),
-                    scale=0.0,
-                )
-
-        # FR hip+thigh failure (disable FR hip & thigh)
-        fr_hip_thigh_failed_mask = failure_type_subset == 19
-        if torch.any(fr_hip_thigh_failed_mask):
-            fr_hip_thigh_failed_envs = env_ids[fr_hip_thigh_failed_mask]
-            all_leg_names = [
-                "FL_hip_joint", "FR_hip_joint",
-                "RL_hip_joint", "RR_hip_joint",
-                "FL_thigh_joint", "FR_thigh_joint",
-                "RL_thigh_joint", "RR_thigh_joint",
-                "FL_calf_joint", "FR_calf_joint",
-                "RL_calf_joint", "RR_calf_joint",
-            ]
-            scale_joint_torque(
-                env=self,
-                env_ids=fr_hip_thigh_failed_envs,
-                asset_cfg=SceneEntityCfg(name="robot", joint_ids=slice(None), joint_names=all_leg_names),
-                scale=1.0,
-            )
-
-            leg_prefix = "FR"
-            pattern = rf"{leg_prefix}_(hip|thigh)_joint"
-            leg_joint_ids, _ = self._robot.find_joints(pattern)
-            if leg_joint_ids is not None:
-                leg_joint_ids_list = list(leg_joint_ids)
-                joint_names = [f"{leg_prefix}_hip_joint", f"{leg_prefix}_thigh_joint"]
-                scale_joint_torque(
-                    env=self,
-                    env_ids=fr_hip_thigh_failed_envs,
-                    asset_cfg=SceneEntityCfg(
-                        name="robot",
-                        joint_ids=leg_joint_ids_list,
-                        joint_names=joint_names,
-                    ),
-                    scale=0.0,
-                )
-
-        # RL hip+thigh failure (disable RL hip & thigh)
-        rl_hip_thigh_failed_mask = failure_type_subset == 20
-        if torch.any(rl_hip_thigh_failed_mask):
-            rl_hip_thigh_failed_envs = env_ids[rl_hip_thigh_failed_mask]
-            all_leg_names = [
-                "FL_hip_joint", "FR_hip_joint",
-                "RL_hip_joint", "RR_hip_joint",
-                "FL_thigh_joint", "FR_thigh_joint",
-                "RL_thigh_joint", "RR_thigh_joint",
-                "FL_calf_joint", "FR_calf_joint",
-                "RL_calf_joint", "RR_calf_joint",
-            ]
-            scale_joint_torque(
-                env=self,
-                env_ids=rl_hip_thigh_failed_envs,
-                asset_cfg=SceneEntityCfg(name="robot", joint_ids=slice(None), joint_names=all_leg_names),
-                scale=1.0,
-            )
-
-            leg_prefix = "RL"
-            pattern = rf"{leg_prefix}_(hip|thigh)_joint"
-            leg_joint_ids, _ = self._robot.find_joints(pattern)
-            if leg_joint_ids is not None:
-                leg_joint_ids_list = list(leg_joint_ids)
-                joint_names = [f"{leg_prefix}_hip_joint", f"{leg_prefix}_thigh_joint"]
-                scale_joint_torque(
-                    env=self,
-                    env_ids=rl_hip_thigh_failed_envs,
-                    asset_cfg=SceneEntityCfg(
-                        name="robot",
-                        joint_ids=leg_joint_ids_list,
-                        joint_names=joint_names,
-                    ),
-                    scale=0.0,
-                )
-
-        # RR hip+thigh failure (disable RR hip & thigh)
-        rr_hip_thigh_failed_mask = failure_type_subset == 21
-        if torch.any(rr_hip_thigh_failed_mask):
-            rr_hip_thigh_failed_envs = env_ids[rr_hip_thigh_failed_mask]
-            all_leg_names = [
-                "FL_hip_joint", "FR_hip_joint",
-                "RL_hip_joint", "RR_hip_joint",
-                "FL_thigh_joint", "FR_thigh_joint",
-                "RL_thigh_joint", "RR_thigh_joint",
-                "FL_calf_joint", "FR_calf_joint",
-                "RL_calf_joint", "RR_calf_joint",
-            ]
-            scale_joint_torque(
-                env=self,
-                env_ids=rr_hip_thigh_failed_envs,
-                asset_cfg=SceneEntityCfg(name="robot", joint_ids=slice(None), joint_names=all_leg_names),
-                scale=1.0,
-            )
-
-            leg_prefix = "RR"
-            pattern = rf"{leg_prefix}_(hip|thigh)_joint"
-            leg_joint_ids, _ = self._robot.find_joints(pattern)
-            if leg_joint_ids is not None:
-                leg_joint_ids_list = list(leg_joint_ids)
-                joint_names = [f"{leg_prefix}_hip_joint", f"{leg_prefix}_thigh_joint"]
-                scale_joint_torque(
-                    env=self,
-                    env_ids=rr_hip_thigh_failed_envs,
-                    asset_cfg=SceneEntityCfg(
-                        name="robot",
-                        joint_ids=leg_joint_ids_list,
-                        joint_names=joint_names,
-                    ),
-                    scale=0.0,
-                )
-
-        # FL hip+calf failure (disable FL hip & calf)
-        fl_hip_calf_failed_mask = failure_type_subset == 22
-        if torch.any(fl_hip_calf_failed_mask):
-            fl_hip_calf_failed_envs = env_ids[fl_hip_calf_failed_mask]
-            all_leg_names = [
-                "FL_hip_joint", "FR_hip_joint",
-                "RL_hip_joint", "RR_hip_joint",
-                "FL_thigh_joint", "FR_thigh_joint",
-                "RL_thigh_joint", "RR_thigh_joint",
-                "FL_calf_joint", "FR_calf_joint",
-                "RL_calf_joint", "RR_calf_joint",
-            ]
-            scale_joint_torque(
-                env=self,
-                env_ids=fl_hip_calf_failed_envs,
-                asset_cfg=SceneEntityCfg(name="robot", joint_ids=slice(None), joint_names=all_leg_names),
-                scale=1.0,
-            )
-
-            leg_prefix = "FL"
-            pattern = rf"{leg_prefix}_(hip|calf)_joint"
-            leg_joint_ids, _ = self._robot.find_joints(pattern)
-            if leg_joint_ids is not None:
-                leg_joint_ids_list = list(leg_joint_ids)
-                joint_names = [f"{leg_prefix}_hip_joint", f"{leg_prefix}_calf_joint"]
-                scale_joint_torque(
-                    env=self,
-                    env_ids=fl_hip_calf_failed_envs,
-                    asset_cfg=SceneEntityCfg(
-                        name="robot",
-                        joint_ids=leg_joint_ids_list,
-                        joint_names=joint_names,
-                    ),
-                    scale=0.0,
-                )
-
-        # FR hip+calf failure (disable FR hip & calf)
-        fr_hip_calf_failed_mask = failure_type_subset == 23
-        if torch.any(fr_hip_calf_failed_mask):
-            fr_hip_calf_failed_envs = env_ids[fr_hip_calf_failed_mask]
-            all_leg_names = [
-                "FL_hip_joint", "FR_hip_joint",
-                "RL_hip_joint", "RR_hip_joint",
-                "FL_thigh_joint", "FR_thigh_joint",
-                "RL_thigh_joint", "RR_thigh_joint",
-                "FL_calf_joint", "FR_calf_joint",
-                "RL_calf_joint", "RR_calf_joint",
-            ]
-            scale_joint_torque(
-                env=self,
-                env_ids=fr_hip_calf_failed_envs,
-                asset_cfg=SceneEntityCfg(name="robot", joint_ids=slice(None), joint_names=all_leg_names),
-                scale=1.0,
-            )
-
-            leg_prefix = "FR"
-            pattern = rf"{leg_prefix}_(hip|calf)_joint"
-            leg_joint_ids, _ = self._robot.find_joints(pattern)
-            if leg_joint_ids is not None:
-                leg_joint_ids_list = list(leg_joint_ids)
-                joint_names = [f"{leg_prefix}_hip_joint", f"{leg_prefix}_calf_joint"]
-                scale_joint_torque(
-                    env=self,
-                    env_ids=fr_hip_calf_failed_envs,
-                    asset_cfg=SceneEntityCfg(
-                        name="robot",
-                        joint_ids=leg_joint_ids_list,
-                        joint_names=joint_names,
-                    ),
-                    scale=0.0,
-                )
-
-        # RL hip+calf failure (disable RL hip & calf)
-        rl_hip_calf_failed_mask = failure_type_subset == 24
-        if torch.any(rl_hip_calf_failed_mask):
-            rl_hip_calf_failed_envs = env_ids[rl_hip_calf_failed_mask]
-            all_leg_names = [
-                "FL_hip_joint", "FR_hip_joint",
-                "RL_hip_joint", "RR_hip_joint",
-                "FL_thigh_joint", "FR_thigh_joint",
-                "RL_thigh_joint", "RR_thigh_joint",
-                "FL_calf_joint", "FR_calf_joint",
-                "RL_calf_joint", "RR_calf_joint",
-            ]
-            scale_joint_torque(
-                env=self,
-                env_ids=rl_hip_calf_failed_envs,
-                asset_cfg=SceneEntityCfg(name="robot", joint_ids=slice(None), joint_names=all_leg_names),
-                scale=1.0,
-            )
-
-            leg_prefix = "RL"
-            pattern = rf"{leg_prefix}_(hip|calf)_joint"
-            leg_joint_ids, _ = self._robot.find_joints(pattern)
-            if leg_joint_ids is not None:
-                leg_joint_ids_list = list(leg_joint_ids)
-                joint_names = [f"{leg_prefix}_hip_joint", f"{leg_prefix}_calf_joint"]
-                scale_joint_torque(
-                    env=self,
-                    env_ids=rl_hip_calf_failed_envs,
-                    asset_cfg=SceneEntityCfg(
-                        name="robot",
-                        joint_ids=leg_joint_ids_list,
-                        joint_names=joint_names,
-                    ),
-                    scale=0.0,
-                )
-
-        # RR hip+calf failure (disable RR hip & calf)
-        rr_hip_calf_failed_mask = failure_type_subset == 25
-        if torch.any(rr_hip_calf_failed_mask):
-            rr_hip_calf_failed_envs = env_ids[rr_hip_calf_failed_mask]
-            all_leg_names = [
-                "FL_hip_joint", "FR_hip_joint",
-                "RL_hip_joint", "RR_hip_joint",
-                "FL_thigh_joint", "FR_thigh_joint",
-                "RL_thigh_joint", "RR_thigh_joint",
-                "FL_calf_joint", "FR_calf_joint",
-                "RL_calf_joint", "RR_calf_joint",
-            ]
-            scale_joint_torque(
-                env=self,
-                env_ids=rr_hip_calf_failed_envs,
-                asset_cfg=SceneEntityCfg(name="robot", joint_ids=slice(None), joint_names=all_leg_names),
-                scale=1.0,
-            )
-
-            leg_prefix = "RR"
-            pattern = rf"{leg_prefix}_(hip|calf)_joint"
-            leg_joint_ids, _ = self._robot.find_joints(pattern)
-            if leg_joint_ids is not None:
-                leg_joint_ids_list = list(leg_joint_ids)
-                joint_names = [f"{leg_prefix}_hip_joint", f"{leg_prefix}_calf_joint"]
-                scale_joint_torque(
-                    env=self,
-                    env_ids=rr_hip_calf_failed_envs,
-                    asset_cfg=SceneEntityCfg(
-                        name="robot",
-                        joint_ids=leg_joint_ids_list,
-                        joint_names=joint_names,
-                    ),
-                    scale=0.0,
-                )
-
-        # FL full leg failure (disable FL hip, thigh & calf)
-        fl_full_failed_mask = failure_type_subset == 26
-        if torch.any(fl_full_failed_mask):
-            fl_full_failed_envs = env_ids[fl_full_failed_mask]
-            all_leg_names = [
-                "FL_hip_joint", "FR_hip_joint",
-                "RL_hip_joint", "RR_hip_joint",
-                "FL_thigh_joint", "FR_thigh_joint",
-                "RL_thigh_joint", "RR_thigh_joint",
-                "FL_calf_joint", "FR_calf_joint",
-                "RL_calf_joint", "RR_calf_joint",
-            ]
-            scale_joint_torque(
-                env=self,
-                env_ids=fl_full_failed_envs,
-                asset_cfg=SceneEntityCfg(name="robot", joint_ids=slice(None), joint_names=all_leg_names),
-                scale=1.0,
-            )
-
-            leg_prefix = "FL"
-            pattern = rf"{leg_prefix}_(hip|thigh|calf)_joint"
-            leg_joint_ids, _ = self._robot.find_joints(pattern)
-            if leg_joint_ids is not None:
-                leg_joint_ids_list = list(leg_joint_ids)
-                joint_names = [
-                    f"{leg_prefix}_hip_joint",
-                    f"{leg_prefix}_thigh_joint",
-                    f"{leg_prefix}_calf_joint",
-                ]
-                scale_joint_torque(
-                    env=self,
-                    env_ids=fl_full_failed_envs,
-                    asset_cfg=SceneEntityCfg(
-                        name="robot",
-                        joint_ids=leg_joint_ids_list,
-                        joint_names=joint_names,
-                    ),
-                    scale=0.0,
-                )
-
-        # FR full leg failure (disable FR hip, thigh & calf)
-        fr_full_failed_mask = failure_type_subset == 27
-        if torch.any(fr_full_failed_mask):
-            fr_full_failed_envs = env_ids[fr_full_failed_mask]
-            all_leg_names = [
-                "FL_hip_joint", "FR_hip_joint",
-                "RL_hip_joint", "RR_hip_joint",
-                "FL_thigh_joint", "FR_thigh_joint",
-                "RL_thigh_joint", "RR_thigh_joint",
-                "FL_calf_joint", "FR_calf_joint",
-                "RL_calf_joint", "RR_calf_joint",
-            ]
-            scale_joint_torque(
-                env=self,
-                env_ids=fr_full_failed_envs,
-                asset_cfg=SceneEntityCfg(name="robot", joint_ids=slice(None), joint_names=all_leg_names),
-                scale=1.0,
-            )
-
-            leg_prefix = "FR"
-            pattern = rf"{leg_prefix}_(hip|thigh|calf)_joint"
-            leg_joint_ids, _ = self._robot.find_joints(pattern)
-            if leg_joint_ids is not None:
-                leg_joint_ids_list = list(leg_joint_ids)
-                joint_names = [
-                    f"{leg_prefix}_hip_joint",
-                    f"{leg_prefix}_thigh_joint",
-                    f"{leg_prefix}_calf_joint",
-                ]
-                scale_joint_torque(
-                    env=self,
-                    env_ids=fr_full_failed_envs,
-                    asset_cfg=SceneEntityCfg(
-                        name="robot",
-                        joint_ids=leg_joint_ids_list,
-                        joint_names=joint_names,
-                    ),
-                    scale=0.0,
-                )
-
-        # RL full leg failure (disable RL hip, thigh & calf)
-        rl_full_failed_mask = failure_type_subset == 28
-        if torch.any(rl_full_failed_mask):
-            rl_full_failed_envs = env_ids[rl_full_failed_mask]
-            all_leg_names = [
-                "FL_hip_joint", "FR_hip_joint",
-                "RL_hip_joint", "RR_hip_joint",
-                "FL_thigh_joint", "FR_thigh_joint",
-                "RL_thigh_joint", "RR_thigh_joint",
-                "FL_calf_joint", "FR_calf_joint",
-                "RL_calf_joint", "RR_calf_joint",
-            ]
-            scale_joint_torque(
-                env=self,
-                env_ids=rl_full_failed_envs,
-                asset_cfg=SceneEntityCfg(name="robot", joint_ids=slice(None), joint_names=all_leg_names),
-                scale=1.0,
-            )
-
-            leg_prefix = "RL"
-            pattern = rf"{leg_prefix}_(hip|thigh|calf)_joint"
-            leg_joint_ids, _ = self._robot.find_joints(pattern)
-            if leg_joint_ids is not None:
-                leg_joint_ids_list = list(leg_joint_ids)
-                joint_names = [
-                    f"{leg_prefix}_hip_joint",
-                    f"{leg_prefix}_thigh_joint",
-                    f"{leg_prefix}_calf_joint",
-                ]
-                scale_joint_torque(
-                    env=self,
-                    env_ids=rl_full_failed_envs,
-                    asset_cfg=SceneEntityCfg(
-                        name="robot",
-                        joint_ids=leg_joint_ids_list,
-                        joint_names=joint_names,
-                    ),
-                    scale=0.0,
-                )
-
-        # RR full leg failure (disable RR hip, thigh & calf)
-        rr_full_failed_mask = failure_type_subset == 29
-        if torch.any(rr_full_failed_mask):
-            rr_full_failed_envs = env_ids[rr_full_failed_mask]
-            all_leg_names = [
-                "FL_hip_joint", "FR_hip_joint",
-                "RL_hip_joint", "RR_hip_joint",
-                "FL_thigh_joint", "FR_thigh_joint",
-                "RL_thigh_joint", "RR_thigh_joint",
-                "FL_calf_joint", "FR_calf_joint",
-                "RL_calf_joint", "RR_calf_joint",
-            ]
-            scale_joint_torque(
-                env=self,
-                env_ids=rr_full_failed_envs,
-                asset_cfg=SceneEntityCfg(name="robot", joint_ids=slice(None), joint_names=all_leg_names),
-                scale=1.0,
-            )
-
-            leg_prefix = "RR"
-            pattern = rf"{leg_prefix}_(hip|thigh|calf)_joint"
-            leg_joint_ids, _ = self._robot.find_joints(pattern)
-            if leg_joint_ids is not None:
-                leg_joint_ids_list = list(leg_joint_ids)
-                joint_names = [
-                    f"{leg_prefix}_hip_joint",
-                    f"{leg_prefix}_thigh_joint",
-                    f"{leg_prefix}_calf_joint",
-                ]
-                scale_joint_torque(
-                    env=self,
-                    env_ids=rr_full_failed_envs,
-                    asset_cfg=SceneEntityCfg(
-                        name="robot",
-                        joint_ids=leg_joint_ids_list,
-                        joint_names=joint_names,
-                    ),
-                    scale=0.0,
-                )
-"""
         
 
     def _get_new_random_commands(self):
@@ -2252,6 +1227,8 @@ class LocomotionEnv(DirectRLEnv):
         commands_resample[:, 0] *= 0.5
         commands_resample[:, 1] *= 0.25 
         commands_resample[:, 2] *= 0.3 
+        # TODO scale in the case of 2 leg case
+        
         self._commands[:, :3] = self._commands[:, :3] * ~resample_time.unsqueeze(1).expand(-1, 3) + commands_resample * resample_time.unsqueeze(1).expand(-1, 3)
 
         # Stop

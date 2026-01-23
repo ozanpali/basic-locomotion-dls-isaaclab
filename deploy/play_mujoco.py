@@ -112,7 +112,7 @@ if __name__ == '__main__':
         #   4: RL failed
         #   5: RR failed
         phase = (env.step_num // PHASE_STEPS) % 10
-        # phase  = 3
+        # phase  = 0  # instead of cycle just see 1 case
         # Update leg indicator for the observation input to the policy
         if phase in (0, 2, 4, 6, 8):
             locomotion_policy.leg_any_scaled = np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float32)
