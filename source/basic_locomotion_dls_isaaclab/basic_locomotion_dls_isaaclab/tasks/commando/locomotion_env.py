@@ -913,13 +913,20 @@ class LocomotionEnv(DirectRLEnv):
         self._previous_actions[env_ids] = 0.0
         self._previous_previous_actions[env_ids] = 0.0
         
+
+        # Detect if there is any failure on any leg (any joint scaled)
+        leg_any_scaled_int = (
+            self._torque_scaled_mask_per_leg_joint.max(dim=2).values > 0.0
+        )  # [num_envs, 4]
+        any_failure = leg_any_scaled_int.any(dim=1).float()  # [num_envs]
+
+
         # Sample new commands
         self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-1.0, 1.0)
         # Per-command base scaling
-        self._commands[env_ids, 0] *= 0.5
-        self._commands[env_ids, 1] *= 0.25 
-        self._commands[env_ids, 2] *= 0.3 
-        # TODO scale in the case of 2 leg case
+        self._commands[env_ids, 0] *= 0.5 - 0.25 * any_failure   # 0.5 -> 0.25 when failed
+        self._commands[env_ids, 1] *= 0.25 - 0.125 * any_failure  # 0.25 -> 0.125 when failed
+        self._commands[env_ids, 2] *= 0.3 - 0.15 * any_failure   # 0.3 -> 0.15 when failed
 
         # Reset swing peak
         self._swing_peak[env_ids] = torch.tensor([0.0, 0.0, 0.0, 0.0], device=self.device)
@@ -1231,14 +1238,20 @@ class LocomotionEnv(DirectRLEnv):
         
 
     def _get_new_random_commands(self):
-        
+
+        # Detect if there is any failure on any leg (any joint scaled)
+        leg_any_scaled_int = (
+            self._torque_scaled_mask_per_leg_joint.max(dim=2).values > 0.0
+        )  # [num_envs, 4]
+        any_failure = leg_any_scaled_int.any(dim=1).float()  # [num_envs]
+
         # Change direction while moving
         resample_time = self.episode_length_buf == self.max_episode_length - 400
         commands_resample = torch.zeros_like(self._commands).uniform_(-1.0, 1.0)
-        commands_resample[:, 0] *= 0.5
-        commands_resample[:, 1] *= 0.25 
-        commands_resample[:, 2] *= 0.3 
-        # TODO scale in the case of 2 leg case
+
+        commands_resample[:, 0] *= 0.5 - 0.25 * any_failure   # 0.5 -> 0.25 when failed
+        commands_resample[:, 1] *= 0.25 - 0.125 * any_failure # 0.25 -> 0.125 when failed
+        commands_resample[:, 2] *= 0.3 - 0.15 * any_failure # 0.3 -> 0.15 when failed
         
         self._commands[:, :3] = self._commands[:, :3] * ~resample_time.unsqueeze(1).expand(-1, 3) + commands_resample * resample_time.unsqueeze(1).expand(-1, 3)
 
@@ -1252,9 +1265,9 @@ class LocomotionEnv(DirectRLEnv):
         # Move again
         resample_time_2 = self.episode_length_buf == self.max_episode_length - 150
         commands_resample_2 = torch.zeros_like(self._commands).uniform_(-1.0, 1.0)
-        commands_resample_2[:, 0] *= 0.5
-        commands_resample_2[:, 1] *= 0.25 
-        commands_resample_2[:, 2] *= 0.3 
+        commands_resample_2[:, 0] *= 0.5 - 0.25 * any_failure   # 0.5 -> 0.25 when failed
+        commands_resample_2[:, 1] *= 0.25 - 0.125 * any_failure # 0.25 -> 0.125 when failed
+        commands_resample_2[:, 2] *= 0.3 - 0.15 * any_failure # 0.3 -> 0.15 when failed
         self._commands[:, :3] = self._commands[:, :3] * ~resample_time_2.unsqueeze(1).expand(-1, 3) + commands_resample_2 * resample_time_2.unsqueeze(1).expand(-1, 3)        
 
         # Took some envs, and put to zero the vel
